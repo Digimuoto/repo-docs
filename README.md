@@ -6,6 +6,9 @@ Reusable docs site module for `flake-parts` repositories.
 
 - `flakeModules.default` for consumer repos
 - a shared Astro/Tailwind template that renders a plain `docs/` tree
+- Mermaid diagram rendering with fullscreen support
+- LaTeX math rendering via KaTeX
+- Syntax-highlighted code blocks for all common languages
 - Nix outputs for:
   - `packages.docs-site`
   - `apps.docs-dev`
@@ -14,7 +17,7 @@ Reusable docs site module for `flake-parts` repositories.
 
 The consumer repo keeps a markdown `docs/` tree. Site metadata, routing, exclusions, navigation overrides, and template overrides are configured in the Nix module. The consumer repo does not need its own Astro config, layout, Tailwind config, or docs `package.json`.
 
-This repository dogfoods the module through its own [docs/](/home/juliuskoskela/Repos/repo-docs/docs) tree, so `nix build .#docs-site` builds the real repo docs instead of a separate fixture site.
+This repository dogfoods the module through its own `docs/` tree, so `nix build .#docs-site` builds the real repo docs instead of a separate fixture site.
 
 ## Consumer shape
 
@@ -23,8 +26,7 @@ docs/
   index.md
   guides/
     getting-started.md
-  architecture/
-    overview.md
+    rendering-example.md
 ```
 
 The only required input is `docsSite.contentDir = ./docs;`. Everything else has defaults.
@@ -40,7 +42,7 @@ If you want more control, you can override site metadata, exclusions, section la
 
 ```nix
 {
-  inputs.repo-docs.url = "github:your-org/repo-docs";
+  inputs.repo-docs.url = "github:Digimuoto/repo-docs";
 
   outputs = inputs @ { flake-parts, repo-docs, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
@@ -65,7 +67,6 @@ If you want more control, you can override site metadata, exclusions, section la
 
           navigation.sectionLabels = {
             guides = "Guides";
-            architecture = "Architecture";
           };
 
           templateFiles = {

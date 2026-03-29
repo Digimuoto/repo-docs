@@ -5,21 +5,14 @@ description: Overview of the reusable docs module
 
 # repo-docs
 
-This repository packages a reusable docs site for `flake-parts` repositories.
+A reusable docs site module for `flake-parts` repositories.
 
-The consumer repo keeps:
-
-- a `docs/` tree of markdown files
-
-The Nix module configures the site metadata, routing, navigation behavior, exclusions, and template overrides.
-
-The consumer repo does not keep its own Astro boilerplate, layout, Tailwind config, docs `package.json`, or repo-local docs config file.
+The consumer repo keeps a `docs/` tree of markdown files. The Nix module handles site metadata, routing, navigation, exclusions, and template overrides. No Astro boilerplate needed in the consumer repo.
 
 ## Start Here
 
 - [Getting Started](guides/getting-started/)
-- [Architecture Overview](architecture/overview/)
-- [Tree Navigation](architecture/advanced/tree-navigation/)
+- [Rendering Example](guides/rendering-example/)
 
 ## Consumer Outputs
 
@@ -30,13 +23,11 @@ Once imported, the module exposes:
 - `apps.docs-preview`
 - `checks.docs-site`
 
-## Genericity
+## Features
 
-Everything is configurable from the Nix module:
-
-- docs tree location
-- route base
-- site metadata
-- excluded paths
-- auto-generated or explicit navigation
-- template file overrides
+- Auto-generated or explicit sidebar navigation
+- Mermaid diagram rendering with fullscreen support
+- LaTeX math via KaTeX
+- Syntax-highlighted code blocks
+- Dark theme with customizable CSS variables
+- Template file overrides from Nix

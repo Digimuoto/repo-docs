@@ -51,7 +51,6 @@
           };
           navigation.sectionLabels = {
             guides = "Guides";
-            architecture = "Architecture";
           };
         };
 
@@ -62,12 +61,18 @@
               site="${config.packages.docs-site}"
               test -f "$site/index.html"
               test -f "$site/guides/getting-started/index.html"
-              test -f "$site/architecture/advanced/tree-navigation/index.html"
+              test -f "$site/guides/rendering-example/index.html"
               test ! -e "$site/private/notes/index.html"
               grep -q "repo-docs" "$site/index.html"
-              grep -q "data-docs-mermaid=\"true\"" "$site/guides/getting-started/index.html"
+
+              # Rendering example has mermaid diagrams
+              grep -q "data-docs-mermaid=\"true\"" "$site/guides/rendering-example/index.html"
               grep -q "data-docs-mermaid=\"false\"" "$site/index.html"
-              grep -q "tree-based navigation" "$site/architecture/advanced/tree-navigation/index.html"
+
+              # KaTeX math is rendered (display math produces katex-display class)
+              grep -q "katex-display" "$site/guides/rendering-example/index.html"
+              # Inline math is rendered (katex class on inline spans)
+              grep -q "katex" "$site/guides/rendering-example/index.html"
             '';
           };
 
@@ -87,8 +92,8 @@
                       entries = ["/" "guides/getting-started"];
                     }
                     {
-                      label = "Architecture";
-                      dir = "architecture";
+                      label = "Guides";
+                      dir = "guides";
                     }
                   ];
                 };

@@ -1,5 +1,5 @@
 {pkgs, lib, repoRoot}: let
-  npmDepsHash = "sha256-oSpjRL92D1MDADfN8Jh03tIfhgEieNxCk7PNNo/x1Tw=";
+  npmDepsHash = "sha256-V+7zFSNGTh/UbIAgscaQGgr7XxKgnPKSDuLoCNEIqoM=";
   templateDir = repoRoot + "/template";
   stageScript = repoRoot + "/scripts/stage-docs-site.mjs";
 
