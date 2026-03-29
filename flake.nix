@@ -46,7 +46,8 @@
             title = "repo-docs";
             tagline = "Documentation";
             description = "Reusable docs layout module for flake-parts repositories";
-            publicBaseUrl = "https://docs.example.com";
+            publicBaseUrl = "https://digimuoto.github.io/repo-docs";
+            routeBase = "/repo-docs";
           };
           navigation.sectionLabels = {
             guides = "Guides";
