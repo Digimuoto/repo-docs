@@ -69,18 +69,13 @@ async function applyTemplateOverrides(outDir, templateFiles) {
   }
 }
 
-async function writeRoutePage(outDir, routeBase) {
-  const normalized = normalizeRouteBase(routeBase);
+async function writeRoutePage(outDir) {
   const pagesRoot = path.join(outDir, "src", "pages");
-  const rootRouteFile = path.join(pagesRoot, "[...slug].astro");
-  const routeSegments = normalized === "/" ? [] : normalized.slice(1).split("/");
-  const routeDir = path.join(pagesRoot, ...routeSegments);
-  const routeFile = path.join(routeDir, "[...slug].astro");
-  const importPrefix = "../".repeat(routeSegments.length + 1);
+  const routeFile = path.join(pagesRoot, "[...slug].astro");
   const routeSource = [
     "---",
-    `import DocsPage from "${importPrefix}components/DocsPage.astro";`,
-    `import {getDocStaticPaths} from "${importPrefix}lib/docs-routes";`,
+    `import DocsPage from "../components/DocsPage.astro";`,
+    `import {getDocStaticPaths} from "../lib/docs-routes";`,
     "",
     "export const getStaticPaths = getDocStaticPaths;",
     "const props = Astro.props;",
@@ -90,8 +85,6 @@ async function writeRoutePage(outDir, routeBase) {
     "",
   ].join("\n");
 
-  await removeIfExists(rootRouteFile);
-  await fs.mkdir(routeDir, { recursive: true });
   await fs.writeFile(routeFile, routeSource, "utf8");
 }
 
@@ -379,12 +372,12 @@ async function main() {
   );
 
   await applyTemplateOverrides(outDir, templateFiles);
-  await writeRoutePage(outDir, config.site.routeBase);
+  await writeRoutePage(outDir);
 
+  // The redirect page is unnecessary — Astro's base config places the root
+  // page at the correct path, and the catch-all route handles the index.
   const redirectPage = path.join(outDir, "src", "pages", "index.astro");
-  if (config.site.routeBase === "/") {
-    await removeIfExists(redirectPage);
-  }
+  await removeIfExists(redirectPage);
 }
 
 main().catch((error) => {
