@@ -371,13 +371,16 @@ async function main() {
     "utf8",
   );
 
-  await applyTemplateOverrides(outDir, templateFiles);
   await writeRoutePage(outDir);
 
   // The redirect page is unnecessary — Astro's base config places the root
   // page at the correct path, and the catch-all route handles the index.
   const redirectPage = path.join(outDir, "src", "pages", "index.astro");
   await removeIfExists(redirectPage);
+
+  // Apply consumer template overrides last so they can replace any generated
+  // file, including the route page and redirect page removed above.
+  await applyTemplateOverrides(outDir, templateFiles);
 }
 
 main().catch((error) => {

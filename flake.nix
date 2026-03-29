@@ -21,6 +21,7 @@
       perSystem = {
         config,
         pkgs,
+        lib,
         ...
       }: let
         mkAssertionCheck = {
@@ -32,6 +33,10 @@
             ${script}
             touch "$out"
           '';
+        mkDocsSite = import ./nix/lib.nix {
+          inherit pkgs lib;
+          repoRoot = ./.;
+        };
       in {
         docsSite = {
           enable = true;
@@ -64,6 +69,43 @@
               grep -q "tree-based navigation" "$site/architecture/advanced/tree-navigation/index.html"
             '';
           };
+
+          docs-explicit-nav = let
+            explicitSite = mkDocsSite {
+              name = "docs-explicit-nav";
+              contentDir = ./docs;
+              config = {
+                site = {
+                  title = "explicit-nav-test";
+                  publicBaseUrl = "https://example.com";
+                };
+                navigation = {
+                  sections = [
+                    {
+                      label = "Overview";
+                      entries = ["/" "guides/getting-started"];
+                    }
+                    {
+                      label = "Architecture";
+                      dir = "architecture";
+                    }
+                  ];
+                };
+                content.excludePaths = ["private"];
+              };
+            };
+          in
+            mkAssertionCheck {
+              name = "docs-explicit-nav";
+              script = ''
+                site="${explicitSite.package}"
+                # "/" entry resolves to index page
+                test -f "$site/index.html"
+                test -f "$site/guides/getting-started/index.html"
+                test ! -e "$site/private/notes/index.html"
+                grep -q "explicit-nav-test" "$site/index.html"
+              '';
+            };
         };
 
         devShells.default = pkgs.mkShell {

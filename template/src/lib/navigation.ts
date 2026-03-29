@@ -42,7 +42,8 @@ function normalizeEntryId(entryId: string) {
 export {normalizeEntryId};
 
 function normalizeConfigPath(pathValue: string) {
-  return pathValue.replace(/^\/+|\/+$/g, "").replace(/\\/g, "/");
+  const normalized = pathValue.replace(/^\/+|\/+$/g, "").replace(/\\/g, "/");
+  return normalized === "" ? "index" : normalized;
 }
 
 function getPageMeta(entry: DocsEntry): PageMeta {
@@ -194,7 +195,6 @@ export function buildSidebar(entries: DocsEntry[]): SidebarSection[] {
         items: section.entries
           .map((slug) => requirePage(pagesByKey, slug, section.label))
           .filter((page) => !page.hidden)
-          .sort(comparePages)
           .map((page) => ({
             depth: 0,
             href: page.href,
