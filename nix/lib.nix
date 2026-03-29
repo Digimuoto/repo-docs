@@ -16,9 +16,11 @@
       runtimeInputs = [
         pkgs.nodejs_22
       ];
-      text = ''
-        set -euo pipefail
-
+      excludeShellChecks = ["SC1091" "SC2050"];
+      text = let
+        configJson = pkgs.writeText "${name}-config.json" (builtins.toJSON config);
+        templateFilesJson = pkgs.writeText "${name}-template-files.json" (builtins.toJSON (lib.mapAttrs (_: value: toString value) templateFiles));
+      in ''
         host="''${HOST:-127.0.0.1}"
         port="''${PORT:-${toString port}}"
         workdir="$(mktemp -d "''${TMPDIR:-/tmp}/${name}-XXXXXX")"
@@ -34,8 +36,8 @@
 
         node ${stageScript} \
           --content-dir ${contentDir} \
-          --config-json ${pkgs.writeText "${name}-config.json" (builtins.toJSON config)} \
-          --template-files-json ${pkgs.writeText "${name}-template-files.json" (builtins.toJSON (lib.mapAttrs (_: value: toString value) templateFiles))} \
+          --config-json ${configJson} \
+          --template-files-json ${templateFilesJson} \
           --out-dir "$workdir"
 
         cd "$workdir"
