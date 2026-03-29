@@ -104,6 +104,52 @@
                 test -f "$site/guides/getting-started/index.html"
                 test ! -e "$site/private/notes/index.html"
                 grep -q "explicit-nav-test" "$site/index.html"
+
+                # Explicit entries must preserve config order: "/" before "guides/getting-started".
+                # Alphabetical sort would put "Getting Started" before "repo-docs", so this
+                # catches regressions if .sort(comparePages) is re-added to explicit entries.
+                sidebar=$(grep -o '<aside[^>]*>.*</aside>' "$site/index.html")
+                repo_pos=$(printf '%s' "$sidebar" | grep -bo 'repo-docs' | head -1 | cut -d: -f1)
+                gs_pos=$(printf '%s' "$sidebar" | grep -bo 'Getting Started' | head -1 | cut -d: -f1)
+                test -n "$repo_pos"
+                test -n "$gs_pos"
+                test "$repo_pos" -lt "$gs_pos"
+              '';
+            };
+
+          docs-template-override = let
+            customRouteFile = pkgs.writeText "custom-route.astro" ''
+              ---
+              import DocsPage from "../components/DocsPage.astro";
+              import {getDocStaticPaths} from "../lib/docs-routes";
+              // CUSTOM_ROUTE_OVERRIDE_MARKER
+              export const getStaticPaths = getDocStaticPaths;
+              const props = Astro.props;
+              ---
+              <DocsPage {...props} />
+            '';
+            overrideSite = mkDocsSite {
+              name = "docs-tpl-override";
+              contentDir = ./docs;
+              config = {
+                site = {
+                  title = "override-test";
+                  publicBaseUrl = "https://example.com";
+                };
+                content.excludePaths = ["private"];
+              };
+              templateFiles = {
+                "src/pages/[...slug].astro" = customRouteFile;
+              };
+            };
+          in
+            mkAssertionCheck {
+              name = "docs-template-override";
+              script = ''
+                # Consumer-provided route file must survive staging. If writeRoutePage
+                # ran after applyTemplateOverrides, the marker would be overwritten.
+                staged="${overrideSite.stagedSrc}"
+                grep -q "CUSTOM_ROUTE_OVERRIDE_MARKER" "$staged/src/pages/[...slug].astro"
               '';
             };
         };
