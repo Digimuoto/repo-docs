@@ -1,0 +1,73 @@
+---
+import type {SidebarSection as SidebarSectionType, SidebarItem} from "../lib/navigation";
+import {siteConfig} from "../lib/site-config";
+
+interface Props {
+  currentPath: string;
+  section: SidebarSectionType;
+}
+
+const {currentPath, section} = Astro.props;
+
+function stripTrailingSlash(value: string) {
+  if (value === "/") {
+    return "/";
+  }
+  return value.endsWith("/") ? value.slice(0, -1) : value;
+}
+
+function isActive(item: SidebarItem) {
+  if (!item.href) {
+    return false;
+  }
+
+  const target = stripTrailingSlash(item.href);
+  const current = stripTrailingSlash(currentPath);
+  const sectionRoot = stripTrailingSlash(siteConfig.site.routeBase === "/" ? "/" : `${siteConfig.site.routeBase}/`);
+
+  if (target === sectionRoot) {
+    return current === sectionRoot;
+  }
+
+  return current === target || current.startsWith(`${target}/`);
+}
+---
+
+<div>
+  <h2 class="mb-2 text-xs font-semibold uppercase tracking-wider text-content-quaternary">
+    {section.label}
+  </h2>
+  <ul class="space-y-1">
+    {section.items.map((item) => {
+      const paddingLeft = `${0.75 + item.depth * 0.9}rem`;
+      if (item.kind === "group") {
+        return (
+          <li>
+            <p
+              class="py-2 text-xs font-semibold uppercase tracking-[0.18em] text-content-quaternary"
+              style={`padding-left: ${paddingLeft};`}
+            >
+              {item.label}
+            </p>
+          </li>
+        );
+      }
+
+      return (
+        <li>
+          <a
+            href={item.href}
+            class={`block rounded-md py-2 pr-3 text-sm transition-colors ${
+              isActive(item)
+                ? "bg-surface-tertiary text-brand-primary"
+                : "text-content-secondary hover:bg-surface-secondary hover:text-content"
+            }`}
+            style={`padding-left: ${paddingLeft};`}
+          >
+            {item.label}
+          </a>
+        </li>
+      );
+    })}
+  </ul>
+</div>

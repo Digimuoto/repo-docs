@@ -1,0 +1,118 @@
+---
+import MermaidEnhancer from "../components/MermaidEnhancer.astro";
+import SidebarSection from "../components/SidebarSection.astro";
+import type {SidebarSection as SidebarSectionType} from "../lib/navigation";
+import {siteConfig, withBasePath} from "../lib/site-config";
+import "../styles/global.css";
+
+interface Props {
+  description?: string;
+  hasMermaid?: boolean;
+  navigation: SidebarSectionType[];
+  title: string;
+}
+
+const {
+  description = siteConfig.site.description,
+  hasMermaid = false,
+  navigation,
+  title,
+} = Astro.props;
+
+const currentPath = Astro.url.pathname;
+const pageTitle = `${title} | ${siteConfig.site.title} ${siteConfig.site.tagline}`.trim();
+const footerText = siteConfig.site.footerText ?? `© ${new Date().getFullYear()} ${siteConfig.site.title}`;
+---
+
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{pageTitle}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Roboto+Condensed:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-bg-primary text-content" data-docs-mermaid={hasMermaid}>
+    <button
+      id="mobile-menu-toggle"
+      class="fixed left-4 top-4 z-50 rounded-lg border border-border-primary bg-surface-primary p-2 transition-colors hover:bg-surface-secondary lg:hidden"
+      aria-label="Toggle menu"
+    >
+      <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M4 6h16M4 12h16M4 18h16"></path>
+      </svg>
+    </button>
+
+    <aside
+      id="sidebar"
+      class="fixed left-0 top-0 z-40 h-screen w-72 -translate-x-full overflow-y-auto border-r border-border-primary bg-surface-primary transition-transform duration-300 ease-in-out lg:translate-x-0"
+    >
+      <div class="p-6">
+        <div class="mb-8">
+          <a href={withBasePath()} class="block">
+            <h1 class="text-2xl font-bold text-brand-primary">{siteConfig.site.title}</h1>
+            <p class="text-sm text-content-tertiary">{siteConfig.site.tagline}</p>
+          </a>
+        </div>
+
+        <nav class="space-y-6">
+          {navigation.map((section) => (
+            <SidebarSection currentPath={currentPath} section={section} />
+          ))}
+        </nav>
+
+        <div class="mt-8 border-t border-border-primary pt-8">
+          <p class="text-xs text-content-quaternary">{footerText}</p>
+        </div>
+      </div>
+    </aside>
+
+    <main class="min-h-screen lg:ml-72">
+      <div class="mx-auto w-full max-w-[96rem] px-6 py-8 lg:px-10 lg:py-12 2xl:px-12">
+        <article class="prose docs-prose max-w-none">
+          <slot />
+        </article>
+      </div>
+    </main>
+
+    <div id="mobile-overlay" class="fixed inset-0 z-30 hidden bg-black/50 lg:hidden"></div>
+
+    <script is:inline>
+      const toggle = document.getElementById("mobile-menu-toggle");
+      const sidebar = document.getElementById("sidebar");
+      const overlay = document.getElementById("mobile-overlay");
+
+      const closeSidebar = () => {
+        sidebar?.classList.add("-translate-x-full");
+        overlay?.classList.add("hidden");
+      };
+
+      toggle?.addEventListener("click", () => {
+        sidebar?.classList.toggle("-translate-x-full");
+        overlay?.classList.toggle("hidden");
+      });
+
+      overlay?.addEventListener("click", closeSidebar);
+
+      document.querySelectorAll("#sidebar a").forEach((link) => {
+        link.addEventListener("click", () => {
+          if (window.innerWidth < 1024) {
+            closeSidebar();
+          }
+        });
+      });
+    </script>
+
+    <MermaidEnhancer enabled={hasMermaid} />
+  </body>
+</html>

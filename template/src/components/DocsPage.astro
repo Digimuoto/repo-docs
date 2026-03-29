@@ -1,0 +1,22 @@
+---
+import {getCollection, render} from "astro:content";
+import DocsLayout from "../layouts/DocsLayout.astro";
+import {buildSidebar} from "../lib/navigation";
+import {siteConfig} from "../lib/site-config";
+
+const allDocs = await getCollection("docs", ({data}) => !data.draft);
+const navigation = buildSidebar(allDocs);
+const {doc} = Astro.props;
+const {Content} = await render(doc);
+const hasMermaid = doc.body.includes("```mermaid");
+const description = doc.data.description ?? siteConfig.site.description;
+---
+
+<DocsLayout
+  title={doc.data.title}
+  description={description}
+  navigation={navigation}
+  hasMermaid={hasMermaid}
+>
+  <Content />
+</DocsLayout>

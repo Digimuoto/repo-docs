@@ -1,0 +1,96 @@
+---
+interface Props {
+  enabled: boolean;
+}
+
+const {enabled} = Astro.props;
+---
+
+{
+  enabled && (
+    <script is:inline type="module">
+      const sourceNodes = Array.from(
+        document.querySelectorAll(
+          "pre[data-language='mermaid'] > code, pre > code.language-mermaid, pre > code.lang-mermaid",
+        ),
+      );
+
+      if (sourceNodes.length > 0) {
+        const {default: mermaid} = await import("mermaid");
+        const docsState =
+          window.__repoDocsState ??
+          (window.__repoDocsState = {
+            buttons: [],
+            fullscreenInstalled: false,
+          });
+
+        const diagramNodes = [];
+        const buttons = [];
+
+        sourceNodes.forEach((node) => {
+          const pre = node.closest("pre");
+          if (!pre) {
+            return;
+          }
+
+          const wrapper = document.createElement("div");
+          wrapper.className = "mermaid-card not-prose";
+
+          const toolbar = document.createElement("div");
+          toolbar.className = "mermaid-toolbar";
+
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "mermaid-expand-button";
+          button.textContent = "Fullscreen";
+
+          const diagram = document.createElement("div");
+          diagram.className = "mermaid";
+          diagram.textContent = node.textContent ?? "";
+
+          const updateLabel = () => {
+            button.textContent =
+              document.fullscreenElement === wrapper ? "Exit fullscreen" : "Fullscreen";
+          };
+
+          button.addEventListener("click", async () => {
+            if (document.fullscreenElement === wrapper) {
+              await document.exitFullscreen();
+              return;
+            }
+
+            if (wrapper.requestFullscreen) {
+              await wrapper.requestFullscreen();
+            }
+          });
+
+          toolbar.appendChild(button);
+          wrapper.appendChild(toolbar);
+          wrapper.appendChild(diagram);
+          pre.replaceWith(wrapper);
+          diagramNodes.push(diagram);
+          buttons.push({updateLabel});
+        });
+
+        docsState.buttons = buttons;
+
+        if (!docsState.fullscreenInstalled) {
+          document.addEventListener("fullscreenchange", () => {
+            docsState.buttons.forEach(({updateLabel}) => updateLabel());
+          });
+          docsState.fullscreenInstalled = true;
+        }
+
+        docsState.buttons.forEach(({updateLabel}) => updateLabel());
+
+        mermaid.initialize({
+          securityLevel: "strict",
+          startOnLoad: false,
+          theme: document.documentElement.classList.contains("dark") ? "dark" : "default",
+        });
+
+        await mermaid.run({nodes: diagramNodes});
+      }
+    </script>
+  )
+}
