@@ -180,9 +180,22 @@ video {
   font-size: 0.875rem;
 }
 
-.prose ul,
+.prose ul {
+  padding-left: 1.5rem;
+  list-style-type: disc;
+}
+
+.prose ul ul {
+  list-style-type: circle;
+}
+
+.prose ul ul ul {
+  list-style-type: square;
+}
+
 .prose ol {
   padding-left: 1.5rem;
+  list-style-type: decimal;
 }
 
 .prose li {
