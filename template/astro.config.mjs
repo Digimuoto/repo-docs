@@ -13,6 +13,16 @@ export default defineConfig({
   markdown: {
     remarkPlugins: [remarkMath],
     rehypePlugins: [rehypeKatex],
+    // Dual-theme syntax highlighting: emit both palettes as CSS vars
+    // and let global.css activate one based on the <html> theme class.
+    // This keeps a single build serving either theme without rebuilding.
+    shikiConfig: {
+      themes: {
+        light: "github-light",
+        dark: "github-dark",
+      },
+      defaultColor: false,
+    },
   },
   integrations: [tailwind(), mdx()],
 });

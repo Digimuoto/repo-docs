@@ -1,0 +1,54 @@
+/*
+ * cortex-light
+ *
+ * A clean technical white theme for foundational engineering work.
+ * Pure white content, neutral cool-grey chrome, one calibrated blue
+ * accent. No warmth, no decoration, no serifs — the documentation
+ * conventions of GitHub, Stripe, and Tailwind, distilled.
+ *
+ * Notes on choices:
+ *   - Background is true #ffffff so figures, screenshots, and code
+ *     never sit on a tinted page.
+ *   - Chrome (sidebar, code cards, mermaid inserts) uses #f6f8fa —
+ *     the same neutral light grey GitHub uses for its own
+ *     developer-doc surfaces. Cool, not warm.
+ *   - One accent: #0969da (GitHub Primer accent-fg). Foundational,
+ *     contrast-tested at body and heading sizes, and instantly read
+ *     as "interactive" without needing underlines.
+ *   - IBM Plex Sans throughout. Designed by Bold Monday for IBM's
+ *     developer experience: characterful enough to feel intentional,
+ *     neutral enough to disappear at long reading lengths. JetBrains
+ *     Mono for code.
+ *   - Links are colour-only. No underline by default — the modern
+ *     technical-docs convention (GitHub, Stripe, Vercel, Tailwind),
+ *     reads as clean rather than scholarly.
+ */
+:root {
+  --font-sans:
+    "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    system-ui, sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --brand-primary: #0969da;
+  --brand-secondary: #0550ae;
+
+  --bg-primary: #ffffff;
+  --bg-secondary: #f6f8fa;
+
+  --surface-primary: #f6f8fa;
+  --surface-secondary: #eaeef2;
+  --surface-tertiary: #d0d7de;
+  --surface-hover: #afb8c1;
+
+  --text-content: #1f2328;
+  --text-content-secondary: #424a53;
+  --text-content-tertiary: #656d76;
+  --text-content-quaternary: #8c959f;
+
+  --border-primary: #d1d9e0;
+  --border-secondary: #afb8c1;
+  --border-tertiary: #818b98;
+
+  --selection-text: #ffffff;
+}

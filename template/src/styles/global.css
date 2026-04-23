@@ -1,31 +1,8 @@
+@import "./palette.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-:root {
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
-
-  --brand-primary: #ff6319;
-  --brand-secondary: #ff8c42;
-
-  --bg-primary: #141c25;
-  --bg-secondary: #2a3140;
-
-  --surface-primary: #1f2937;
-  --surface-secondary: #2a3140;
-  --surface-tertiary: #3e4553;
-  --surface-hover: #515969;
-
-  --text-content: #f5f5f5;
-  --text-content-secondary: #d4d4d4;
-  --text-content-tertiary: #a3a3a3;
-  --text-content-quaternary: #737373;
-
-  --border-primary: rgba(255, 255, 255, 0.1);
-  --border-secondary: rgba(255, 255, 255, 0.2);
-  --border-tertiary: rgba(255, 255, 255, 0.3);
-}
 
 *,
 *::before,
@@ -65,7 +42,7 @@ h6[id] {
 
 ::selection {
   background-color: var(--brand-primary);
-  color: white;
+  color: var(--selection-text, #ffffff);
 }
 
 ::-webkit-scrollbar {
@@ -104,7 +81,9 @@ video {
 .prose h5,
 .prose h6 {
   color: var(--text-content);
-  font-weight: 600;
+  font-family: var(--font-display, var(--font-sans));
+  font-weight: var(--heading-font-weight, 600);
+  letter-spacing: var(--heading-letter-spacing, normal);
   line-height: 1.3;
   margin-top: 2rem;
   margin-bottom: 1rem;
@@ -142,13 +121,15 @@ video {
 
 .prose a {
   color: var(--brand-primary);
-  text-decoration: none;
+  text-decoration: var(--link-decoration, none);
+  text-decoration-thickness: var(--link-decoration-thickness, auto);
+  text-underline-offset: var(--link-underline-offset, auto);
   transition: color 150ms ease;
 }
 
 .prose a:hover {
   color: var(--brand-secondary);
-  text-decoration: underline;
+  text-decoration: var(--link-decoration-hover, underline);
 }
 
 .prose strong {
@@ -326,4 +307,35 @@ video {
   flex: 1 1 auto;
   justify-content: center;
   overflow: auto;
+}
+
+/*
+ * Shiki dual-theme activation.
+ *
+ * astro.config.mjs emits both light and dark token colours as CSS vars
+ * (--shiki-light, --shiki-light-bg, --shiki-dark, --shiki-dark-bg).
+ * The active theme is selected at runtime by the html.dark / html.light
+ * class set in DocsLayout.astro, so the same build can serve either
+ * palette without rebuilding.
+ *
+ * Light: only token colours opt in to Shiki — the pre background uses
+ * --surface-primary so code cards match the cream sidebar/cards instead
+ * of jumping to Shiki's off-white. Dark: full Shiki bg + colours so the
+ * github-dark theme reads as intended.
+ */
+html.light .astro-code,
+html.light .astro-code span {
+  color: var(--shiki-light) !important;
+  font-style: var(--shiki-light-font-style) !important;
+  font-weight: var(--shiki-light-font-weight) !important;
+  text-decoration: var(--shiki-light-text-decoration) !important;
+}
+
+html.dark .astro-code,
+html.dark .astro-code span {
+  background-color: var(--shiki-dark-bg) !important;
+  color: var(--shiki-dark) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
 }

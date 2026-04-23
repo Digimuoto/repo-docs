@@ -3,6 +3,7 @@ import path from "node:path";
 
 const MARKDOWN_EXTENSIONS = new Set([".md", ".mdx"]);
 const RESERVED_CONFIG_NAMES = new Set(["config.yaml", "config.yml", "config.json"]);
+const BUILTIN_THEMES = new Set(["cortex-dark", "cortex-light"]);
 
 function usage() {
   console.error(
@@ -349,10 +350,23 @@ async function main() {
   await pruneEmptyDirectories(contentRoot);
 
   await fs.mkdir(generatedRoot, { recursive: true });
+  const theme = BUILTIN_THEMES.has(config.theme) ? config.theme : "cortex-dark";
+
+  // Swap the active palette by copying the selected theme file over
+  // palette.css. Doing this here (rather than through templateFiles)
+  // keeps everything within the staged template tree, which means the
+  // theme file is guaranteed to be present in any build environment
+  // that received the template directory.
+  const themeSource = path.join(outDir, "src", "styles", "themes", `${theme}.css`);
+  const paletteTarget = path.join(outDir, "src", "styles", "palette.css");
+  await fs.copyFile(themeSource, paletteTarget);
+  await fs.chmod(paletteTarget, 0o644);
+
   const finalConfig = {
     navigation: navigationSections,
     repo: config.repo ?? {},
     site: config.site,
+    theme,
   };
 
   await fs.writeFile(

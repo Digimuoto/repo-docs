@@ -22,10 +22,16 @@ const {
 const currentPath = Astro.url.pathname;
 const pageTitle = `${title} | ${siteConfig.site.title} ${siteConfig.site.tagline}`.trim();
 const footerText = siteConfig.site.footerText ?? `© ${new Date().getFullYear()} ${siteConfig.site.title}`;
+const theme = siteConfig.theme;
+const htmlClass = theme === "cortex-dark" ? "dark" : "light";
+// Both themes share IBM Plex Sans + JetBrains Mono — the typography is
+// the product's signature; only the palette switches between themes.
+const fontFamilies =
+  "family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap";
 ---
 
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en" class={htmlClass} data-theme={theme}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -33,10 +39,7 @@ const footerText = siteConfig.site.footerText ?? `© ${new Date().getFullYear()}
     {description && <meta name="description" content={description} />}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Roboto+Condensed:wght@400;700&display=swap"
-      rel="stylesheet"
-    />
+    <link href={`https://fonts.googleapis.com/css2?${fontFamilies}`} rel="stylesheet" />
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css"

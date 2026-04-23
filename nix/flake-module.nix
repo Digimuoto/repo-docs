@@ -23,6 +23,7 @@
             content = {
               excludePaths = cfg.excludePaths;
             };
+            theme = cfg.theme;
           };
           templateFiles = cfg.templateFiles;
         }
@@ -46,6 +47,25 @@
         type = lib.types.listOf lib.types.str;
         default = [];
         description = "Relative paths under contentDir to exclude from the published site.";
+      };
+
+      theme = lib.mkOption {
+        type = lib.types.enum ["cortex-dark" "cortex-light"];
+        default = "cortex-dark";
+        example = "cortex-light";
+        description = ''
+          Color palette for the generated docs site.
+
+          - `cortex-dark` (default): the built-in dark palette — deep
+            navy-slate surfaces with a warm amber accent.
+          - `cortex-light`: a canonical research-wiki white theme —
+            warm paper, charcoal ink, and a single scholarly blue.
+            Pairs with Mermaid's default light theme and KaTeX output
+            for print-like figures.
+
+          Consumers can still override `template/src/styles/palette.css`
+          through `templateFiles` to ship their own palette entirely.
+        '';
       };
 
       site = lib.mkOption {

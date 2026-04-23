@@ -6,6 +6,8 @@ export interface NavigationSectionConfig {
   label: string;
 }
 
+export type SiteTheme = "cortex-dark" | "cortex-light";
+
 export interface SiteConfig {
   navigation: NavigationSectionConfig[];
   repo?: {
@@ -20,6 +22,7 @@ export interface SiteConfig {
     tagline: string;
     title: string;
   };
+  theme: SiteTheme;
 }
 
 function stripTrailingSlash(value: string) {
@@ -44,6 +47,9 @@ export const siteConfig = {
     ...rawConfig.site,
     routeBase: normalizeRouteBase(rawConfig.site.routeBase),
   },
+  theme: ((rawConfig as {theme?: string}).theme === "cortex-light"
+    ? "cortex-light"
+    : "cortex-dark") as SiteTheme,
 } as SiteConfig;
 
 export function kebabToTitle(value: string) {
