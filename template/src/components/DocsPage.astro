@@ -1,6 +1,7 @@
 ---
 import {getCollection, render} from "astro:content";
 import DocsLayout from "../layouts/DocsLayout.astro";
+import DocsTitle from "./DocsTitle.astro";
 import {buildSidebar} from "../lib/navigation";
 import {siteConfig} from "../lib/site-config";
 
@@ -19,5 +20,6 @@ const description = doc.data.description ?? siteConfig.site.description;
   headings={headings}
   hasMermaid={hasMermaid}
 >
+  <DocsTitle doc={doc} />
   <Content />
 </DocsLayout>

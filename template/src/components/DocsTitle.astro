@@ -1,0 +1,125 @@
+---
+import type {CollectionEntry} from "astro:content";
+import {kebabToTitle} from "../lib/site-config";
+
+interface Props {
+  doc: CollectionEntry<"docs">;
+}
+
+const {doc} = Astro.props;
+const {data} = doc;
+
+// Normalise the doc id into a breadcrumb of title-cased segments. The id
+// preserves source path (e.g. "guides/getting-started") so it works as a
+// slug-line without pulling in navigation config.
+const rawId = doc.id.replace(/\.(md|mdx)$/i, "").replace(/\\/g, "/");
+const isIndex = rawId === "index" || rawId.endsWith("/index");
+const trimmedId = isIndex ? rawId.replace(/\/?index$/i, "") : rawId;
+const crumbs = trimmedId
+  .split("/")
+  .filter((segment) => segment !== "")
+  .map((segment) => kebabToTitle(segment));
+
+function normaliseAuthors(
+  primary: string | string[] | undefined,
+  plural: string | string[] | undefined,
+): string[] {
+  const pool: string[] = [];
+  if (typeof primary === "string") pool.push(primary);
+  else if (Array.isArray(primary)) pool.push(...primary);
+  if (typeof plural === "string") pool.push(plural);
+  else if (Array.isArray(plural)) pool.push(...plural);
+  return Array.from(new Set(pool.map((name) => name.trim()).filter(Boolean)));
+}
+
+function formatDate(value: Date | undefined): {iso: string; label: string} | null {
+  if (!value) return null;
+  const iso = value.toISOString().slice(0, 10);
+  const label = value.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  return {iso, label};
+}
+
+const authors = normaliseAuthors(data.author, data.authors);
+const published = formatDate(data.date);
+const updated = formatDate(data.updated);
+
+const tagBadges = (data.tags ?? []).map((tag) => ({
+  kind: "tag" as const,
+  label: tag,
+}));
+const statusBadges = data.draft
+  ? [{kind: "draft" as const, label: "Draft"}]
+  : [];
+const badges = [...statusBadges, ...tagBadges];
+
+const hasByline =
+  authors.length > 0 || Boolean(published) || Boolean(updated);
+const hasBreadcrumb = crumbs.length > 0;
+---
+
+<header class="docs-title" data-has-breadcrumb={hasBreadcrumb}>
+  {hasBreadcrumb && (
+    <nav class="docs-title-breadcrumb" aria-label="Document location">
+      {crumbs.map((crumb, index) => (
+        <>
+          {index > 0 && <span class="docs-title-breadcrumb-sep" aria-hidden="true">/</span>}
+          <span class="docs-title-breadcrumb-crumb">{crumb}</span>
+        </>
+      ))}
+    </nav>
+  )}
+
+  <div class="docs-title-head">
+    <h1 class="docs-title-heading">{data.title}</h1>
+    {badges.length > 0 && (
+      <ul class="docs-title-badges" aria-label="Document tags">
+        {badges.map((badge) => (
+          <li class={`docs-title-badge docs-title-badge-${badge.kind}`}>
+            {badge.label}
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+
+  {data.description && (
+    <p class="docs-title-description">{data.description}</p>
+  )}
+
+  {hasByline && (
+    <p class="docs-title-byline">
+      {authors.length > 0 && (
+        <span class="docs-title-byline-authors">
+          {authors.map((author, index) => (
+            <>
+              {index > 0 && <span class="docs-title-byline-sep" aria-hidden="true">·</span>}
+              <span class="docs-title-byline-author">{author}</span>
+            </>
+          ))}
+        </span>
+      )}
+      {published && (
+        <>
+          {authors.length > 0 && <span class="docs-title-byline-sep" aria-hidden="true">·</span>}
+          <time class="docs-title-byline-date" datetime={published.iso}>
+            {published.label}
+          </time>
+        </>
+      )}
+      {updated && (
+        <>
+          <span class="docs-title-byline-sep" aria-hidden="true">·</span>
+          <span class="docs-title-byline-updated">
+            Updated <time datetime={updated.iso}>{updated.label}</time>
+          </span>
+        </>
+      )}
+    </p>
+  )}
+
+  <hr class="docs-title-divider" />
+</header>

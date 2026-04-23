@@ -1,6 +1,11 @@
 ---
 title: Rendering Example
 description: A kitchen-sink page demonstrating all supported rendering features
+author: Julius Koskela
+date: 2026-04-23
+tags:
+  - reference
+  - renderer
 sidebar:
   order: 2
 ---
