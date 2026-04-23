@@ -4,6 +4,13 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
+
+    # Smoke-test grammar for the tree-sitter highlighting feature.
+    # Flake following is disabled so the grammar pulls its own nixpkgs.
+    tree-sitter-json = {
+      url = "github:tree-sitter/tree-sitter-json";
+      flake = false;
+    };
   };
 
   outputs = inputs @ {
@@ -38,6 +45,7 @@
           repoRoot = ./.;
         };
       in {
+
         docsSite = {
           enable = true;
           contentDir = ./docs;
@@ -52,6 +60,10 @@
           };
           navigation.sectionLabels = {
             guides = "Guides";
+          };
+          languages.ts-json = {
+            grammarSrc = inputs.tree-sitter-json;
+            aliases = ["ts-json"];
           };
         };
 
@@ -69,6 +81,14 @@
               # Rendering example has mermaid diagrams
               grep -q "data-docs-mermaid=\"true\"" "$site/guides/rendering-example/index.html"
               grep -q "data-docs-mermaid=\"false\"" "$site/index.html"
+
+              # Tree-sitter highlighting: the ts-json block should be
+              # tokenised (tree-sitter-pre wrapper + at least one tok-
+              # span). Catches regressions in the remark/Shiki handoff
+              # that preserves the original fenced tag.
+              grep -q "tree-sitter-pre" "$site/guides/rendering-example/index.html"
+              grep -q "tok-string" "$site/guides/rendering-example/index.html"
+              grep -q "tok-number" "$site/guides/rendering-example/index.html"
 
               # KaTeX math is rendered (display math produces katex-display class)
               grep -q "katex-display" "$site/guides/rendering-example/index.html"

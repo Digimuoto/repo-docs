@@ -51,4 +51,32 @@
   --border-tertiary: #818b98;
 
   --selection-text: #ffffff;
+
+  /*
+   * Tree-sitter capture palette. Tuned to match github-light so
+   * Shiki-highlighted blocks and tree-sitter-highlighted custom-language
+   * blocks share a visual family on the page.
+   */
+  --tok-default: #1f2328;
+  --tok-keyword: #cf222e;
+  --tok-keyword-operator: #cf222e;
+  --tok-function: #8250df;
+  --tok-method: #8250df;
+  --tok-constructor: #8250df;
+  --tok-type: #953800;
+  --tok-constant: #0550ae;
+  --tok-number: #0550ae;
+  --tok-boolean: #0550ae;
+  --tok-string: #0a3069;
+  --tok-escape: #0a3069;
+  --tok-comment: #6e7781;
+  --tok-variable: #1f2328;
+  --tok-property: #0550ae;
+  --tok-parameter: #1f2328;
+  --tok-operator: #cf222e;
+  --tok-punctuation: #57606a;
+  --tok-tag: #116329;
+  --tok-attribute: #0550ae;
+  --tok-namespace: #953800;
+  --tok-label: #953800;
 }

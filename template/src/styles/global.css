@@ -1052,3 +1052,69 @@ html.dark .astro-code span {
   font-weight: var(--shiki-dark-font-weight) !important;
   text-decoration: var(--shiki-dark-text-decoration) !important;
 }
+
+/*
+ * Tree-sitter custom-language highlighting.
+ *
+ * The rehype plugin at src/integrations/tree-sitter-highlight.mjs
+ * replaces Shiki's fallback content for any fenced-code language that
+ * has a registered grammar, emitting <span class="tok-<capture>">. The
+ * class generator cascades capture namespaces (function.method.builtin
+ * → tok-function, tok-function-method, tok-function-method-builtin) so
+ * CSS can target any depth; we map the common top-level captures here
+ * and let the rest inherit the default foreground.
+ *
+ * Colour values live in the theme palettes. We deliberately override
+ * Shiki's !important bg rule so these blocks use the surface colour
+ * that matches the rest of the chrome.
+ */
+.tree-sitter-pre,
+html.light .tree-sitter-pre,
+html.dark .tree-sitter-pre {
+  background-color: var(--surface-primary) !important;
+  color: var(--tok-default) !important;
+}
+.tree-sitter-pre .tree-sitter-code,
+.tree-sitter-pre .tree-sitter-code span {
+  background-color: transparent !important;
+  color: inherit;
+}
+
+.tree-sitter-code { color: var(--tok-default); }
+
+.tree-sitter-code .tok-keyword { color: var(--tok-keyword); }
+.tree-sitter-code .tok-keyword-operator { color: var(--tok-keyword-operator); }
+.tree-sitter-code .tok-function,
+.tree-sitter-code .tok-function-call,
+.tree-sitter-code .tok-function-method { color: var(--tok-function); }
+.tree-sitter-code .tok-method { color: var(--tok-method); }
+.tree-sitter-code .tok-constructor { color: var(--tok-constructor); }
+.tree-sitter-code .tok-type,
+.tree-sitter-code .tok-type-builtin { color: var(--tok-type); }
+.tree-sitter-code .tok-constant,
+.tree-sitter-code .tok-constant-builtin,
+.tree-sitter-code .tok-constant-macro { color: var(--tok-constant); }
+.tree-sitter-code .tok-number { color: var(--tok-number); }
+.tree-sitter-code .tok-boolean { color: var(--tok-boolean); }
+.tree-sitter-code .tok-string,
+.tree-sitter-code .tok-string-special,
+.tree-sitter-code .tok-string-special-key { color: var(--tok-string); }
+.tree-sitter-code .tok-escape { color: var(--tok-escape); }
+.tree-sitter-code .tok-comment,
+.tree-sitter-code .tok-comment-documentation {
+  color: var(--tok-comment);
+  font-style: italic;
+}
+.tree-sitter-code .tok-variable,
+.tree-sitter-code .tok-variable-member { color: var(--tok-variable); }
+.tree-sitter-code .tok-property { color: var(--tok-property); }
+.tree-sitter-code .tok-parameter { color: var(--tok-parameter); }
+.tree-sitter-code .tok-operator { color: var(--tok-operator); }
+.tree-sitter-code .tok-punctuation,
+.tree-sitter-code .tok-punctuation-bracket,
+.tree-sitter-code .tok-punctuation-delimiter,
+.tree-sitter-code .tok-punctuation-special { color: var(--tok-punctuation); }
+.tree-sitter-code .tok-tag { color: var(--tok-tag); }
+.tree-sitter-code .tok-attribute { color: var(--tok-attribute); }
+.tree-sitter-code .tok-namespace { color: var(--tok-namespace); }
+.tree-sitter-code .tok-label { color: var(--tok-label); }

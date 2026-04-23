@@ -8,7 +8,8 @@ Reusable docs site module for `flake-parts` repositories.
 - a shared Astro/Tailwind template that renders a plain `docs/` tree
 - Mermaid diagram rendering with fullscreen support
 - LaTeX math rendering via KaTeX
-- Syntax-highlighted code blocks for all common languages
+- Syntax-highlighted code blocks for all common languages (Shiki)
+- Tree-sitter–driven highlighting for custom languages, compiled from grammar source at build time
 - Nix outputs for:
   - `packages.docs-site`
   - `apps.docs-dev`
@@ -82,12 +83,48 @@ Available module knobs:
 
 - `docsSite.contentDir`
 - `docsSite.excludePaths`
+- `docsSite.theme` — `"cortex-dark"` (default) or `"cortex-light"`
 - `docsSite.site.*`
 - `docsSite.repo.*`
 - `docsSite.navigation.sections`
-- `docsSite.navigation.rootSectionLabel`
+- `docsSite.navigation.rootSectionLabel` (set `null` to drop the auto-generated "Overview" eyebrow)
 - `docsSite.navigation.sectionLabels`
 - `docsSite.templateFiles`
+- `docsSite.languages` — see below
+
+## Custom-language syntax highlighting
+
+Register tree-sitter grammars for fenced code blocks whose language isn't in Shiki's bundled set. Each entry compiles its `grammarSrc` to WebAssembly via the tree-sitter CLI (using emscripten from nixpkgs) and ships the result alongside its `queries/highlights.scm`.
+
+```nix
+# flake.nix
+{
+  inputs.tree-sitter-wire = {
+    url = "github:portman-lang/tree-sitter-wire";
+    flake = false;
+  };
+}
+```
+
+```nix
+# per-system docsSite config
+docsSite.languages.wire = {
+  grammarSrc = inputs.tree-sitter-wire;
+  # Optional:
+  #   aliases = [ "wr" ];
+  #   highlightQueries = ./overrides/wire/queries;
+};
+```
+
+Any `` ```wire `` (or an alias) fenced block is tokenised by the grammar at build time; tokens get CSS classes derived from the capture names (`tok-keyword`, `tok-function`, `tok-string.special`, …). The token palette lives in the theme CSS files and is swapped automatically with `docsSite.theme`.
+
+Unregistered languages continue to flow through Shiki's github-light / github-dark dual-theme path.
+
+**Notes.**
+
+- The grammar source must either ship a pre-generated `src/parser.c` or a `grammar.js` the tree-sitter CLI can generate from. Both upstream patterns work without extra configuration.
+- The quality of highlighting depends entirely on the grammar's `queries/highlights.scm`. This module is pure plumbing — it can only paint captures the grammar emits.
+- If a grammar fails to load at runtime (malformed queries, incompatible ABI, etc.), the block falls back to Shiki's plain-text rendering and a warning is logged; the docs build continues.
 
 Then use:
 

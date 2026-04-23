@@ -52,7 +52,24 @@
     "root": {
       "inputs": {
         "flake-parts": "flake-parts",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "tree-sitter-json": "tree-sitter-json"
+      }
+    },
+    "tree-sitter-json": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1757907923,
+        "narHash": "sha256-cUjbN+e8UtoLRm8ZnxG7iRGD5YIc032RbHBIlmV8aLc=",
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-json",
+        "rev": "001c28d7a29832b06b0e831ec77845553c89b56d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "tree-sitter",
+        "repo": "tree-sitter-json",
+        "type": "github"
       }
     }
   },

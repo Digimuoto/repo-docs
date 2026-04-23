@@ -7,7 +7,7 @@ const BUILTIN_THEMES = new Set(["cortex-dark", "cortex-light"]);
 
 function usage() {
   console.error(
-    "Usage: node stage-docs-site.mjs --content-dir <dir> --config-json <file> --template-files-json <file> --out-dir <dir>",
+    "Usage: node stage-docs-site.mjs --content-dir <dir> --config-json <file> --template-files-json <file> --languages-json <file> --out-dir <dir>",
   );
   process.exit(1);
 }
@@ -268,6 +268,7 @@ async function main() {
   const contentDir = values.get("--content-dir");
   const configJson = values.get("--config-json");
   const templateFilesJson = values.get("--template-files-json");
+  const languagesJson = values.get("--languages-json");
   const outDir = values.get("--out-dir");
 
   if (!contentDir || !configJson || !templateFilesJson || !outDir) {
@@ -278,6 +279,9 @@ async function main() {
   const generatedRoot = path.join(outDir, "src", "generated");
   const config = JSON.parse(await fs.readFile(configJson, "utf8"));
   const templateFiles = JSON.parse(await fs.readFile(templateFilesJson, "utf8"));
+  const languages = languagesJson
+    ? JSON.parse(await fs.readFile(languagesJson, "utf8"))
+    : {};
 
   if (!config?.site?.title || !config?.site?.publicBaseUrl) {
     throw new Error("Config must define site.title and site.publicBaseUrl.");
@@ -395,6 +399,16 @@ async function main() {
   await fs.writeFile(
     path.join(generatedRoot, "site-config.json"),
     `${JSON.stringify(finalConfig, null, 2)}\n`,
+    "utf8",
+  );
+
+  // Emit the tree-sitter grammar manifest. Paths reference /nix/store
+  // artifacts directly; the rehype plugin loads them via web-tree-sitter
+  // at markdown-build time. When no languages are registered, we still
+  // write an empty object so consumers always get a predictable file.
+  await fs.writeFile(
+    path.join(generatedRoot, "grammars.json"),
+    `${JSON.stringify(languages, null, 2)}\n`,
     "utf8",
   );
 

@@ -53,4 +53,31 @@
   --border-tertiary: rgba(240, 246, 252, 0.28);
 
   --selection-text: #ffffff;
+
+  /*
+   * Tree-sitter capture palette. Mirrors github-dark so Shiki blocks
+   * and tree-sitter-highlighted custom-language blocks share a family.
+   */
+  --tok-default: #e6edf3;
+  --tok-keyword: #ff7b72;
+  --tok-keyword-operator: #ff7b72;
+  --tok-function: #d2a8ff;
+  --tok-method: #d2a8ff;
+  --tok-constructor: #d2a8ff;
+  --tok-type: #ffa657;
+  --tok-constant: #79c0ff;
+  --tok-number: #79c0ff;
+  --tok-boolean: #79c0ff;
+  --tok-string: #a5d6ff;
+  --tok-escape: #a5d6ff;
+  --tok-comment: #8b949e;
+  --tok-variable: #e6edf3;
+  --tok-property: #79c0ff;
+  --tok-parameter: #e6edf3;
+  --tok-operator: #ff7b72;
+  --tok-punctuation: #8b949e;
+  --tok-tag: #7ee787;
+  --tok-attribute: #79c0ff;
+  --tok-namespace: #ffa657;
+  --tok-label: #ffa657;
 }

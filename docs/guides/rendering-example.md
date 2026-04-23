@@ -98,6 +98,20 @@ nix build .#docs-site
 nix run .#docs-dev -- --port 8080
 ```
 
+Tree-sitter–powered highlighting (the `ts-json` language is registered via `docsSite.languages`):
+
+```ts-json
+{
+  "docs": {
+    "enabled": true,
+    "theme": "cortex-light",
+    "languages": ["wire", "capnp", "ts-json"]
+  },
+  "ports": [4321, 4322],
+  "meta": null
+}
+```
+
 ## Tables
 
 | Feature | Status | Notes |

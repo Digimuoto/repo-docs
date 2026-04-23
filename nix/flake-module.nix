@@ -10,6 +10,20 @@
       inherit pkgs lib;
       repoRoot = ../.;
     };
+    grammarLib = import ./grammar.nix {inherit pkgs lib;};
+
+    # Compile every registered language into a {parser.wasm, queries/}
+    # derivation, then collect them into an attrset the staging script
+    # turns into a runtime manifest.
+    builtLanguages = lib.mapAttrs (name: langCfg: {
+      wasm = grammarLib.mkGrammarWasm {
+        inherit name;
+        grammarSrc = langCfg.grammarSrc;
+        highlightQueries = langCfg.highlightQueries;
+      };
+      aliases = langCfg.aliases;
+    }) cfg.languages;
+
     site =
       if cfg.enable
       then
@@ -26,6 +40,7 @@
             theme = cfg.theme;
           };
           templateFiles = cfg.templateFiles;
+          languages = builtLanguages;
         }
       else null;
   in {
@@ -197,6 +212,63 @@
           "src/styles/global.css" = ./theme/global.css;
         };
         description = "Template files to replace or add relative to the shared template root.";
+      };
+
+      languages = lib.mkOption {
+        type = lib.types.attrsOf (lib.types.submodule {
+          options = {
+            grammarSrc = lib.mkOption {
+              type = lib.types.path;
+              description = ''
+                Path (or flake input) to a tree-sitter grammar source
+                tree. The source must either ship `src/parser.c` or
+                provide a `grammar.js` the `tree-sitter` CLI can generate
+                from.
+              '';
+            };
+            aliases = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              default = [];
+              description = ''
+                Additional fenced-code language tags that should be
+                tokenised with this grammar (for example `[ "wire" "wr" ]`
+                to match both ```wire and ```wr).
+              '';
+            };
+            highlightQueries = lib.mkOption {
+              type = lib.types.nullOr lib.types.path;
+              default = null;
+              description = ''
+                Optional override directory containing highlight query
+                files. When null, the `queries/` directory in grammarSrc
+                is used verbatim (standard tree-sitter convention).
+              '';
+            };
+            injections = lib.mkOption {
+              type = lib.types.nullOr lib.types.path;
+              default = null;
+              description = ''
+                Optional path to an injections query file. Reserved for a
+                future version; currently unused.
+              '';
+            };
+          };
+        });
+        default = {};
+        example = lib.literalExpression ''
+          {
+            wire = {
+              grammarSrc = inputs.tree-sitter-wire;
+            };
+          }
+        '';
+        description = ''
+          Register tree-sitter grammars to provide syntax highlighting
+          for custom fenced-code languages. Each entry compiles to
+          WebAssembly at build time and is loaded by a rehype plugin in
+          the docs pipeline. Grammars without a matching entry continue
+          to fall through to Shiki.
+        '';
       };
     };
 
