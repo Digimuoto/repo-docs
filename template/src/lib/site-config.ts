@@ -3,7 +3,7 @@ import rawConfig from "../generated/site-config.json";
 export interface NavigationSectionConfig {
   dir?: string;
   entries?: string[];
-  label: string;
+  label: string | null;
 }
 
 export type SiteTheme = "cortex-dark" | "cortex-light";

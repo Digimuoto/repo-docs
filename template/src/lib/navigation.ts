@@ -3,16 +3,18 @@ import {kebabToTitle, siteConfig, withBasePath} from "./site-config";
 
 type DocsEntry = CollectionEntry<"docs">;
 
-export interface SidebarItem {
-  depth: number;
+export interface SidebarNode {
+  children: SidebarNode[];
   href?: string;
-  kind: "group" | "page";
+  isGroup: boolean;
+  key: string;
   label: string;
 }
 
 export interface SidebarSection {
-  items: SidebarItem[];
-  label: string;
+  items: SidebarNode[];
+  key: string;
+  label: string | null;
 }
 
 interface PageMeta {
@@ -44,6 +46,15 @@ export {normalizeEntryId};
 function normalizeConfigPath(pathValue: string) {
   const normalized = pathValue.replace(/^\/+|\/+$/g, "").replace(/\\/g, "/");
   return normalized === "" ? "index" : normalized;
+}
+
+function slugKey(value: string) {
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "section"
+  );
 }
 
 function getPageMeta(entry: DocsEntry): PageMeta {
@@ -111,7 +122,7 @@ function buildDirectoryNode(rootKey: string, pages: PageMeta[]) {
         if (!current.dirs.has(segment)) {
           current.dirs.set(segment, createDirectoryNode());
         }
-        current = current.dirs.get(segment);
+        current = current.dirs.get(segment)!;
       }
       current.page = page;
       continue;
@@ -123,7 +134,7 @@ function buildDirectoryNode(rootKey: string, pages: PageMeta[]) {
       if (!current.dirs.has(segment)) {
         current.dirs.set(segment, createDirectoryNode());
       }
-      current = current.dirs.get(segment);
+      current = current.dirs.get(segment)!;
     }
     current.pages.push(page);
   }
@@ -131,44 +142,46 @@ function buildDirectoryNode(rootKey: string, pages: PageMeta[]) {
   return root;
 }
 
-function flattenDirectoryNode(node: DirectoryNode, depth: number): SidebarItem[] {
-  const items: SidebarItem[] = [];
+function materializeDirectoryNode(
+  node: DirectoryNode,
+  parentKey: string,
+): SidebarNode[] {
+  const nodes: SidebarNode[] = [];
 
+  // Leaf pages first, then subdirectories — matches the flat-renderer ordering
+  // so existing docs keep their structural layout.
   for (const page of [...node.pages].sort(comparePages)) {
     if (page.hidden) {
       continue;
     }
-    items.push({
-      depth,
+    nodes.push({
+      children: [],
       href: page.href,
-      kind: "page",
+      isGroup: false,
+      key: `page:${page.key}`,
       label: page.label,
     });
   }
 
-  for (const [segment, child] of [...node.dirs.entries()].sort(compareDirectoryEntries)) {
+  for (const [segment, child] of [...node.dirs.entries()].sort(
+    compareDirectoryEntries,
+  )) {
+    const childPath = parentKey === "" ? segment : `${parentKey}/${segment}`;
     const label = child.page?.label ?? kebabToTitle(segment);
-    const hiddenLandingPage = child.page?.hidden ?? false;
+    const hiddenLanding = child.page?.hidden ?? false;
+    const href = child.page && !hiddenLanding ? child.page.href : undefined;
+    const children = materializeDirectoryNode(child, childPath);
 
-    if (child.page && !hiddenLandingPage) {
-      items.push({
-        depth,
-        href: child.page.href,
-        kind: "page",
-        label,
-      });
-    } else {
-      items.push({
-        depth,
-        kind: "group",
-        label,
-      });
-    }
-
-    items.push(...flattenDirectoryNode(child, depth + 1));
+    nodes.push({
+      children,
+      href,
+      isGroup: !href,
+      key: href ? `page:${child.page!.key}` : `group:${childPath}`,
+      label,
+    });
   }
 
-  return items;
+  return nodes;
 }
 
 function requirePage(
@@ -189,31 +202,41 @@ export function buildSidebar(entries: DocsEntry[]): SidebarSection[] {
     .map(getPageMeta);
   const pagesByKey = new Map(pages.map((page) => [page.key, page]));
 
-  return siteConfig.navigation.map((section) => {
+  return siteConfig.navigation.map((section, index) => {
+    const rawLabel = section.label;
+    const label =
+      typeof rawLabel === "string" && rawLabel.trim() !== "" ? rawLabel : null;
+    const sectionKey = label ? `section:${slugKey(label)}` : `section:root-${index}`;
+
     if (section.entries) {
       return {
         items: section.entries
-          .map((slug) => requirePage(pagesByKey, slug, section.label))
+          .map((slug) => requirePage(pagesByKey, slug, label ?? "(root)"))
           .filter((page) => !page.hidden)
-          .map((page) => ({
-            depth: 0,
-            href: page.href,
-            kind: "page" as const,
-            label: page.label,
-          })),
-        label: section.label,
+          .map(
+            (page): SidebarNode => ({
+              children: [],
+              href: page.href,
+              isGroup: false,
+              key: `page:${page.key}`,
+              label: page.label,
+            }),
+          ),
+        key: sectionKey,
+        label,
       };
     }
 
-    const rootKey = normalizeConfigPath(section.dir);
+    const rootKey = normalizeConfigPath(section.dir!);
     const dirPages = pages.filter(
       (page) => page.key === rootKey || page.key.startsWith(`${rootKey}/`),
     );
 
     const tree = buildDirectoryNode(rootKey, dirPages);
     return {
-      items: flattenDirectoryNode(tree, 0),
-      label: section.label,
+      items: materializeDirectoryNode(tree, rootKey === "index" ? "" : rootKey),
+      key: sectionKey,
+      label,
     };
   });
 }

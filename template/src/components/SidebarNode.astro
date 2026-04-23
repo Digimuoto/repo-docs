@@ -1,0 +1,121 @@
+---
+import type {SidebarNode as Node} from "../lib/navigation";
+import {siteConfig} from "../lib/site-config";
+
+interface Props {
+  currentPath: string;
+  depth?: number;
+  node: Node;
+}
+
+const {currentPath, depth = 0, node} = Astro.props;
+
+function stripTrailingSlash(value: string) {
+  if (value === "/") {
+    return "/";
+  }
+  return value.endsWith("/") ? value.slice(0, -1) : value;
+}
+
+function isActiveHref(href: string) {
+  const target = stripTrailingSlash(href);
+  const current = stripTrailingSlash(currentPath);
+  const sectionRoot = stripTrailingSlash(
+    siteConfig.site.routeBase === "/" ? "/" : `${siteConfig.site.routeBase}/`,
+  );
+
+  if (target === sectionRoot) {
+    return current === sectionRoot;
+  }
+  return current === target;
+}
+
+function containsActive(candidate: Node): boolean {
+  if (candidate.href && isActiveHref(candidate.href)) {
+    return true;
+  }
+  return candidate.children.some(containsActive);
+}
+
+const hasChildren = node.children.length > 0;
+const active = node.href ? isActiveHref(node.href) : false;
+const descendantActive = !active && node.children.some(containsActive);
+const initialOpen = active || descendantActive;
+---
+
+<li
+  class:list={[
+    "docs-nav-item",
+    {
+      "docs-nav-item-leaf": !hasChildren,
+      "docs-nav-item-tree": hasChildren,
+    },
+  ]}
+>
+  <div class="docs-nav-row">
+    {hasChildren ? (
+      <button
+        type="button"
+        class="docs-nav-toggle"
+        data-nav-toggle={node.key}
+        aria-expanded={initialOpen ? "true" : "false"}
+      >
+        <svg class="docs-nav-chevron" viewBox="0 0 12 12" aria-hidden="true">
+          <path
+            d="M4.5 3L8 6l-3.5 3"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+    ) : (
+      <span class="docs-nav-toggle-placeholder" aria-hidden="true"></span>
+    )}
+
+    {node.href ? (
+      <a
+        href={node.href}
+        class:list={[
+          "docs-nav-link",
+          {
+            "is-active": active,
+            "has-active-descendant": descendantActive,
+          },
+        ]}
+      >
+        <span>{node.label}</span>
+      </a>
+    ) : (
+      <button
+        type="button"
+        class:list={[
+          "docs-nav-group",
+          {"has-active-descendant": descendantActive},
+        ]}
+        data-nav-toggle={node.key}
+      >
+        <span>{node.label}</span>
+      </button>
+    )}
+  </div>
+
+  {hasChildren && (
+    <ul
+      class="docs-nav-sublist"
+      data-nav-children-of={node.key}
+      data-nav-open={initialOpen ? "true" : "false"}
+      data-nav-active-path={initialOpen ? "true" : "false"}
+    >
+      {node.children.map((child) => (
+        <Astro.self
+          currentPath={currentPath}
+          depth={depth + 1}
+          node={child}
+        />
+      ))}
+    </ul>
+  )}
+</li>

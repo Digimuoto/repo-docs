@@ -7,7 +7,7 @@ import {siteConfig} from "../lib/site-config";
 const allDocs = await getCollection("docs", ({data}) => !data.draft);
 const navigation = buildSidebar(allDocs);
 const {doc} = Astro.props;
-const {Content} = await render(doc);
+const {Content, headings} = await render(doc);
 const hasMermaid = doc.body.includes("```mermaid");
 const description = doc.data.description ?? siteConfig.site.description;
 ---
@@ -16,6 +16,7 @@ const description = doc.data.description ?? siteConfig.site.description;
   title={doc.data.title}
   description={description}
   navigation={navigation}
+  headings={headings}
   hasMermaid={hasMermaid}
 >
   <Content />

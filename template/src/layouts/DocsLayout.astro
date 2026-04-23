@@ -1,6 +1,8 @@
 ---
+import type {MarkdownHeading} from "astro";
 import MermaidEnhancer from "../components/MermaidEnhancer.astro";
 import SidebarSection from "../components/SidebarSection.astro";
+import TableOfContents from "../components/TableOfContents.astro";
 import type {SidebarSection as SidebarSectionType} from "../lib/navigation";
 import {siteConfig, withBasePath} from "../lib/site-config";
 import "../styles/global.css";
@@ -8,6 +10,7 @@ import "../styles/global.css";
 interface Props {
   description?: string;
   hasMermaid?: boolean;
+  headings?: MarkdownHeading[];
   navigation: SidebarSectionType[];
   title: string;
 }
@@ -15,6 +18,7 @@ interface Props {
 const {
   description = siteConfig.site.description,
   hasMermaid = false,
+  headings = [],
   navigation,
   title,
 } = Astro.props;
@@ -24,10 +28,11 @@ const pageTitle = `${title} | ${siteConfig.site.title} ${siteConfig.site.tagline
 const footerText = siteConfig.site.footerText ?? `© ${new Date().getFullYear()} ${siteConfig.site.title}`;
 const theme = siteConfig.theme;
 const htmlClass = theme === "cortex-dark" ? "dark" : "light";
-// Both themes share IBM Plex Sans + JetBrains Mono — the typography is
-// the product's signature; only the palette switches between themes.
 const fontFamilies =
   "family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap";
+
+const tocEnabled =
+  headings.filter((heading) => heading.depth >= 2 && heading.depth <= 4).length > 0;
 ---
 
 <!doctype html>
@@ -45,80 +50,305 @@ const fontFamilies =
       href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css"
       crossorigin="anonymous"
     />
+    <script is:inline>
+      // Restore collapsed state before paint to avoid layout flicker.
+      try {
+        const root = document.documentElement;
+        const sidebar = localStorage.getItem("docs-sidebar-state");
+        const toc = localStorage.getItem("docs-toc-state");
+        if (sidebar === "collapsed") root.dataset.sidebar = "collapsed";
+        if (toc === "collapsed") root.dataset.toc = "collapsed";
+      } catch {
+        /* localStorage may be unavailable */
+      }
+    </script>
   </head>
-  <body class="bg-bg-primary text-content" data-docs-mermaid={hasMermaid}>
+  <body data-docs-mermaid={hasMermaid} data-toc-enabled={tocEnabled}>
     <button
       id="mobile-menu-toggle"
-      class="fixed left-4 top-4 z-50 rounded-lg border border-border-primary bg-surface-primary p-2 transition-colors hover:bg-surface-secondary lg:hidden"
-      aria-label="Toggle menu"
+      class="docs-mobile-toggle"
+      aria-label="Toggle navigation"
+      aria-controls="docs-sidebar"
     >
-      <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M4 6h16M4 12h16M4 18h16"></path>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
       </svg>
     </button>
 
-    <aside
-      id="sidebar"
-      class="fixed left-0 top-0 z-40 h-screen w-72 -translate-x-full overflow-y-auto border-r border-border-primary bg-surface-primary transition-transform duration-300 ease-in-out lg:translate-x-0"
-    >
-      <div class="p-6">
-        <div class="mb-8">
-          <a href={withBasePath()} class="block">
-            <h1 class="text-2xl font-bold text-brand-primary">{siteConfig.site.title}</h1>
-            <p class="text-sm text-content-tertiary">{siteConfig.site.tagline}</p>
+    <aside id="docs-sidebar" class="docs-sidebar" aria-label="Site navigation">
+      <div class="docs-sidebar-expanded">
+        <header class="docs-sidebar-header">
+          <a href={withBasePath()} class="docs-sidebar-brand">
+            <h1>{siteConfig.site.title}</h1>
+            <p>{siteConfig.site.tagline}</p>
           </a>
-        </div>
+          <button
+            type="button"
+            class="docs-rail-button docs-rail-button-inline"
+            data-collapse="sidebar"
+            aria-label="Collapse navigation"
+            aria-controls="docs-sidebar"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 3.5L6 8l4.5 4.5" />
+            </svg>
+          </button>
+        </header>
 
-        <nav class="space-y-6">
+        <nav class="docs-sidebar-nav">
           {navigation.map((section) => (
             <SidebarSection currentPath={currentPath} section={section} />
           ))}
         </nav>
 
-        <div class="mt-8 border-t border-border-primary pt-8">
-          <p class="text-xs text-content-quaternary">{footerText}</p>
-        </div>
+        <footer class="docs-sidebar-footer">
+          <p>{footerText}</p>
+        </footer>
+      </div>
+
+      <div class="docs-sidebar-rail" aria-hidden="true">
+        <button
+          type="button"
+          class="docs-rail-button"
+          data-expand="sidebar"
+          aria-label="Expand navigation"
+          aria-controls="docs-sidebar"
+        >
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.5 3.5L10 8l-4.5 4.5" />
+          </svg>
+        </button>
       </div>
     </aside>
 
-    <main class="min-h-screen lg:ml-72">
-      <div class="mx-auto w-full max-w-[96rem] px-6 py-8 lg:px-10 lg:py-12 2xl:px-12">
+    {tocEnabled && (
+      <aside id="docs-toc" class="docs-toc" aria-label="Table of contents">
+        <div class="docs-toc-expanded">
+          <div class="docs-toc-header">
+            <span class="docs-toc-title">Contents</span>
+            <button
+              type="button"
+              class="docs-rail-button docs-rail-button-inline"
+              data-collapse="toc"
+              aria-label="Collapse table of contents"
+              aria-controls="docs-toc"
+            >
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 3.5L6 8l4.5 4.5" />
+              </svg>
+            </button>
+          </div>
+          <TableOfContents headings={headings} />
+        </div>
+
+        <div class="docs-toc-rail" aria-hidden="true">
+          <button
+            type="button"
+            class="docs-rail-button"
+            data-expand="toc"
+            aria-label="Expand table of contents"
+            aria-controls="docs-toc"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5.5 3.5L10 8l-4.5 4.5" />
+            </svg>
+          </button>
+        </div>
+      </aside>
+    )}
+
+    <main class="docs-main">
+      <div class="docs-main-inner">
         <article class="prose docs-prose max-w-none">
           <slot />
         </article>
       </div>
     </main>
 
-    <div id="mobile-overlay" class="fixed inset-0 z-30 hidden bg-black/50 lg:hidden"></div>
+    <div id="mobile-overlay" class="docs-mobile-overlay"></div>
 
-    <script is:inline>
-      const toggle = document.getElementById("mobile-menu-toggle");
-      const sidebar = document.getElementById("sidebar");
-      const overlay = document.getElementById("mobile-overlay");
+    <script>
+      const root = document.documentElement;
+      const STORAGE = {
+        sidebar: "docs-sidebar-state",
+        toc: "docs-toc-state",
+      } as const;
 
-      const closeSidebar = () => {
-        sidebar?.classList.add("-translate-x-full");
-        overlay?.classList.add("hidden");
-      };
+      function setPanel(panel: "sidebar" | "toc", collapsed: boolean) {
+        root.dataset[panel] = collapsed ? "collapsed" : "expanded";
+        try {
+          localStorage.setItem(STORAGE[panel], collapsed ? "collapsed" : "expanded");
+        } catch {
+          /* ignore */
+        }
+      }
 
-      toggle?.addEventListener("click", () => {
-        sidebar?.classList.toggle("-translate-x-full");
-        overlay?.classList.toggle("hidden");
+      document.querySelectorAll<HTMLButtonElement>("[data-collapse]").forEach((button) => {
+        const target = button.dataset.collapse as "sidebar" | "toc";
+        button.addEventListener("click", () => setPanel(target, true));
       });
 
-      overlay?.addEventListener("click", closeSidebar);
+      document.querySelectorAll<HTMLButtonElement>("[data-expand]").forEach((button) => {
+        const target = button.dataset.expand as "sidebar" | "toc";
+        button.addEventListener("click", () => setPanel(target, false));
+      });
 
-      document.querySelectorAll("#sidebar a").forEach((link) => {
-        link.addEventListener("click", () => {
-          if (window.innerWidth < 1024) {
-            closeSidebar();
+      // Nav tree collapse: read stored state, close matching lists unless
+      // their descendants include the active page. Active-path overrides
+      // stored collapsed state so the current doc is always in view.
+      const NAV_STORAGE = "docs-nav-collapsed";
+      const collapsed = new Set<string>();
+      try {
+        const raw = localStorage.getItem(NAV_STORAGE);
+        if (raw) {
+          const parsed = JSON.parse(raw) as unknown;
+          if (Array.isArray(parsed)) {
+            for (const key of parsed) {
+              if (typeof key === "string") collapsed.add(key);
+            }
           }
+        }
+      } catch {
+        /* ignore */
+      }
+
+      function writeNavState() {
+        try {
+          localStorage.setItem(NAV_STORAGE, JSON.stringify([...collapsed]));
+        } catch {
+          /* ignore */
+        }
+      }
+
+      function setNavOpen(key: string, open: boolean) {
+        document
+          .querySelectorAll<HTMLElement>(`[data-nav-children-of="${CSS.escape(key)}"]`)
+          .forEach((list) => {
+            list.dataset.navOpen = open ? "true" : "false";
+          });
+        document
+          .querySelectorAll<HTMLElement>(`[data-nav-toggle="${CSS.escape(key)}"]`)
+          .forEach((toggle) => {
+            toggle.setAttribute("aria-expanded", open ? "true" : "false");
+          });
+      }
+
+      // Apply stored collapsed state at load — but skip any list whose
+      // active-path flag is true so the current page stays visible.
+      document
+        .querySelectorAll<HTMLElement>("[data-nav-children-of]")
+        .forEach((list) => {
+          const key = list.dataset.navChildrenOf;
+          if (!key) return;
+          if (!collapsed.has(key)) return;
+          if (list.dataset.navActivePath === "true") return;
+          setNavOpen(key, false);
+        });
+
+      document
+        .querySelectorAll<HTMLButtonElement>("[data-nav-toggle]")
+        .forEach((button) => {
+          button.addEventListener("click", (event) => {
+            const key = button.dataset.navToggle;
+            if (!key) return;
+            event.preventDefault();
+            const list = document.querySelector<HTMLElement>(
+              `[data-nav-children-of="${CSS.escape(key)}"]`,
+            );
+            if (!list) return;
+            const nextOpen = list.dataset.navOpen !== "true";
+            setNavOpen(key, nextOpen);
+            if (nextOpen) collapsed.delete(key);
+            else collapsed.add(key);
+            writeNavState();
+          });
+        });
+
+      // Mobile sidebar drawer
+      const mobileToggle = document.getElementById("mobile-menu-toggle");
+      const mobileOverlay = document.getElementById("mobile-overlay");
+      const sidebarEl = document.getElementById("docs-sidebar");
+
+      function setMobileOpen(open: boolean) {
+        if (open) {
+          sidebarEl?.setAttribute("data-mobile-open", "true");
+          mobileOverlay?.setAttribute("data-mobile-open", "true");
+        } else {
+          sidebarEl?.removeAttribute("data-mobile-open");
+          mobileOverlay?.removeAttribute("data-mobile-open");
+        }
+      }
+
+      mobileToggle?.addEventListener("click", () => {
+        const isOpen = sidebarEl?.getAttribute("data-mobile-open") === "true";
+        setMobileOpen(!isOpen);
+      });
+      mobileOverlay?.addEventListener("click", () => setMobileOpen(false));
+      document.querySelectorAll("#docs-sidebar a").forEach((link) => {
+        link.addEventListener("click", () => {
+          if (window.innerWidth < 1024) setMobileOpen(false);
         });
       });
+
+      // TOC scroll spy.
+      //
+      // "Active" = the last heading whose top has scrolled past the trigger
+      // line (120px from the viewport top — just below the comfortable
+      // reading zone). This matches the expectation that clicking a TOC
+      // link highlights that heading, not the next one. Scroll-margin-top
+      // of 2rem puts an anchored heading at ~32px, comfortably above the
+      // 120px trigger, so it wins the "last past the line" check.
+      const tocItems = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-toc-anchor]"),
+      );
+      if (tocItems.length > 0) {
+        const article = document.querySelector("article.prose");
+        const headingEls: HTMLElement[] = tocItems
+          .map((item) => {
+            const id = item.dataset.tocAnchor;
+            return id ? (article?.querySelector<HTMLElement>(`#${CSS.escape(id)}`) ?? null) : null;
+          })
+          .filter((node): node is HTMLElement => node !== null);
+
+        const setActive = (id: string | null) => {
+          tocItems.forEach((item) => {
+            item.classList.toggle("is-active", item.dataset.tocAnchor === id);
+          });
+        };
+
+        const TRIGGER = 120;
+        function computeActive() {
+          let active: string | null = null;
+          for (const heading of headingEls) {
+            const top = heading.getBoundingClientRect().top;
+            if (top <= TRIGGER) {
+              active = heading.id;
+            } else {
+              break;
+            }
+          }
+          // Before the first heading has crossed the trigger, default to the
+          // first TOC entry so the reader always has a reference point.
+          if (active === null && headingEls.length > 0 && window.scrollY < 40) {
+            active = headingEls[0].id;
+          }
+          setActive(active);
+        }
+
+        let scheduled = false;
+        function schedule() {
+          if (scheduled) return;
+          scheduled = true;
+          requestAnimationFrame(() => {
+            scheduled = false;
+            computeActive();
+          });
+        }
+
+        window.addEventListener("scroll", schedule, {passive: true});
+        window.addEventListener("resize", schedule);
+        computeActive();
+      }
     </script>
 
     <MermaidEnhancer />

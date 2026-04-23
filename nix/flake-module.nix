@@ -141,7 +141,12 @@
                   lib.types.submodule {
                     options = {
                       label = lib.mkOption {
-                        type = lib.types.str;
+                        type = lib.types.nullOr lib.types.str;
+                        description = ''
+                          Heading shown above this section in the sidebar.
+                          Set to null (or an empty string) to render the
+                          section's items directly without a heading.
+                        '';
                       };
 
                       dir = lib.mkOption {
@@ -162,9 +167,16 @@
             };
 
             rootSectionLabel = lib.mkOption {
-              type = lib.types.str;
+              type = lib.types.nullOr lib.types.str;
               default = "Overview";
-              description = "Label for auto-generated root-level pages.";
+              description = ''
+                Label for the auto-generated root-level section (the
+                pseudo-section that collects pages at the docs root).
+
+                Set to `null` (or an empty string) to render those pages
+                without a section heading. Defaults to "Overview" for
+                back-compat.
+              '';
             };
 
             sectionLabels = lib.mkOption {

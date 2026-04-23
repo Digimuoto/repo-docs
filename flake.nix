@@ -42,7 +42,7 @@
           enable = true;
           contentDir = ./docs;
           excludePaths = ["private"];
-          theme = "cortex-dark";
+          theme = "cortex-light";
           site = {
             title = "repo-docs";
             tagline = "Documentation";

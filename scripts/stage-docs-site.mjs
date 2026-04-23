@@ -174,6 +174,17 @@ function comparePaths(left, right) {
   return left.localeCompare(right);
 }
 
+function normalizeSectionLabel(rawLabel, fallback) {
+  if (rawLabel === null) {
+    return null;
+  }
+  if (typeof rawLabel !== "string") {
+    return fallback;
+  }
+  const trimmed = rawLabel.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
 function autoGenerateNavigation(markdownFiles, navigationConfig) {
   const rootEntries = [];
   const topLevelDirectories = new Set();
@@ -196,7 +207,7 @@ function autoGenerateNavigation(markdownFiles, navigationConfig) {
   if (rootEntries.length > 0) {
     sections.push({
       entries: rootEntries.sort(comparePaths),
-      label: navigationConfig.rootSectionLabel ?? "Overview",
+      label: normalizeSectionLabel(navigationConfig.rootSectionLabel, "Overview"),
     });
   }
 
@@ -319,8 +330,20 @@ async function main() {
   const allowedMarkdown = new Set();
 
   for (const section of navigationSections) {
-    if (!section || typeof section.label !== "string" || section.label.trim() === "") {
-      throw new Error("Each navigation section must have a non-empty label.");
+    if (!section) {
+      throw new Error("Navigation sections must be objects.");
+    }
+    if (
+      section.label !== null &&
+      (typeof section.label !== "string" || section.label.trim() === "")
+    ) {
+      throw new Error(
+        "Navigation section labels must be a non-empty string or null.",
+      );
+    }
+    // Normalise empty-string to null so downstream consumers see one shape.
+    if (typeof section.label === "string" && section.label.trim() === "") {
+      section.label = null;
     }
 
     const hasEntries = Array.isArray(section.entries);
@@ -328,7 +351,7 @@ async function main() {
 
     if (hasEntries === hasDir) {
       throw new Error(
-        `Navigation section "${section.label}" must define exactly one of "entries" or "dir".`,
+        `Navigation section "${section.label ?? "(root)"}" must define exactly one of "entries" or "dir".`,
       );
     }
 
