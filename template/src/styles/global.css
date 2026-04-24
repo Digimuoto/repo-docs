@@ -1143,12 +1143,16 @@ html.dark .astro-code span {
 html.light .tree-sitter-pre,
 html.dark .tree-sitter-pre {
   background-color: var(--surface-primary) !important;
-  color: var(--tok-default) !important;
+  color: var(--tok-default);
 }
-.tree-sitter-pre .tree-sitter-code,
-.tree-sitter-pre .tree-sitter-code span {
+/*
+ * Belt-and-braces override for any Shiki bg that might leak in if a
+ * future change keeps `.astro-code` on the pre. Token foregrounds are
+ * applied below through `.tok-*` rules — do NOT clobber them with
+ * `color: inherit` here, or every capture loses its colour.
+ */
+.tree-sitter-pre .tree-sitter-code {
   background-color: transparent !important;
-  color: inherit;
 }
 
 .tree-sitter-code { color: var(--tok-default); }
