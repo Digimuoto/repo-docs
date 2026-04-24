@@ -340,7 +340,9 @@ html[data-sidebar="collapsed"] .docs-sidebar-rail {
 
 .docs-nav-link,
 .docs-nav-group {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   flex: 1;
   min-width: 0;
   padding: 0.3125rem 0.5rem;
@@ -355,18 +357,51 @@ html[data-sidebar="collapsed"] .docs-sidebar-rail {
   text-align: left;
   text-decoration: none;
   cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.docs-nav-link > span:first-child,
+.docs-nav-group > span:first-child {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: background-color 120ms ease, color 120ms ease;
 }
-.docs-nav-link > span,
-.docs-nav-group > span {
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: middle;
+
+/*
+ * Status pill rendered next to the nav label when a doc carries
+ * a frontmatter `status:` value. Compact, monochrome (border +
+ * text in the status colour, transparent fill) so it reads as
+ * metadata rather than competing with the link itself.
+ */
+.docs-nav-status {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.4em;
+  height: 1.25em;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 0.25rem;
+  border: 1px solid currentColor;
+  color: var(--text-content-tertiary);
+  opacity: 0.85;
+}
+.docs-nav-status-draft       { color: var(--status-draft); }
+.docs-nav-status-proposed    { color: var(--status-proposed); }
+.docs-nav-status-accepted    { color: var(--status-accepted); }
+.docs-nav-status-active      { color: var(--status-active); }
+.docs-nav-status-superseded  { color: var(--status-superseded); }
+.docs-nav-status-deprecated  { color: var(--status-deprecated); }
+.docs-nav-status-archived    {
+  color: var(--status-archived);
+  opacity: 0.55;
+}
+.docs-nav-link[data-status="superseded"] > span:first-child,
+.docs-nav-link[data-status="archived"] > span:first-child {
+  color: var(--text-content-tertiary);
 }
 
 .docs-nav-link:hover,

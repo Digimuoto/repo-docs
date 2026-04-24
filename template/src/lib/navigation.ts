@@ -3,12 +3,21 @@ import {kebabToTitle, siteConfig, withBasePath} from "./site-config";
 
 type DocsEntry = CollectionEntry<"docs">;
 
+/*
+ * Free-form lifecycle status carried in frontmatter (e.g. ADR
+ * "proposed", research note "active", plan "superseded"). Well-known
+ * values get distinct CSS colours; anything else falls through to a
+ * neutral default pill.
+ */
+export type DocStatus = string;
+
 export interface SidebarNode {
   children: SidebarNode[];
   href?: string;
   isGroup: boolean;
   key: string;
   label: string;
+  status?: DocStatus;
 }
 
 export interface SidebarSection {
@@ -18,6 +27,7 @@ export interface SidebarSection {
 }
 
 interface PageMeta {
+  filenameDate: string | null;
   hidden: boolean;
   href: string;
   isIndexPage: boolean;
@@ -25,6 +35,18 @@ interface PageMeta {
   label: string;
   order: number | null;
   relativeSegments: string[];
+  status?: DocStatus;
+}
+
+const ISO_DATE_PREFIX = /^(\d{4}-\d{2}-\d{2})-/;
+
+function extractFilenameDate(rawId: string): string | null {
+  // rawId is something like "research-notes/wire/2026-04-15-foo".
+  // We only care about the leaf segment.
+  const lastSlash = rawId.lastIndexOf("/");
+  const leaf = lastSlash === -1 ? rawId : rawId.slice(lastSlash + 1);
+  const match = leaf.match(ISO_DATE_PREFIX);
+  return match ? match[1] : null;
 }
 
 interface DirectoryNode {
@@ -64,6 +86,7 @@ function getPageMeta(entry: DocsEntry): PageMeta {
   const relativeSegments = key === "index" ? [] : key.split("/");
 
   return {
+    filenameDate: extractFilenameDate(rawId),
     hidden: entry.data.sidebar?.hidden ?? false,
     href: withBasePath(key === "index" ? "" : key),
     isIndexPage,
@@ -71,15 +94,39 @@ function getPageMeta(entry: DocsEntry): PageMeta {
     label: entry.data.sidebar?.label ?? entry.data.title,
     order: entry.data.sidebar?.order ?? null,
     relativeSegments,
+    status: (entry.data as {status?: DocStatus}).status,
   };
 }
 
+/*
+ * Page sort:
+ *   1. Explicit `sidebar.order` wins (lowest first).
+ *   2. If both filenames carry an ISO date prefix (`YYYY-MM-DD-…`),
+ *      newest-first — chronological streams (handoffs, experiments,
+ *      research-notes) read like a journal with the latest entry on
+ *      top.
+ *   3. Mixed dated/undated: undated (typically `index.md`, an
+ *      `overview.md`, or similar) comes first.
+ *   4. Fall back to label localeCompare so numeric prefixes
+ *      (`0001-…`, `01-…`) sort naturally ascending.
+ */
 function comparePages(left: PageMeta, right: PageMeta) {
   const leftOrder = left.order ?? Number.MAX_SAFE_INTEGER;
   const rightOrder = right.order ?? Number.MAX_SAFE_INTEGER;
   if (leftOrder !== rightOrder) {
     return leftOrder - rightOrder;
   }
+
+  if (left.filenameDate && right.filenameDate) {
+    if (left.filenameDate !== right.filenameDate) {
+      return right.filenameDate.localeCompare(left.filenameDate);
+    }
+  } else if (left.filenameDate && !right.filenameDate) {
+    return 1;
+  } else if (!left.filenameDate && right.filenameDate) {
+    return -1;
+  }
+
   return left.label.localeCompare(right.label);
 }
 
@@ -160,6 +207,7 @@ function materializeDirectoryNode(
       isGroup: false,
       key: `page:${page.key}`,
       label: page.label,
+      status: page.status,
     });
   }
 
@@ -178,6 +226,7 @@ function materializeDirectoryNode(
       isGroup: !href,
       key: href ? `page:${child.page!.key}` : `group:${childPath}`,
       label,
+      status: child.page?.status,
     });
   }
 
@@ -220,6 +269,7 @@ export function buildSidebar(entries: DocsEntry[]): SidebarSection[] {
               isGroup: false,
               key: `page:${page.key}`,
               label: page.label,
+              status: page.status,
             }),
           ),
         key: sectionKey,

@@ -7,6 +7,7 @@ import {fileURLToPath} from "node:url";
 import {visit} from "unist-util-visit";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import {markdownLinkRewriter} from "./src/integrations/markdown-link-rewriter.mjs";
 import {treeSitterHighlight} from "./src/integrations/tree-sitter-highlight.mjs";
 
 const site = process.env.DOCS_SITE_URL || "http://127.0.0.1:4321";
@@ -21,6 +22,7 @@ const base = process.env.DOCS_ROUTE_BASE || "/";
 // stamp the original fenced tag would be lost by the time the rehype
 // plugin runs.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const docsContentRoot = path.resolve(__dirname, "src/content/docs");
 const grammarManifestPath = path.resolve(__dirname, "src/generated/grammars.json");
 let hasCustomGrammars = false;
 const registeredLangs = new Set();
@@ -98,6 +100,7 @@ export default defineConfig({
     remarkPlugins: [
       remarkMath,
       ...(hasCustomGrammars ? [markRegisteredLanguages] : []),
+      [markdownLinkRewriter, {docsRoot: docsContentRoot, routeBase: base}],
     ],
     rehypePlugins: [
       rehypeKatex,

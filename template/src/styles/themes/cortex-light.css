@@ -79,4 +79,14 @@
   --tok-attribute: #0550ae;
   --tok-namespace: #953800;
   --tok-label: #953800;
+
+  /* Status pill palette, drawn from GitHub Primer's semantic colours
+   * for parity with the wider light theme. */
+  --status-draft: #9a6700;
+  --status-proposed: #9a6700;
+  --status-accepted: #1a7f37;
+  --status-active: #0969da;
+  --status-superseded: #656d76;
+  --status-deprecated: #cf222e;
+  --status-archived: #8c959f;
 }

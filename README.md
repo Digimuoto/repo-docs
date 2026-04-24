@@ -7,6 +7,9 @@ Reusable docs site module for `flake-parts` repositories.
 - `flakeModules.default` for consumer repos
 - a shared Astro/Tailwind template that renders one or more plain markdown trees
 - multi-site support (publish several independent docs sites from one monorepo)
+- automatic `.md` / `.mdx` link rewriting (write portable links that work in editors, on GitHub, and on the rendered site)
+- date-prefixed-filename auto-sort (`2026-04-15-foo.md` files sort newest-first)
+- frontmatter `status:` rendered as a coloured pill in the nav
 - Mermaid diagram rendering with fullscreen support
 - LaTeX math rendering via KaTeX
 - Syntax-highlighted code blocks for all common languages (Shiki)
@@ -143,6 +146,68 @@ nix run .#cortex-preview    # Cortex research site (cortex-light)
 - The staging script only picks up `.md` and `.mdx`. Sidecar files (`.mmd`, images, generated artefacts) live alongside but never become pages.
 - The collapsible tree nav handles arbitrary nesting; ancestor groups of the active page auto-expand and the rest defer to the user's saved collapse state.
 - For directories that should sort by something other than alphabetical, set `sidebar.order` in each leaf's frontmatter, or add the directory's own `index.md` with `sidebar.order` to push the whole branch up or down.
+
+## Authoring conventions
+
+These features are on by default; nothing to configure.
+
+### Portable `.md` links
+
+Author markdown links that point at `.md` / `.mdx` files using paths relative to the source file. They're rewritten to clean published URLs at build time, with `#fragment` and `?query` preserved.
+
+```markdown
+See [Wire grammar](../reference/wire/grammar-v1.md).
+See [the runtime](./06-pulse-runtime.md#executors).
+```
+
+Both forms work in your editor, on GitHub web, *and* on the rendered site. External (`https://…`), absolute (`/foo`), and bare-anchor (`#bar`) links pass through untouched.
+
+### Date-prefixed filenames sort newest-first
+
+Files matching `^YYYY-MM-DD-…\.md$` automatically sort chronologically (newest at the top of the section) without per-file `sidebar.order`. Mix dated and undated files freely — undated entries (typically `index.md` or `overview.md`) lead the section, then dated entries follow newest-first.
+
+```text
+research-notes/wire/
+  index.md                                       ← lands first
+  2026-04-23-wire-composition-sugar.md           ← then newest dated entry
+  2026-04-16-wire-dataflow.md
+  2026-04-15-wire-syntax.md
+```
+
+ADRs (`0001-…`, `0002-…`) and chaptered material (`01-…`, `02-…`) keep their existing ascending-numeric sort because they don't match the ISO date prefix.
+
+### Lifecycle status badges
+
+Add `status: <value>` to a page's frontmatter and the nav renders a small pill next to the entry. Well-known values get distinct theme colours; anything else falls through to a neutral pill.
+
+```yaml
+---
+title: ADR 0014 — Executor taxonomy
+status: accepted        # well-known → green
+---
+```
+
+```yaml
+---
+title: Wire composition sugar
+status: research        # cortex-specific → neutral pill
+---
+```
+
+Built-in palette (each theme overrides the colours):
+
+| Status         | Colour family             |
+| -------------- | ------------------------- |
+| `draft`        | warning / amber           |
+| `proposed`     | warning / amber           |
+| `accepted`     | success / green           |
+| `active`       | accent / brand blue       |
+| `superseded`   | muted grey + dimmed label |
+| `deprecated`   | danger / red              |
+| `archived`     | very muted, dimmed label  |
+| *(other)*      | neutral default pill      |
+
+`superseded` and `archived` also dim the label itself so the eye lands on still-current docs first.
 
 ## Custom-language syntax highlighting
 

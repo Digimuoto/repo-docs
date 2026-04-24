@@ -57,4 +57,12 @@
   --tok-attribute: #79c0ff;
   --tok-namespace: #ffa657;
   --tok-label: #ffa657;
+
+  --status-draft: #f0883e;
+  --status-proposed: #f0883e;
+  --status-accepted: #7ee787;
+  --status-active: #58a6ff;
+  --status-superseded: #8b949e;
+  --status-deprecated: #ff7b72;
+  --status-archived: #6e7681;
 }

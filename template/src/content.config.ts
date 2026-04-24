@@ -11,6 +11,14 @@ const docs = defineCollection({
     description: z.string().optional(),
     draft: z.boolean().optional().default(false),
 
+    // Lifecycle status. Renders as a small pill in the nav next to
+    // the page label and (optionally) at the top of the rendered
+    // page. Free-form: well-known values (draft, proposed, accepted,
+    // active, superseded, deprecated, archived) get distinct theme
+    // colours; anything else renders in the muted default. Useful
+    // for ADRs, plans, research notes, publication drafts.
+    status: z.string().optional(),
+
     // Byline metadata. All optional — when omitted the field is hidden.
     author: authorField,
     authors: authorField,

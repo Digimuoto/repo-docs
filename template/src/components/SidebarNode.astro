@@ -85,8 +85,19 @@ const initialOpen = active || descendantActive;
             "has-active-descendant": descendantActive,
           },
         ]}
+        data-status={node.status}
       >
         <span>{node.label}</span>
+        {node.status && (
+          <span
+            class={`docs-nav-status docs-nav-status-${node.status
+              .toLowerCase()
+              .replace(/[^a-z0-9_-]/g, "-")}`}
+            title={node.status}
+          >
+            {node.status}
+          </span>
+        )}
       </a>
     ) : (
       <button
