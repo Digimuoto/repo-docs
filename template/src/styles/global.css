@@ -786,16 +786,87 @@ video {
   margin: 2rem 0;
 }
 
+/*
+ * Docs prose column.
+ *
+ * One unified `--prose-max-width` governs everything inside the
+ * article — paragraphs, headings, lists, tables, code blocks,
+ * Mermaid cards, equations. Wide content (a 12-column data table,
+ * a sprawling Mermaid graph) scrolls *inside* its own container
+ * via overflow-x rather than escaping the column and forcing the
+ * whole page to scroll horizontally.
+ *
+ * The width scales with the viewport so wide screens get a
+ * Wikipedia-style reading column instead of being capped at the
+ * narrow modern-docs default. Breakpoints chosen to match the
+ * docs shell's hide-thresholds for the TOC (1280) and content
+ * inner-padding bump (1536).
+ */
+:root {
+  --prose-max-width: 80ch;
+}
+@media (min-width: 1280px) {
+  :root {
+    --prose-max-width: 92ch;
+  }
+}
+@media (min-width: 1536px) {
+  :root {
+    --prose-max-width: 108ch;
+  }
+}
+@media (min-width: 1920px) {
+  :root {
+    --prose-max-width: 120ch;
+  }
+}
+
 .docs-prose {
   max-width: none;
 }
 
 .docs-prose > * {
-  max-width: 80ch;
+  max-width: var(--prose-max-width);
 }
 
-.docs-prose > :where(pre, table, hr, .mermaid-card, .mermaid, .not-prose, .katex-display, .docs-title) {
+/* These elements deliberately escape the prose column:
+ *   - `.docs-title`: header zone, allowed to span the full inner-content
+ *     width so the journal-opener H1 + breadcrumb + byline can breathe.
+ *   - `hr`: a decorative rule with no content of its own.
+ *   - `.not-prose`: explicit author opt-out for raw-HTML embeds.
+ */
+.docs-prose > :where(.docs-title, hr, .not-prose) {
   max-width: none;
+}
+
+/* Tables: stay within the prose column; if column count exceeds the
+ * column width, scroll inside the table block rather than pushing
+ * past the article. `display: block` on a <table> drops the table
+ * layout algorithm but lets overflow-x take effect.
+ */
+.docs-prose > table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Code blocks already have overflow-x on .prose pre; the
+ * --prose-max-width above caps their outer width. */
+
+/* Mermaid cards: card itself is capped to the prose width. The
+ * inner .mermaid wrapper already has overflow-x: auto, and SVGs
+ * carry max-width: 100%, so a graph that's wider than the column
+ * scrolls horizontally inside the card.
+ */
+.docs-prose > .mermaid-card {
+  width: 100%;
+}
+
+/* Long display equations scroll inside their own container.
+ * KaTeX gives us .katex-display with overflow handling already;
+ * we just keep it within the column. */
+.docs-prose > .katex-display {
+  overflow-x: auto;
 }
 
 /*
