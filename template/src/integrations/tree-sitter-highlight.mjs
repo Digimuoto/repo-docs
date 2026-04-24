@@ -32,6 +32,19 @@ const loader = {
   ready: null,
 };
 
+/*
+ * Report a language-load failure in a way that's loud enough to be
+ * spotted in a 200-line Astro build log. `[!] repo-docs · <lang>:
+ * <reason>` plus the queries file path so the next reader can jump
+ * straight to the broken pattern. We use console.error (not warn)
+ * because silent silence is what bit us before.
+ */
+function reportLanguageError(name, queryPath, reason) {
+  console.error(
+    `\n[!] repo-docs · tree-sitter-highlight: ${name}\n    ${reason}\n    queries file: ${queryPath}\n    ${name} code blocks will render as plain text until this is fixed.\n`,
+  );
+}
+
 async function loadGrammars(manifestPath) {
   if (loader.ready) return loader.ready;
   loader.ready = (async () => {
@@ -56,24 +69,38 @@ async function loadGrammars(manifestPath) {
         },
       });
       for (const [name, entry] of Object.entries(manifest)) {
+        const queryPath = path.join(entry.queries, "highlights.scm");
         try {
           const language = await Language.load(entry.parser);
-          const queryPath = path.join(entry.queries, "highlights.scm");
           if (!fs.existsSync(queryPath)) {
-            console.warn(
-              `[tree-sitter-highlight] ${name}: no highlights.scm; skipping`,
+            reportLanguageError(
+              name,
+              queryPath,
+              `no highlights.scm found in queries/ — grammar loaded but all ${name} blocks will render unstyled`,
             );
             continue;
           }
           const querySource = fs.readFileSync(queryPath, "utf8");
-          const query = new Query(language, querySource);
+          let query;
+          try {
+            query = new Query(language, querySource);
+          } catch (queryErr) {
+            reportLanguageError(
+              name,
+              queryPath,
+              `invalid highlight query: ${queryErr.message ?? queryErr}`,
+            );
+            continue;
+          }
           const aliases = [name, ...(entry.aliases ?? [])];
           for (const alias of aliases) {
             loader.languagesByAlias.set(alias, {language, query});
           }
         } catch (err) {
-          console.warn(
-            `[tree-sitter-highlight] ${name}: failed to load (${err.message ?? err})`,
+          reportLanguageError(
+            name,
+            queryPath,
+            `grammar WASM failed to load: ${err.message ?? err}`,
           );
         }
       }
