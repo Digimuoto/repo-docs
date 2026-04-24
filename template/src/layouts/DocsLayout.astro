@@ -58,13 +58,19 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
       crossorigin="anonymous"
     />
     <script is:inline>
-      // Restore collapsed state before paint to avoid layout flicker.
+      // Restore collapsed state + user-dragged sidebar width before
+      // paint to avoid layout flicker.
       try {
         const root = document.documentElement;
         const sidebar = localStorage.getItem("docs-sidebar-state");
         const toc = localStorage.getItem("docs-toc-state");
         if (sidebar === "collapsed") root.dataset.sidebar = "collapsed";
         if (toc === "collapsed") root.dataset.toc = "collapsed";
+        const widthRaw = localStorage.getItem("docs-sidebar-width");
+        const width = widthRaw ? parseFloat(widthRaw) : NaN;
+        if (!isNaN(width) && width >= 200 && width <= 520) {
+          root.style.setProperty("--docs-sidebar-natural", width + "px");
+        }
       } catch {
         /* localStorage may be unavailable */
       }
@@ -168,6 +174,17 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
           </svg>
         </button>
       </div>
+
+      <div
+        class="docs-sidebar-drag"
+        data-docs-sidebar-drag
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize navigation"
+        aria-valuenow="280"
+        aria-valuemin="200"
+        aria-valuemax="520"
+      ></div>
     </aside>
 
     {tocEnabled && (
@@ -415,6 +432,77 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
             writeNavState();
           });
         });
+
+      // Drag-to-resize handle on the sidebar's right edge.
+      //
+      // Long page titles in deep nav trees (cortex has them) get
+      // truncated at 280px. A pointer drag on the invisible 6px
+      // handle grows / shrinks the expanded width between 200 and
+      // 520px and persists to localStorage via the pre-paint inline
+      // script above.
+      const dragHandle = document.querySelector<HTMLElement>(
+        "[data-docs-sidebar-drag]",
+      );
+      if (dragHandle) {
+        const MIN = 200;
+        const MAX = 520;
+        let active = false;
+        let startX = 0;
+        let startWidth = 0;
+
+        function syncWidth(px: number) {
+          root.style.setProperty("--docs-sidebar-natural", px + "px");
+          dragHandle!.setAttribute("aria-valuenow", String(Math.round(px)));
+        }
+
+        dragHandle.addEventListener("pointerdown", (event) => {
+          if (window.innerWidth < 1024) return;
+          if (root.dataset.sidebar === "collapsed") return;
+          active = true;
+          startX = event.clientX;
+          const current = parseFloat(
+            getComputedStyle(root).getPropertyValue("--docs-sidebar-natural"),
+          );
+          startWidth = isNaN(current) ? 280 : current;
+          dragHandle.setPointerCapture(event.pointerId);
+          document.body.dataset.sidebarDragging = "true";
+        });
+        dragHandle.addEventListener("pointermove", (event) => {
+          if (!active) return;
+          const delta = event.clientX - startX;
+          const next = Math.max(MIN, Math.min(MAX, startWidth + delta));
+          syncWidth(next);
+        });
+        const finish = (event: PointerEvent) => {
+          if (!active) return;
+          active = false;
+          dragHandle.releasePointerCapture(event.pointerId);
+          delete document.body.dataset.sidebarDragging;
+          const current = parseFloat(
+            getComputedStyle(root).getPropertyValue("--docs-sidebar-natural"),
+          );
+          if (!isNaN(current)) {
+            try {
+              localStorage.setItem("docs-sidebar-width", String(Math.round(current)));
+            } catch {
+              /* ignore */
+            }
+          }
+        };
+        dragHandle.addEventListener("pointerup", finish);
+        dragHandle.addEventListener("pointercancel", finish);
+        // Double-click the handle to reset to default.
+        dragHandle.addEventListener("dblclick", () => {
+          if (window.innerWidth < 1024) return;
+          root.style.removeProperty("--docs-sidebar-natural");
+          try {
+            localStorage.removeItem("docs-sidebar-width");
+          } catch {
+            /* ignore */
+          }
+          dragHandle.setAttribute("aria-valuenow", "280");
+        });
+      }
 
       // Mobile sidebar drawer
       const mobileToggle = document.getElementById("mobile-menu-toggle");
