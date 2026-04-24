@@ -9,6 +9,7 @@ import "../styles/global.css";
 
 interface Props {
   description?: string;
+  docKind?: string;
   hasMermaid?: boolean;
   headings?: MarkdownHeading[];
   navigation: SidebarSectionType[];
@@ -17,6 +18,7 @@ interface Props {
 
 const {
   description = siteConfig.site.description,
+  docKind = "default",
   hasMermaid = false,
   headings = [],
   navigation,
@@ -33,6 +35,11 @@ const fontFamilies =
 
 const tocEnabled =
   headings.filter((heading) => heading.depth >= 2 && heading.depth <= 4).length > 0;
+
+// Pagefind is generated alongside the static build (dist/pagefind/).
+// We need the bundle path to honour the site's routeBase so the UI
+// JS finds the index in deployed and dev-preview environments alike.
+const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
 ---
 
 <!doctype html>
@@ -50,6 +57,7 @@ const tocEnabled =
       href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css"
       crossorigin="anonymous"
     />
+    <link rel="stylesheet" href={`${pagefindBundlePath}pagefind-ui.css`} />
     <script is:inline>
       // Restore collapsed state before paint to avoid layout flicker.
       try {
@@ -94,6 +102,8 @@ const tocEnabled =
             </svg>
           </button>
         </header>
+
+        <div id="docs-search" class="docs-search" data-pagefind-bundle={pagefindBundlePath}></div>
 
         <nav class="docs-sidebar-nav">
           {navigation.map((section) => (
@@ -159,13 +169,37 @@ const tocEnabled =
 
     <main class="docs-main">
       <div class="docs-main-inner">
-        <article class="prose docs-prose max-w-none">
+        <article
+          class={`prose docs-prose docs-prose-${docKind} max-w-none`}
+          data-doc-kind={docKind}
+        >
           <slot />
         </article>
       </div>
     </main>
 
     <div id="mobile-overlay" class="docs-mobile-overlay"></div>
+
+    <script src={`${pagefindBundlePath}pagefind-ui.js`} is:inline defer></script>
+    <script is:inline define:vars={{pagefindBundlePath}}>
+      document.addEventListener("DOMContentLoaded", () => {
+        const PagefindUI = window.PagefindUI;
+        const target = document.getElementById("docs-search");
+        if (!PagefindUI || !target) return;
+        try {
+          new PagefindUI({
+            element: "#docs-search",
+            bundlePath: pagefindBundlePath,
+            showImages: false,
+            showSubResults: true,
+            resetStyles: false,
+            translations: {placeholder: "Search docs"},
+          });
+        } catch (err) {
+          console.warn("[pagefind] init failed:", err);
+        }
+      });
+    </script>
 
     <script>
       const root = document.documentElement;

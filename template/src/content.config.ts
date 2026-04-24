@@ -19,6 +19,19 @@ const docs = defineCollection({
     // for ADRs, plans, research notes, publication drafts.
     status: z.string().optional(),
 
+    // Decision-record cross-references. Both render as clickable
+    // pointers in the meta block above the doc body when present.
+    //   superseded_by: "docs/cortex/adrs/0014-foo.md" | null
+    //   related: ["docs/.../bar.md", "DIG-NNN"]
+    superseded_by: z.string().nullable().optional(),
+    related: z.array(z.string()).optional(),
+
+    // Doc-type override. When omitted the kind is derived from the
+    // top-level path segment (`adrs/...` → `adr`, `publications/...`
+    // → `publication`, etc.) so themes can vary per kind without
+    // manual frontmatter.
+    kind: z.string().optional(),
+
     // Byline metadata. All optional — when omitted the field is hidden.
     author: authorField,
     authors: authorField,

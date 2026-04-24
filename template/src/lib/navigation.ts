@@ -245,6 +245,52 @@ function requirePage(
   return page;
 }
 
+export interface SequenceLink {
+  href: string;
+  label: string;
+}
+
+/*
+ * Flatten the materialised navigation tree into a single ordered
+ * list of leaf links, depth-first. Used by the reading-sequence
+ * footer to find a page's previous and next siblings in the
+ * authored reading order — works for chaptered material
+ * (architecture/01-…02-…), numbered ADRs, and any other section
+ * where the nav order matters.
+ */
+export function flattenSidebar(sections: SidebarSection[]): SequenceLink[] {
+  const result: SequenceLink[] = [];
+  function walk(node: SidebarNode) {
+    if (node.href) {
+      result.push({href: node.href, label: node.label});
+    }
+    for (const child of node.children) walk(child);
+  }
+  for (const section of sections) {
+    for (const node of section.items) walk(node);
+  }
+  return result;
+}
+
+function trimmedPath(value: string) {
+  if (value === "/") return "/";
+  return value.endsWith("/") ? value.slice(0, -1) : value;
+}
+
+export function findReadingSequence(
+  sections: SidebarSection[],
+  currentHref: string,
+): {prev: SequenceLink | null; next: SequenceLink | null} {
+  const flat = flattenSidebar(sections);
+  const target = trimmedPath(currentHref);
+  const idx = flat.findIndex((entry) => trimmedPath(entry.href) === target);
+  if (idx === -1) return {prev: null, next: null};
+  return {
+    prev: idx > 0 ? flat[idx - 1] : null,
+    next: idx < flat.length - 1 ? flat[idx + 1] : null,
+  };
+}
+
 export function buildSidebar(entries: DocsEntry[]): SidebarSection[] {
   const pages = entries
     .filter((entry) => !entry.data.draft)

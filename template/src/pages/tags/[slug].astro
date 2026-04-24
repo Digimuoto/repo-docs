@@ -1,0 +1,150 @@
+---
+/*
+ * Per-tag index page. Generated for every distinct tag found in
+ * frontmatter across the doc collection. Lists every doc carrying
+ * the tag, sorted newest-first by frontmatter date (then by title
+ * for undated entries).
+ *
+ * Linked from the clickable tag pills rendered by DocsTitle. The
+ * route is `/<routeBase>/tags/<slug>/` — Astro's catch-all in
+ * `[...slug].astro` defers to this more specific route.
+ */
+import {getCollection} from "astro:content";
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import {buildSidebar, normalizeEntryId} from "../../lib/navigation";
+import {kebabToTitle, withBasePath} from "../../lib/site-config";
+
+export async function getStaticPaths() {
+  // Astro extracts getStaticPaths into its own module and helpers
+  // declared elsewhere in the frontmatter aren't reliably in scope —
+  // so the slug helper lives inline here too.
+  const slugify = (tag: string) =>
+    tag
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+  const docs = await getCollection("docs", ({data}) => !data.draft);
+  const byTag = new Map<string, {
+    canonical: string;
+    docs: Array<(typeof docs)[number]>;
+  }>();
+
+  for (const doc of docs) {
+    const tags = (doc.data as {tags?: unknown}).tags;
+    if (!Array.isArray(tags)) continue;
+    for (const raw of tags) {
+      if (typeof raw !== "string") continue;
+      const slug = slugify(raw);
+      if (!slug) continue;
+      const bucket = byTag.get(slug) ?? {canonical: raw.trim(), docs: []};
+      bucket.docs.push(doc);
+      byTag.set(slug, bucket);
+    }
+  }
+
+  return Array.from(byTag.entries()).map(([slug, bucket]) => ({
+    params: {slug},
+    props: {tag: bucket.canonical, slug, docs: bucket.docs},
+  }));
+}
+
+interface DocsEntry {
+  id: string;
+  data: {
+    title: string;
+    description?: string;
+    date?: Date | string;
+    tags?: string[];
+  };
+}
+
+const {tag, docs} = Astro.props as {
+  tag: string;
+  slug: string;
+  docs: DocsEntry[];
+};
+
+const allDocs = await getCollection("docs", ({data}) => !data.draft);
+const navigation = buildSidebar(allDocs);
+
+function dateValue(d: DocsEntry): number {
+  const v = d.data.date;
+  if (!v) return 0;
+  return v instanceof Date ? v.getTime() : new Date(v).getTime();
+}
+
+const ordered = [...docs].sort((a, b) => {
+  const diff = dateValue(b) - dateValue(a);
+  if (diff !== 0) return diff;
+  return a.data.title.localeCompare(b.data.title);
+});
+
+function hrefFor(doc: DocsEntry) {
+  const key = normalizeEntryId(doc.id);
+  return withBasePath(key === "index" ? "" : key);
+}
+
+function dateLabel(d: DocsEntry) {
+  const v = d.data.date;
+  if (!v) return null;
+  const dateObj = v instanceof Date ? v : new Date(v);
+  if (Number.isNaN(dateObj.getTime())) return null;
+  return {
+    iso: dateObj.toISOString().slice(0, 10),
+    display: dateObj.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }),
+  };
+}
+
+const titleLabel = `Tag: ${kebabToTitle(tag)}`;
+---
+
+<DocsLayout
+  title={titleLabel}
+  description={`Documents tagged "${tag}"`}
+  navigation={navigation}
+  headings={[]}
+  hasMermaid={false}
+>
+  <header class="docs-title">
+    <nav class="docs-title-breadcrumb" aria-label="Document location">
+      <span class="docs-title-breadcrumb-crumb">Tags</span>
+      <span class="docs-title-breadcrumb-sep" aria-hidden="true">/</span>
+      <span class="docs-title-breadcrumb-crumb">{tag}</span>
+    </nav>
+    <div class="docs-title-head">
+      <h1 class="docs-title-heading">{kebabToTitle(tag)}</h1>
+    </div>
+    <p class="docs-title-description">
+      {ordered.length} document{ordered.length === 1 ? "" : "s"} tagged{" "}
+      <code>{tag}</code>.
+    </p>
+    <hr class="docs-title-divider" />
+  </header>
+
+  <ul class="docs-tag-list">
+    {ordered.map((doc) => {
+      const date = dateLabel(doc);
+      return (
+        <li class="docs-tag-item">
+          <a class="docs-tag-link" href={hrefFor(doc)}>{doc.data.title}</a>
+          {(date || doc.data.description) && (
+            <p class="docs-tag-meta">
+              {date && (
+                <time class="docs-tag-date" datetime={date.iso}>{date.display}</time>
+              )}
+              {date && doc.data.description && <span class="docs-tag-sep" aria-hidden="true"> · </span>}
+              {doc.data.description && (
+                <span class="docs-tag-desc">{doc.data.description}</span>
+              )}
+            </p>
+          )}
+        </li>
+      );
+    })}
+  </ul>
+</DocsLayout>

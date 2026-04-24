@@ -26,6 +26,7 @@
       inherit name;
       runtimeInputs = [
         pkgs.nodejs_22
+        pkgs.pagefind
       ];
       excludeShellChecks = ["SC1091" "SC2050"];
       text = let
@@ -59,6 +60,9 @@
 
         if [ "${mode}" = "preview" ]; then
           npm run build
+          # Generate the Pagefind static index alongside the built site.
+          # Failures shouldn't block the preview — search just won't work.
+          pagefind --site dist || echo "[pagefind] index generation failed; continuing without search"
           npm run preview -- --host "$host" --port "$port"
         else
           npm run dev -- --host "$host" --port "$port"
@@ -97,10 +101,15 @@ in
       src = stagedSrc;
       inherit npmDepsHash;
 
+      nativeBuildInputs = [pkgs.pagefind];
+
       buildPhase = ''
         runHook preBuild
         source build-env.sh
         npm run build
+        # Static-search index. Pagefind reads dist/ HTML output and
+        # writes its own index + UI bundle into dist/pagefind/.
+        pagefind --site dist || echo "[pagefind] index generation failed; continuing without search"
         runHook postBuild
       '';
 

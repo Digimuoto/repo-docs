@@ -1,0 +1,32 @@
+---
+import type {SequenceLink} from "../lib/navigation";
+
+interface Props {
+  prev: SequenceLink | null;
+  next: SequenceLink | null;
+}
+
+const {prev, next} = Astro.props;
+const hasAny = prev !== null || next !== null;
+---
+
+{hasAny && (
+  <nav class="docs-sequence" aria-label="Reading sequence">
+    {prev ? (
+      <a class="docs-sequence-link docs-sequence-prev" href={prev.href} rel="prev">
+        <span class="docs-sequence-direction">← Previous</span>
+        <span class="docs-sequence-title">{prev.label}</span>
+      </a>
+    ) : (
+      <span class="docs-sequence-spacer" aria-hidden="true"></span>
+    )}
+    {next ? (
+      <a class="docs-sequence-link docs-sequence-next" href={next.href} rel="next">
+        <span class="docs-sequence-direction">Next →</span>
+        <span class="docs-sequence-title">{next.label}</span>
+      </a>
+    ) : (
+      <span class="docs-sequence-spacer" aria-hidden="true"></span>
+    )}
+  </nav>
+)}

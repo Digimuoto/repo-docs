@@ -10,6 +10,12 @@ Reusable docs site module for `flake-parts` repositories.
 - automatic `.md` / `.mdx` link rewriting (write portable links that work in editors, on GitHub, and on the rendered site)
 - date-prefixed-filename auto-sort (`2026-04-15-foo.md` files sort newest-first)
 - frontmatter `status:` rendered as a coloured pill in the nav
+- ADR meta block: `superseded_by` + `related` rendered as a callout above the doc body, with cross-references resolved to clean URLs and Linear-style ticket IDs styled as code pills
+- reading-sequence footer: previous/next chapter links auto-derived from the sidebar order
+- site-wide static search via Pagefind (one search box in the sidebar header, instant results)
+- GFM footnotes with bibliography-block styling for citations
+- per-tag index pages auto-generated under `/tags/<slug>/`, with tag pills in the title becoming clickable
+- doc-type theming hook (`docs-prose-<kind>` class derived from path or frontmatter, with publication and research-note variants shipped by default)
 - Mermaid diagram rendering with fullscreen support
 - LaTeX math rendering via KaTeX
 - Syntax-highlighted code blocks for all common languages (Shiki)

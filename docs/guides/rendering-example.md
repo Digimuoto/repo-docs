@@ -211,3 +211,10 @@ A list containing code and emphasis:
    ```
 2. Check the output contains **all expected pages**
 3. Verify the site config has `title` set to `"repo-docs"`
+
+## Footnotes
+
+Reference-style footnotes work via standard GFM syntax[^1] and are rendered as a bibliography block at the bottom of the page[^kerr2024].
+
+[^1]: A simple numbered footnote with the back-reference arrow rendered automatically.
+[^kerr2024]: Kerr, J. (2024). *Documentation as a system input*. Self-published. Footnotes accept arbitrary identifiers, not just numbers.
