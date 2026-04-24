@@ -3,17 +3,16 @@ import type {CollectionEntry} from "astro:content";
 import {siteConfig} from "../lib/site-config";
 
 /*
- * Decision-record meta block, rendered between the title display
- * and the doc body whenever a page carries any of:
- *   - status
- *   - superseded_by
- *   - related
+ * Decision-record cross-references.
  *
- * Path-shaped values (`docs/<site>/<rest>.md`) are resolved into the
- * site's clean URL form. Linear-style ticket IDs (`DIG-NNN`) get a
- * monospace pill. Everything else renders verbatim so authors who
- * write a free-text reference like "see Section 3.2 of Knuth 1974"
- * still see something readable.
+ * Renders only when the page declares `superseded_by` or `related`
+ * in frontmatter — both are unique pieces of information that
+ * don't fit anywhere else. Status is deliberately NOT rendered
+ * here; it already shows as a pill in the sidebar nav and most
+ * docs already write a `## Status` heading in the body.
+ *
+ * Layout is one wrapping row of compact pills so the block reads
+ * as a typographic margin note rather than an info card.
  */
 
 interface Props {
@@ -22,7 +21,6 @@ interface Props {
 
 const {doc} = Astro.props;
 const data = doc.data as {
-  status?: string;
   superseded_by?: string | null;
   related?: string[];
 };
@@ -34,10 +32,6 @@ function stripTrailingSlash(value: string) {
 
 function repoPathToUrl(raw: string): string | null {
   const trimmed = raw.trim();
-  // Match `docs/<anything>/<rest>.md|mdx`. Cortex's frontmatter uses
-  // these full-from-repo-root paths so links work in IDE jump-to-file
-  // and on GitHub web. We strip `docs/<site>/` because the site's
-  // contentDir is exactly that, leaving a content-root-relative slug.
   const match = trimmed.match(/^docs\/[^/]+\/(.+\.(?:md|mdx))$/i);
   if (!match) return null;
   const noExt = match[1].replace(/\.(md|mdx)$/i, "");
@@ -51,23 +45,40 @@ function repoPathToUrl(raw: string): string | null {
   return slug === "" ? `${base}/` : `${base}/${slug}/`;
 }
 
+function shortLabel(rawPath: string): string {
+  // Strip the docs/<site>/ prefix authors use for portable cross-refs.
+  const trimmed = rawPath
+    .replace(/\.(md|mdx)$/i, "")
+    .replace(/^docs\/[^/]+\//, "");
+  // ADR shorthand: adrs/NNNN-… → "ADR NNNN".
+  const adr = trimmed.match(/^adrs\/(\d+)-/i);
+  if (adr) return `ADR ${adr[1]}`;
+  // Otherwise: last path segment, strip leading numeric/date prefix,
+  // unkebab. So architecture/03-formalism-stack → "formalism stack".
+  const tail = trimmed.split("/").pop() ?? trimmed;
+  return tail
+    .replace(/^\d{4}-\d{2}-\d{2}-/, "")
+    .replace(/^\d+-/, "")
+    .replace(/[-_]/g, " ");
+}
+
 interface Pointer {
   kind: "doc" | "ticket" | "text";
   label: string;
+  title: string;
   href?: string;
 }
 
 function classify(item: string): Pointer {
   const trimmed = item.trim();
   if (/^[A-Z][A-Z0-9]+-\d+$/i.test(trimmed)) {
-    return {kind: "ticket", label: trimmed.toUpperCase()};
+    return {kind: "ticket", label: trimmed.toUpperCase(), title: trimmed};
   }
   const docUrl = repoPathToUrl(trimmed);
-  if (docUrl) return {kind: "doc", label: trimmed, href: docUrl};
-  return {kind: "text", label: trimmed};
+  if (docUrl) return {kind: "doc", label: shortLabel(trimmed), title: trimmed, href: docUrl};
+  return {kind: "text", label: trimmed, title: trimmed};
 }
 
-const status = typeof data.status === "string" ? data.status : null;
 const supersededBy =
   typeof data.superseded_by === "string" && data.superseded_by.trim() !== ""
     ? classify(data.superseded_by)
@@ -76,51 +87,49 @@ const related: Pointer[] = (data.related ?? [])
   .filter((item): item is string => typeof item === "string" && item.trim() !== "")
   .map(classify);
 
-const hasMeta = Boolean(status) || supersededBy !== null || related.length > 0;
-const statusClass = status
-  ? status.toLowerCase().replace(/[^a-z0-9_-]/g, "-")
-  : "";
+const hasMeta = supersededBy !== null || related.length > 0;
 ---
 
 {hasMeta && (
-  <aside class={`docs-meta-block ${status ? `docs-meta-block-${statusClass}` : ""}`} aria-label="Document metadata">
-    {status && (
-      <div class="docs-meta-row">
-        <span class="docs-meta-label">Status</span>
-        <span class={`docs-meta-status docs-meta-status-${statusClass}`}>
-          {status}
-        </span>
-      </div>
-    )}
+  <aside class="docs-meta-block" aria-label="Document references">
     {supersededBy && (
-      <div class="docs-meta-row">
-        <span class="docs-meta-label">Superseded by</span>
-        {supersededBy.kind === "doc" && supersededBy.href ? (
-          <a class="docs-meta-link" href={supersededBy.href}>{supersededBy.label}</a>
-        ) : supersededBy.kind === "ticket" ? (
-          <code class="docs-meta-ticket">{supersededBy.label}</code>
-        ) : (
-          <span class="docs-meta-text">{supersededBy.label}</span>
-        )}
-      </div>
+      supersededBy.kind === "doc" && supersededBy.href ? (
+        <a
+          class="docs-meta-pill docs-meta-pill-superseded"
+          href={supersededBy.href}
+          title={`Superseded by ${supersededBy.title}`}
+        >
+          superseded by → <span>{supersededBy.label}</span>
+        </a>
+      ) : (
+        <span
+          class="docs-meta-pill docs-meta-pill-superseded"
+          title={`Superseded by ${supersededBy.title}`}
+        >
+          superseded by → <span>{supersededBy.label}</span>
+        </span>
+      )
     )}
-    {related.length > 0 && (
-      <div class="docs-meta-row">
-        <span class="docs-meta-label">Related</span>
-        <ul class="docs-meta-related">
-          {related.map((item) => (
-            <li>
-              {item.kind === "doc" && item.href ? (
-                <a class="docs-meta-link" href={item.href}>{item.label}</a>
-              ) : item.kind === "ticket" ? (
-                <code class="docs-meta-ticket">{item.label}</code>
-              ) : (
-                <span class="docs-meta-text">{item.label}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </div>
-    )}
+    {related.map((item) => {
+      if (item.kind === "doc" && item.href) {
+        return (
+          <a class="docs-meta-pill docs-meta-pill-related" href={item.href} title={item.title}>
+            {item.label}
+          </a>
+        );
+      }
+      if (item.kind === "ticket") {
+        return (
+          <span class="docs-meta-pill docs-meta-pill-ticket" title={item.title}>
+            {item.label}
+          </span>
+        );
+      }
+      return (
+        <span class="docs-meta-pill docs-meta-pill-text" title={item.title}>
+          {item.label}
+        </span>
+      );
+    })}
   </aside>
 )}

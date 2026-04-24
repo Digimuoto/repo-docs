@@ -103,13 +103,13 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
           </button>
         </header>
 
-        <div id="docs-search" class="docs-search" data-pagefind-bundle={pagefindBundlePath}></div>
-
         <nav class="docs-sidebar-nav">
           {navigation.map((section) => (
             <SidebarSection currentPath={currentPath} section={section} />
           ))}
         </nav>
+
+        <div id="docs-search" class="docs-search" data-pagefind-bundle={pagefindBundlePath}></div>
 
         <footer class="docs-sidebar-footer">
           <p>{footerText}</p>
