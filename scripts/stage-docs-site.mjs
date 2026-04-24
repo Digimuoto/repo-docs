@@ -193,12 +193,26 @@ function autoGenerateNavigation(markdownFiles, navigationConfig) {
     const normalized = normalizeSlashes(relativePath).replace(/\.(md|mdx)$/i, "");
     const pageKey = normalized === "index" ? "index" : normalized.replace(/\/index$/i, "");
     const segments = pageKey.split("/");
+    // Distinguish three cases:
+    //   - the docs-root index.md       → pageKey "index"        → root entry
+    //   - a top-level page like glossary.md → pageKey "glossary" → root entry
+    //   - a directory landing like adrs/index.md → pageKey "adrs"
+    //                                           → treat parent as section
+    // The third case looks like a single-segment key but originated from
+    // an /index path; without this distinction the staging script would
+    // push "adrs" as a root entry and then fail to find adrs.md.
+    const isRootIndex = pageKey === "index";
+    const isDirectoryIndex =
+      !isRootIndex && /\/index$/i.test(normalized);
 
-    if (segments.length === 1) {
+    if (isRootIndex) {
+      rootEntries.push("index");
+      continue;
+    }
+    if (segments.length === 1 && !isDirectoryIndex) {
       rootEntries.push(pageKey);
       continue;
     }
-
     topLevelDirectories.add(segments[0]);
   }
 
