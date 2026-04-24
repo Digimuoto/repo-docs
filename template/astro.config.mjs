@@ -114,6 +114,16 @@ export default defineConfig({
         dark: "github-dark",
       },
       defaultColor: false,
+      // Tell Shiki that registered tree-sitter languages are plaintext
+      // aliases. Without this, Shiki logs a noisy
+      //   [Shiki] The language "wire" doesn't exist, falling back to "plaintext".
+      // for every block before the rehype plugin re-tokenises them via
+      // tree-sitter. Aliasing to plaintext suppresses the warning while
+      // leaving the original tag intact through the meta-string
+      // round-trip below.
+      langAlias: Object.fromEntries(
+        [...registeredLangs].map((lang) => [lang, "plaintext"]),
+      ),
       transformers: preserveOriginalLang,
     },
   },
