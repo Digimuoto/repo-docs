@@ -152,7 +152,10 @@ html[data-sidebar="collapsed"] .docs-sidebar-expanded {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 1rem;
+  /* Align the rail button vertically with the inline header button
+   * so toggling the panel doesn't make the chevron jump up/down.
+   * Header has padding-top: 1.5rem + the button's 0.0625rem margin. */
+  padding-top: 1.5625rem;
   opacity: 0;
   pointer-events: none;
   transition: opacity 160ms ease 80ms;
@@ -675,7 +678,9 @@ html[data-toc="collapsed"] .docs-toc-expanded {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 1rem;
+  /* Match the TOC header's top-padding + inline-button margin so the
+   * expand chevron sits at the same Y as the collapse one. */
+  padding-top: 1.5625rem;
   opacity: 0;
   pointer-events: none;
   transition: opacity 160ms ease 80ms;
@@ -826,14 +831,13 @@ html[data-toc="collapsed"] .docs-toc-rail {
 }
 .docs-sidebar-rail .docs-rail-button,
 .docs-toc-rail .docs-rail-button {
-  /* Rail re-open chevron — flip to point outward (right). */
+  /* Rail re-open chevron — already drawn pointing right in the SVG
+   * (M5.5 3.5 L10 8 l-4.5 4.5). No CSS rotation; flipping it here
+   * would make the collapsed-state chevron point inward, which
+   * contradicts the "panel expands to the right" affordance. */
   background: var(--surface-primary);
   border-color: var(--border-primary);
   color: var(--text-content-secondary);
-}
-.docs-sidebar-rail .docs-rail-button svg,
-.docs-toc-rail .docs-rail-button svg {
-  transform: rotate(180deg);
 }
 
 :focus-visible {
