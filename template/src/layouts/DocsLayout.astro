@@ -57,7 +57,6 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
       href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href={`${pagefindBundlePath}pagefind-ui.css`} />
     <script is:inline>
       // Restore collapsed state before paint to avoid layout flicker.
       try {
@@ -109,7 +108,47 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
           ))}
         </nav>
 
-        <div id="docs-search" class="docs-search" data-pagefind-bundle={pagefindBundlePath}></div>
+        <div class="docs-search" data-pagefind-bundle={pagefindBundlePath}>
+          <label class="docs-search-inputwrap">
+            <svg
+              class="docs-search-icon"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              aria-hidden="true"
+            >
+              <circle cx="7" cy="7" r="4.5" />
+              <path d="M10.5 10.5L13.5 13.5" stroke-linecap="round" />
+            </svg>
+            <input
+              id="docs-search-input"
+              type="search"
+              class="docs-search-input"
+              placeholder="Search docs"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button
+              type="button"
+              class="docs-search-clear"
+              id="docs-search-clear"
+              aria-label="Clear search"
+              hidden
+            >
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M3 3l6 6M9 3l-6 6" stroke-linecap="round" />
+              </svg>
+            </button>
+          </label>
+          <div
+            id="docs-search-results"
+            class="docs-search-results"
+            role="listbox"
+            aria-label="Search results"
+            hidden
+          ></div>
+        </div>
 
         <footer class="docs-sidebar-footer">
           <p>{footerText}</p>
@@ -180,25 +219,104 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
 
     <div id="mobile-overlay" class="docs-mobile-overlay"></div>
 
-    <script src={`${pagefindBundlePath}pagefind-ui.js`} is:inline defer></script>
     <script is:inline define:vars={{pagefindBundlePath}}>
-      document.addEventListener("DOMContentLoaded", () => {
-        const PagefindUI = window.PagefindUI;
-        const target = document.getElementById("docs-search");
-        if (!PagefindUI || !target) return;
+      // Custom search component backed by Pagefind's JS API. We avoid
+      // pagefind-ui.js entirely so the magnifier glyph, input styling,
+      // focus states, and results panel are fully under our control.
+      (async () => {
+        const input = document.getElementById("docs-search-input");
+        const clear = document.getElementById("docs-search-clear");
+        const resultsEl = document.getElementById("docs-search-results");
+        if (!input || !resultsEl) return;
+
+        let pagefind;
         try {
-          new PagefindUI({
-            element: "#docs-search",
-            bundlePath: pagefindBundlePath,
-            showImages: false,
-            showSubResults: true,
-            resetStyles: false,
-            translations: {placeholder: "Search docs"},
-          });
+          pagefind = await import(`${pagefindBundlePath}pagefind.js`);
+          await pagefind.options({bundlePath: pagefindBundlePath});
         } catch (err) {
-          console.warn("[pagefind] init failed:", err);
+          console.warn("[search] Pagefind bundle not available:", err?.message ?? err);
+          // Disable input — bundle missing (e.g., `astro dev` without build).
+          input.setAttribute("disabled", "");
+          input.setAttribute("title", "Search index not built yet");
+          return;
         }
-      });
+
+        function escapeHtml(value) {
+          return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+        }
+
+        function renderNone(query) {
+          resultsEl.hidden = false;
+          resultsEl.innerHTML = `<p class="docs-search-empty">No matches for <strong>${escapeHtml(query)}</strong>.</p>`;
+        }
+
+        function renderResults(items) {
+          resultsEl.hidden = false;
+          resultsEl.innerHTML = items
+            .map(
+              (item) => `
+                <a class="docs-search-result" href="${escapeHtml(item.url)}" role="option">
+                  <span class="docs-search-result-title">${escapeHtml(item.meta?.title ?? item.url)}</span>
+                  <span class="docs-search-result-excerpt">${item.excerpt ?? ""}</span>
+                </a>
+              `,
+            )
+            .join("");
+        }
+
+        async function runSearch(query) {
+          const trimmed = query.trim();
+          if (trimmed.length === 0) {
+            resultsEl.hidden = true;
+            resultsEl.innerHTML = "";
+            return;
+          }
+          try {
+            const search = await pagefind.search(trimmed);
+            if (!search.results || search.results.length === 0) {
+              renderNone(trimmed);
+              return;
+            }
+            const top = await Promise.all(
+              search.results.slice(0, 8).map((r) => r.data()),
+            );
+            renderResults(top);
+          } catch (err) {
+            console.warn("[search] query failed:", err);
+            renderNone(trimmed);
+          }
+        }
+
+        let scheduled = null;
+        input.addEventListener("input", () => {
+          clear.hidden = input.value.length === 0;
+          if (scheduled) clearTimeout(scheduled);
+          scheduled = setTimeout(() => runSearch(input.value), 120);
+        });
+        clear.addEventListener("click", () => {
+          input.value = "";
+          clear.hidden = true;
+          resultsEl.hidden = true;
+          resultsEl.innerHTML = "";
+          input.focus();
+        });
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            if (input.value === "") {
+              input.blur();
+              return;
+            }
+            input.value = "";
+            clear.hidden = true;
+            resultsEl.hidden = true;
+            resultsEl.innerHTML = "";
+          }
+        });
+      })();
     </script>
 
     <script>
