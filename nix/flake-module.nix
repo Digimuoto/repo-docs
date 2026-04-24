@@ -6,56 +6,32 @@
     ...
   }: let
     cfg = config.docsSite;
+
     mkDocsSite = import ./lib.nix {
       inherit pkgs lib;
       repoRoot = ../.;
     };
     grammarLib = import ./grammar.nix {inherit pkgs lib;};
 
-    # Compile every registered language into a {parser.wasm, queries/}
-    # derivation, then collect them into an attrset the staging script
-    # turns into a runtime manifest.
-    builtLanguages = lib.mapAttrs (name: langCfg: {
-      wasm = grammarLib.mkGrammarWasm {
-        inherit name;
-        grammarSrc = langCfg.grammarSrc;
-        highlightQueries = langCfg.highlightQueries;
-      };
-      aliases = langCfg.aliases;
-    }) cfg.languages;
-
-    site =
-      if cfg.enable
-      then
-        mkDocsSite {
-          name = cfg.name;
-          contentDir = cfg.contentDir;
-          config = {
-            site = cfg.site;
-            repo = cfg.repo;
-            navigation = cfg.navigation;
-            content = {
-              excludePaths = cfg.excludePaths;
-            };
-            theme = cfg.theme;
-          };
-          templateFiles = cfg.templateFiles;
-          languages = builtLanguages;
-        }
-      else null;
-  in {
-    options.docsSite = {
-      enable = lib.mkEnableOption "the reusable docs site";
-
-      name = lib.mkOption {
-        type = lib.types.str;
-        default = "docs-site";
-        description = "Base name for generated packages and apps.";
-      };
-
+    /*
+     * Per-site options.
+     *
+     * Shared between `docsSite.sites.<name>` (multi-site map) and the
+     * top-level `docsSite.*` single-site shim. When a consumer sets
+     * anything under `docsSite.sites`, the top-level fields are ignored
+     * entirely; otherwise we synthesise a single "docs" site from the
+     * top-level fields so the original single-site shape keeps working.
+     */
+    siteOptions = {
       contentDir = lib.mkOption {
-        type = lib.types.path;
-        description = "Directory containing the markdown docs tree.";
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+        description = ''
+          Directory containing the markdown docs tree for this site.
+          Required when this site is active (either because it's defined
+          under docsSite.sites.<name>, or because it's the synthesised
+          default site from top-level legacy options).
+        '';
       };
 
       excludePaths = lib.mkOption {
@@ -69,7 +45,7 @@
         default = "cortex-dark";
         example = "cortex-light";
         description = ''
-          Color palette for the generated docs site.
+          Color palette for this site.
 
           - `cortex-dark` (default): the built-in dark palette — deep
             navy-slate surfaces with a warm amber accent.
@@ -272,22 +248,123 @@
       };
     };
 
+    # Nothing to build without at least one site. Throw inside this let
+    # so the message surfaces cleanly when the user forgets to declare
+    # `docsSite.sites.<name>.contentDir`. The throw is lazily-evaluated
+    # (only reached from `config` below), so disabling the module via
+    # `docsSite.enable = false` continues to no-op.
+    effectiveSites =
+      if cfg.sites != {}
+      then cfg.sites
+      else
+        throw ''
+          docsSite: no sites declared.
+          Set at least one entry under `docsSite.sites.<name>`, for
+          example:
+              docsSite.sites.docs = {
+                contentDir = ./docs;
+                theme = "cortex-dark";
+                site.title = "My Docs";
+              };
+        '';
+
+    buildSite = siteKey: siteCfg: let
+      _validatedContentDir =
+        if siteCfg.contentDir != null
+        then siteCfg.contentDir
+        else
+          throw "docsSite.sites.${siteKey}.contentDir must be set to a directory containing the docs tree.";
+      builtLanguages = lib.mapAttrs (name: langCfg: {
+        wasm = grammarLib.mkGrammarWasm {
+          inherit name;
+          grammarSrc = langCfg.grammarSrc;
+          highlightQueries = langCfg.highlightQueries;
+        };
+        aliases = langCfg.aliases;
+      }) siteCfg.languages;
+    in
+      mkDocsSite {
+        name = "${siteKey}-site";
+        contentDir = _validatedContentDir;
+        config = {
+          site = siteCfg.site;
+          repo = siteCfg.repo;
+          navigation = siteCfg.navigation;
+          content = {
+            excludePaths = siteCfg.excludePaths;
+          };
+          theme = siteCfg.theme;
+        };
+        templateFiles = siteCfg.templateFiles;
+        languages = builtLanguages;
+      };
+
+    builtSites = lib.mapAttrs buildSite effectiveSites;
+  in {
+    options.docsSite = {
+      enable = lib.mkEnableOption "the reusable docs site";
+
+      sites = lib.mkOption {
+        type = lib.types.attrsOf (lib.types.submodule {options = siteOptions;});
+        default = {};
+        example = lib.literalExpression ''
+          {
+            docs = {
+              contentDir = ./docs/portman;
+              theme = "cortex-dark";
+              site.title = "Portman";
+            };
+            cortex = {
+              contentDir = ./docs/cortex;
+              theme = "cortex-light";
+              site.title = "Cortex Research";
+              site.routeBase = "/cortex";
+            };
+          }
+        '';
+        description = ''
+          Named docs sites. Each entry is built independently and
+          exposed as:
+
+            packages.<name>-site
+            apps.<name>-dev
+            apps.<name>-preview
+            checks.<name>-site
+
+          At least one site must be declared (or `docsSite.enable` must
+          be false). A single-site repo typically uses the name `docs`,
+          which preserves the original `packages.docs-site` /
+          `apps.docs-{dev,preview}` output names.
+        '';
+      };
+    };
+
     config = lib.mkIf cfg.enable {
-      packages.docs-site = site.package;
+      packages =
+        lib.mapAttrs' (siteKey: site:
+          lib.nameValuePair "${siteKey}-site" site.package
+        ) builtSites;
 
-      apps.docs-dev = {
-        type = "app";
-        program = "${site.devApp}/bin/${site.devApp.name}";
-        meta.description = "Run the reusable docs site in development mode";
-      };
+      apps =
+        (lib.mapAttrs' (siteKey: site:
+          lib.nameValuePair "${siteKey}-dev" {
+            type = "app";
+            program = "${site.devApp}/bin/${site.devApp.name}";
+            meta.description = "Run the ${siteKey} docs site in development mode";
+          }
+        ) builtSites)
+        // (lib.mapAttrs' (siteKey: site:
+          lib.nameValuePair "${siteKey}-preview" {
+            type = "app";
+            program = "${site.previewApp}/bin/${site.previewApp.name}";
+            meta.description = "Preview the ${siteKey} docs site after a production build";
+          }
+        ) builtSites);
 
-      apps.docs-preview = {
-        type = "app";
-        program = "${site.previewApp}/bin/${site.previewApp.name}";
-        meta.description = "Preview the reusable docs site after a production build";
-      };
-
-      checks.docs-site = site.package;
+      checks =
+        lib.mapAttrs' (siteKey: site:
+          lib.nameValuePair "${siteKey}-site" site.package
+        ) builtSites;
     };
   };
 }

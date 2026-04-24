@@ -48,26 +48,74 @@
 
         docsSite = {
           enable = true;
-          contentDir = ./docs;
-          excludePaths = ["private"];
-          theme = "cortex-light";
-          site = {
-            title = "repo-docs";
-            tagline = "Documentation";
-            description = "Reusable docs layout module for flake-parts repositories";
-            publicBaseUrl = "https://digimuoto.github.io/repo-docs";
-            routeBase = "/repo-docs";
+
+          sites.docs = {
+            contentDir = ./docs;
+            excludePaths = ["private"];
+            theme = "cortex-light";
+            site = {
+              title = "repo-docs";
+              tagline = "Documentation";
+              description = "Reusable docs layout module for flake-parts repositories";
+              publicBaseUrl = "https://digimuoto.github.io/repo-docs";
+              routeBase = "/repo-docs";
+            };
+            navigation.sectionLabels = {
+              guides = "Guides";
+            };
+            languages.ts-json = {
+              grammarSrc = inputs.tree-sitter-json;
+              aliases = ["ts-json"];
+            };
           };
-          navigation.sectionLabels = {
-            guides = "Guides";
-          };
-          languages.ts-json = {
-            grammarSrc = inputs.tree-sitter-json;
-            aliases = ["ts-json"];
+
+          # Second site dogfooding the multi-site API. Lives under
+          # docs-internal/, uses the dark theme, and is published as
+          # packages.internal-site / apps.internal-{dev,preview}.
+          sites.internal = {
+            contentDir = ./docs-internal;
+            theme = "cortex-dark";
+            site = {
+              title = "repo-docs internal";
+              tagline = "Internal notes";
+              description = "Second docs site exercising the multi-site Nix API";
+              publicBaseUrl = "https://digimuoto.github.io/repo-docs-internal";
+              routeBase = "/internal";
+            };
           };
         };
 
         checks = {
+          # Multi-site regression: both dogfood sites build, each lands
+          # at the expected output name, each ships with its declared
+          # theme, and only the cortex-light site has the ts-json
+          # tree-sitter block (so cross-talk between sites is caught).
+          docs-multi-site = mkAssertionCheck {
+            name = "docs-multi-site";
+            script = ''
+              docs="${config.packages.docs-site}"
+              internal="${config.packages.internal-site}"
+
+              # Both sites land their index page.
+              test -f "$docs/index.html"
+              test -f "$internal/index.html"
+
+              # Themes wire correctly through the layout.
+              grep -q 'data-theme="cortex-light"' "$docs/index.html"
+              grep -q 'data-theme="cortex-dark"' "$internal/index.html"
+
+              # Site title metadata is per-site.
+              grep -q "repo-docs internal" "$internal/index.html"
+
+              # Tree-sitter language registration is per-site too: the
+              # ts-json grammar is only attached to the docs site.
+              grep -q "tree-sitter-pre" "$docs/guides/rendering-example/index.html"
+              if grep -q "tree-sitter-pre" "$internal/index.html"; then
+                echo "internal site should not have ts-json tokens"; exit 1
+              fi
+            '';
+          };
+
           docs-html = mkAssertionCheck {
             name = "docs-html";
             script = ''
