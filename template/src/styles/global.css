@@ -237,7 +237,10 @@ html[data-sidebar="collapsed"] .docs-sidebar-drag {
   justify-content: space-between;
   gap: 0.625rem;
   margin-bottom: 1.5rem;
-  min-height: 1.75rem;
+  /* Same min-height as the TOC header so both inline collapse
+   * chevrons land at the same Y, and both rails (sharing
+   * padding-top) chevron-align with each other when collapsed. */
+  min-height: 2.1875rem;
 }
 
 .docs-sidebar-brand {
@@ -793,14 +796,20 @@ html[data-toc="collapsed"] .docs-toc-rail {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* Match the sidebar header's min-height so the inline collapse
+   * chevron sits at the same Y as the sidebar's, which means both
+   * rails (using the same padding-top) chevron-align with each
+   * other when collapsed AND with their own inline chevron when
+   * toggled. */
+  min-height: 2.1875rem;
   margin-bottom: 0.875rem;
 }
 .docs-toc-title {
   font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--text-content-quaternary);
+  font-weight: 500;
+  text-transform: lowercase;
+  letter-spacing: 0.01em;
+  color: var(--text-content-tertiary);
 }
 
 /* TableOfContents.astro nav body */
