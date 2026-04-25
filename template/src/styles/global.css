@@ -773,9 +773,11 @@ html[data-toc="collapsed"] .docs-toc-expanded {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  /* Match the TOC header's top-padding + inline-button margin so the
-   * expand chevron sits at the same Y as the collapse one. */
-  padding-top: 1.5625rem;
+  /* Same padding-top as the sidebar rail so the two rails'
+   * chevrons share a Y-coordinate when both panels are
+   * collapsed. The matching min-height on `.docs-toc-header`
+   * keeps the inline collapse chevron at this same Y too. */
+  padding-top: 1.78125rem;
   opacity: 0;
   pointer-events: none;
   transition: opacity 160ms ease 80ms;
