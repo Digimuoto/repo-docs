@@ -64,6 +64,32 @@
         '';
       };
 
+      themeModes = lib.mkOption {
+        type = lib.types.nullOr (lib.types.submodule {
+          options = {
+            light = lib.mkOption {
+              type = lib.types.enum ["cortex-dark" "cortex-light" "cortex-slate"];
+              description = "Theme used when the reader picks (or the OS reports) light mode.";
+            };
+            dark = lib.mkOption {
+              type = lib.types.enum ["cortex-dark" "cortex-light" "cortex-slate"];
+              description = "Theme used when the reader picks (or the OS reports) dark mode.";
+            };
+          };
+        });
+        default = null;
+        example = {light = "cortex-light"; dark = "cortex-slate";};
+        description = ''
+          Enable an unobtrusive light/dark switcher in the sidebar
+          footer. When set, both palettes are inlined into the build
+          and the reader can flip between them; the choice is
+          persisted in localStorage and initialised from the OS
+          `prefers-color-scheme` on first visit. When `null`
+          (default), no switcher is rendered and the static `theme`
+          field above is the only palette.
+        '';
+      };
+
       site = lib.mkOption {
         type = lib.types.submodule {
           options = {
@@ -299,6 +325,7 @@
             excludePaths = siteCfg.excludePaths;
           };
           theme = siteCfg.theme;
+          themeModes = siteCfg.themeModes;
         };
         templateFiles = siteCfg.templateFiles;
         languages = builtLanguages;

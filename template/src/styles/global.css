@@ -293,8 +293,67 @@ html[data-sidebar="collapsed"] .docs-sidebar-drag {
  *
  * Sits at the bottom of the expanded sidebar, above the footer.
  */
+/* Sidebar repo link — sits above the search box. Mirrors the
+ * search-input chrome (same border + radius + height) so the two
+ * read as a stack, not as visually unrelated rows. */
+.docs-sidebar-repo {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  margin: 0.75rem 0 0;
+  padding: 0 0.5rem;
+  height: 2rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.3125rem;
+  color: var(--text-content-tertiary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  text-decoration: none;
+  transition:
+    color 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+.docs-sidebar-repo:hover,
+.docs-sidebar-repo:focus-visible {
+  color: var(--text-content);
+  background: var(--surface-primary);
+  border-color: var(--border-primary);
+  outline: none;
+}
+.docs-sidebar-repo-glyph {
+  flex: 0 0 auto;
+  width: 0.875rem;
+  height: 0.875rem;
+}
+.docs-sidebar-repo-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.docs-sidebar-repo-external {
+  flex: 0 0 auto;
+  width: 0.625rem;
+  height: 0.625rem;
+  color: var(--text-content-quaternary);
+  opacity: 0;
+  transform: translate(-2px, 2px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+.docs-sidebar-repo:hover .docs-sidebar-repo-external,
+.docs-sidebar-repo:focus-visible .docs-sidebar-repo-external {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
 .docs-search {
-  margin: 0.75rem 0 0.625rem;
+  margin: 0.5rem 0 0.625rem;
   position: relative;
 }
 
@@ -477,15 +536,63 @@ html[data-sidebar="collapsed"] .docs-sidebar-drag {
 }
 
 .docs-sidebar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   margin-top: 1.5rem;
   padding-top: 1.25rem;
   border-top: 1px solid var(--border-primary);
 }
 .docs-sidebar-footer p {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.6875rem;
   color: var(--text-content-quaternary);
   margin: 0;
   letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * Mode toggle. The most lowkey button on the page: 22px, no border,
+ * no fill, sits in the sidebar footer alongside the copyright. The
+ * glyph is a circle bisected vertically with the left half filled
+ * (currentColor) — rotating 180° on mode change so light = sun-side
+ * up, dark = moon-side up. Affordance via motion, not iconography.
+ */
+.docs-mode-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: var(--text-content-quaternary);
+  cursor: pointer;
+  transition:
+    color 200ms ease,
+    background-color 200ms ease;
+}
+.docs-mode-toggle:hover,
+.docs-mode-toggle:focus-visible {
+  color: var(--text-content-secondary);
+  background: var(--surface-primary);
+  outline: none;
+}
+.docs-mode-toggle svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  transition: transform 360ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+html[data-mode="light"] .docs-mode-toggle svg {
+  transform: rotate(180deg);
 }
 
 /* Mobile sidebar (drawer) */

@@ -8,6 +8,11 @@ export interface NavigationSectionConfig {
 
 export type SiteTheme = "cortex-dark" | "cortex-light" | "cortex-slate";
 
+export interface SiteThemeModes {
+  dark: SiteTheme;
+  light: SiteTheme;
+}
+
 export interface SiteConfig {
   navigation: NavigationSectionConfig[];
   repo?: {
@@ -23,6 +28,19 @@ export interface SiteConfig {
     title: string;
   };
   theme: SiteTheme;
+  themeModes: SiteThemeModes | null;
+}
+
+const THEMES: ReadonlyArray<SiteTheme> = ["cortex-dark", "cortex-light", "cortex-slate"];
+function isTheme(value: unknown): value is SiteTheme {
+  return typeof value === "string" && (THEMES as ReadonlyArray<string>).includes(value);
+}
+
+function parseThemeModes(raw: unknown): SiteThemeModes | null {
+  if (!raw || typeof raw !== "object") return null;
+  const candidate = raw as {light?: unknown; dark?: unknown};
+  if (!isTheme(candidate.light) || !isTheme(candidate.dark)) return null;
+  return {light: candidate.light, dark: candidate.dark};
 }
 
 function stripTrailingSlash(value: string) {
@@ -53,6 +71,7 @@ export const siteConfig = {
     if (raw === "cortex-slate") return "cortex-slate";
     return "cortex-dark";
   })(),
+  themeModes: parseThemeModes((rawConfig as {themeModes?: unknown}).themeModes),
 } as SiteConfig;
 
 export function kebabToTitle(value: string) {

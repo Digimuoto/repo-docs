@@ -53,6 +53,10 @@
             contentDir = ./docs;
             excludePaths = ["private"];
             theme = "cortex-light";
+            themeModes = {
+              light = "cortex-light";
+              dark = "cortex-slate";
+            };
             site = {
               title = "repo-docs";
               tagline = "Documentation";
@@ -60,6 +64,7 @@
               publicBaseUrl = "https://digimuoto.github.io/repo-docs";
               routeBase = "/repo-docs";
             };
+            repo.repoUrl = "https://github.com/Digimuoto/repo-docs";
             navigation.sectionLabels = {
               guides = "Guides";
             };
@@ -87,9 +92,11 @@
 
         checks = {
           # Multi-site regression: both dogfood sites build, each lands
-          # at the expected output name, each ships with its declared
-          # theme, and only the cortex-light site has the ts-json
-          # tree-sitter block (so cross-talk between sites is caught).
+          # at the expected output name, themes wire correctly (the
+          # docs site has themeModes enabled; the internal site uses
+          # the static dark palette), and only the docs site carries
+          # the ts-json tree-sitter block (so cross-talk between sites
+          # is caught).
           docs-multi-site = mkAssertionCheck {
             name = "docs-multi-site";
             script = ''
@@ -100,9 +107,15 @@
               test -f "$docs/index.html"
               test -f "$internal/index.html"
 
-              # Themes wire correctly through the layout.
-              grep -q 'data-theme="cortex-light"' "$docs/index.html"
+              # docs has themeModes — both palette names should be
+              # surfaced as data attributes for the pre-paint script.
+              grep -q 'data-mode-light="cortex-light"' "$docs/index.html"
+              grep -q 'data-mode-dark="cortex-slate"' "$docs/index.html"
+              # internal stays single-theme cortex-dark.
               grep -q 'data-theme="cortex-dark"' "$internal/index.html"
+
+              # Repo link wires through to the sidebar when repoUrl is set.
+              grep -q 'docs-sidebar-repo' "$docs/index.html"
 
               # Site title metadata is per-site.
               grep -q "repo-docs internal" "$internal/index.html"

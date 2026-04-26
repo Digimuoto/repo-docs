@@ -3,6 +3,7 @@ import type {MarkdownHeading} from "astro";
 import MermaidEnhancer from "../components/MermaidEnhancer.astro";
 import SidebarSection from "../components/SidebarSection.astro";
 import TableOfContents from "../components/TableOfContents.astro";
+import ThemeToggle from "../components/ThemeToggle.astro";
 import type {SidebarSection as SidebarSectionType} from "../lib/navigation";
 import {siteConfig, withBasePath} from "../lib/site-config";
 import "../styles/global.css";
@@ -29,7 +30,22 @@ const currentPath = Astro.url.pathname;
 const pageTitle = `${title} | ${siteConfig.site.title} ${siteConfig.site.tagline}`.trim();
 const footerText = siteConfig.site.footerText ?? `© ${new Date().getFullYear()} ${siteConfig.site.title}`;
 const theme = siteConfig.theme;
-const htmlClass = theme === "cortex-light" ? "light" : "dark";
+const themeModes = siteConfig.themeModes;
+const repoUrl = siteConfig.repo?.repoUrl ?? null;
+
+// When themeModes is enabled, the dark theme is the build-time
+// baseline (matches the :root cascade in the generated palette.css).
+// The inline pre-paint script swaps it for the light theme if the
+// reader prefers light AND has not made an explicit choice.
+const initialTheme = themeModes ? themeModes.dark : theme;
+const htmlClass = initialTheme === "cortex-light" ? "light" : "dark";
+const initialMode = themeModes ? "dark" : null;
+
+// Pretty repo label — strip protocol + trailing slash, keep org/repo.
+const repoLabel = repoUrl
+  ? repoUrl.replace(/^https?:\/\/(www\.)?/, "").replace(/\/+$/, "")
+  : null;
+
 const fontFamilies =
   "family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap";
 
@@ -43,7 +59,14 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
 ---
 
 <!doctype html>
-<html lang="en" class={htmlClass} data-theme={theme}>
+<html
+  lang="en"
+  class={htmlClass}
+  data-theme={initialTheme}
+  data-mode={initialMode}
+  data-mode-light={themeModes?.light ?? null}
+  data-mode-dark={themeModes?.dark ?? null}
+>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -57,6 +80,39 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
       href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css"
       crossorigin="anonymous"
     />
+    {themeModes && (
+      <script is:inline>
+        // Pre-paint mode init. Reads localStorage, falls back to OS
+        // prefers-color-scheme, and writes data-mode + data-theme +
+        // class to <html> before first paint so there's no flash. The
+        // light/dark theme names are stored as data attributes by the
+        // server render so this script needs no compile-time injection.
+        try {
+          const root = document.documentElement;
+          const lightTheme = root.dataset.modeLight;
+          const darkTheme = root.dataset.modeDark;
+          if (lightTheme && darkTheme) {
+            const stored = localStorage.getItem("docs-mode");
+            const prefersLight =
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: light)").matches;
+            const mode =
+              stored === "light" || stored === "dark"
+                ? stored
+                : prefersLight
+                  ? "light"
+                  : "dark";
+            const activeTheme = mode === "light" ? lightTheme : darkTheme;
+            root.dataset.mode = mode;
+            root.dataset.theme = activeTheme;
+            root.classList.remove("dark", "light");
+            root.classList.add(activeTheme === "cortex-light" ? "light" : "dark");
+          }
+        } catch {
+          /* localStorage / matchMedia unavailable; SSR baseline stands */
+        }
+      </script>
+    )}
     <script is:inline>
       // Restore collapsed state + user-dragged sidebar width before
       // paint to avoid layout flicker.
@@ -114,6 +170,36 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
           ))}
         </nav>
 
+        {repoUrl && (
+          <a
+            class="docs-sidebar-repo"
+            href={repoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Repository: ${repoLabel}`}
+          >
+            <svg
+              class="docs-sidebar-repo-glyph"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+            </svg>
+            <span class="docs-sidebar-repo-label">{repoLabel}</span>
+            <svg
+              class="docs-sidebar-repo-external"
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.4"
+              aria-hidden="true"
+            >
+              <path d="M4 8l4-4M5 4h3v3" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </a>
+        )}
+
         <div class="docs-search" data-pagefind-bundle={pagefindBundlePath}>
           <label class="docs-search-inputwrap">
             <svg
@@ -158,6 +244,7 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
 
         <footer class="docs-sidebar-footer">
           <p>{footerText}</p>
+          {themeModes && <ThemeToggle modes={themeModes} />}
         </footer>
       </div>
 
@@ -334,6 +421,44 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
           }
         });
       })();
+    </script>
+
+    <script>
+      // Mode toggle wiring. The pre-paint inline script in <head> has
+      // already set data-mode / data-theme / class. Here we just react
+      // to clicks: flip the value, update html attributes, persist,
+      // and fire a custom event so the Mermaid enhancer can re-render
+      // with the new active theme.
+      const modeToggle = document.querySelector<HTMLButtonElement>("[data-mode-toggle]");
+      if (modeToggle) {
+        const lightTheme = modeToggle.dataset.modeLight;
+        const darkTheme = modeToggle.dataset.modeDark;
+        const root = document.documentElement;
+
+        function applyMode(mode: "light" | "dark") {
+          if (!lightTheme || !darkTheme) return;
+          const activeTheme = mode === "light" ? lightTheme : darkTheme;
+          root.dataset.mode = mode;
+          root.dataset.theme = activeTheme;
+          root.classList.remove("dark", "light");
+          root.classList.add(activeTheme === "cortex-light" ? "light" : "dark");
+          try {
+            localStorage.setItem("docs-mode", mode);
+          } catch {
+            /* ignore */
+          }
+          document.dispatchEvent(
+            new CustomEvent("repodocs:mode-change", {
+              detail: {mode, theme: activeTheme},
+            }),
+          );
+        }
+
+        modeToggle.addEventListener("click", () => {
+          const next = root.dataset.mode === "light" ? "dark" : "light";
+          applyMode(next);
+        });
+      }
     </script>
 
     <script>
