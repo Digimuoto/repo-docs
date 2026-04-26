@@ -74,10 +74,75 @@
 
       docsState.buttons.forEach(({updateLabel}: {updateLabel: () => void}) => updateLabel());
 
+      const activeTheme = document.documentElement.dataset.theme;
+      const isDark = document.documentElement.classList.contains("dark");
+
+      // cortex-slate gets a tailored Mermaid palette: base theme + an
+      // explicit themeVariables map that matches the lifted-dark
+      // chrome. Other themes keep Mermaid's stock dark / default
+      // (which already sit in the github-dark / github-light family).
+      const slateThemeConfig =
+        activeTheme === "cortex-slate"
+          ? {
+              theme: "base" as const,
+              themeVariables: {
+                background: "#2d333b",
+                mainBkg: "#383f5e",
+                secondBkg: "#2f4a4a",
+                tertiaryBkg: "#4a3f2f",
+
+                primaryColor: "#383f5e",
+                primaryTextColor: "#cdd9e5",
+                primaryBorderColor: "#5a6493",
+
+                secondaryColor: "#2f4a4a",
+                secondaryTextColor: "#cdd9e5",
+                secondaryBorderColor: "#4d7a78",
+
+                tertiaryColor: "#4a3f2f",
+                tertiaryTextColor: "#cdd9e5",
+                tertiaryBorderColor: "#7a6948",
+
+                lineColor: "#768390",
+                textColor: "#cdd9e5",
+
+                // Sequence diagram
+                actorBkg: "#383f5e",
+                actorBorder: "#5a6493",
+                actorTextColor: "#cdd9e5",
+                actorLineColor: "#545d68",
+                signalColor: "#adbac7",
+                signalTextColor: "#cdd9e5",
+                labelBoxBkgColor: "#2f4a4a",
+                labelBoxBorderColor: "#4d7a78",
+                labelTextColor: "#cdd9e5",
+                loopTextColor: "#cdd9e5",
+                noteBkgColor: "#4a3f2f",
+                noteBorderColor: "#7a6948",
+                noteTextColor: "#cdd9e5",
+                activationBkgColor: "#4a323e",
+                activationBorderColor: "#7a525f",
+                sequenceNumberColor: "#cdd9e5",
+
+                // State diagram cycle (Mermaid uses fillType0..7)
+                fillType0: "#383f5e",
+                fillType1: "#2f4a4a",
+                fillType2: "#4a3f2f",
+                fillType3: "#4a323e",
+                fillType4: "#3a4a3a",
+                fillType5: "#383f5e",
+                fillType6: "#2f4a4a",
+                fillType7: "#4a3f2f",
+              },
+            }
+          : {
+              theme: isDark ? ("dark" as const) : ("default" as const),
+            };
+
       mermaid.initialize({
         securityLevel: "strict",
         startOnLoad: false,
-        theme: document.documentElement.classList.contains("dark") ? "dark" : "default",
+        ...slateThemeConfig,
       });
 
       await mermaid.run({nodes: diagramNodes});

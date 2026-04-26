@@ -3,7 +3,7 @@ import path from "node:path";
 
 const MARKDOWN_EXTENSIONS = new Set([".md", ".mdx"]);
 const RESERVED_CONFIG_NAMES = new Set(["config.yaml", "config.yml", "config.json"]);
-const BUILTIN_THEMES = new Set(["cortex-dark", "cortex-light"]);
+const BUILTIN_THEMES = new Set(["cortex-dark", "cortex-light", "cortex-slate"]);
 
 function usage() {
   console.error(

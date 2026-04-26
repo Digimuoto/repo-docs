@@ -138,7 +138,7 @@ nix run .#cortex-preview    # Cortex research site (cortex-light)
 
 - `contentDir` *(required)*
 - `excludePaths`
-- `theme` — `"cortex-dark"` (default) or `"cortex-light"`
+- `theme` — `"cortex-dark"` (default), `"cortex-light"`, or `"cortex-slate"` (lifted dark, GitHub Dimmed lineage)
 - `site.*` — `title`, `tagline`, `description`, `publicBaseUrl`, `routeBase`, `footerText`
 - `repo.*` — `repoUrl`, `editBaseUrl`
 - `navigation.sections` — explicit nav (overrides auto-generation)

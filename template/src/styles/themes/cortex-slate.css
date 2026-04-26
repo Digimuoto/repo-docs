@@ -1,0 +1,100 @@
+/*
+ * cortex-slate
+ *
+ * Lifted dark. Where cortex-dark sits on a GitHub-canvas near-black,
+ * cortex-slate raises the floor onto Primer's "Dimmed" canvas — the
+ * elevated cool-grey that Linear, GitHub Dimmed, and VS Code's tuned
+ * dark themes converge on. Same restraint, more atmosphere; built for
+ * long sessions on OLED-bright displays where pure-black canvases
+ * fatigue the eye.
+ *
+ * Notes on choices:
+ *   - Body background #22272e — GitHub Primer's canvas.default for
+ *     Dimmed. Definitively lifted: not a tinted off-white, not a void.
+ *     The interface reads as a workspace surface, not page-on-page.
+ *   - Chrome surfaces step up by ~5% lightness (#2d333b → #373e47 →
+ *     #444c56). Each level is distinct enough to read at a glance,
+ *     close enough that nested cards don't rocket-launch off the page.
+ *   - Body text #cdd9e5 (cool-white, slight indigo bias): ~10:1 on
+ *     the body background — comfortable for sustained reading without
+ *     the high-vibration contrast of pure white on pure black.
+ *   - Single accent: #6e7bd6 — Linear's signature periwinkle indigo,
+ *     recalibrated for AA contrast on the lifted slate. Reads as
+ *     "interactive" and "considered" rather than the brand-shouting
+ *     primary blues common to dark dashboards.
+ *   - Borders use rgba(205, 217, 229, …) so chrome lines pick up the
+ *     surrounding cool luminance instead of laying down dead grey
+ *     strokes.
+ *   - Token palette is GitHub Dimmed canon: red-coral keywords,
+ *     lavender functions, peach types, sky strings. A quoted
+ *     reference for Shiki and tree-sitter blocks; tuned for the
+ *     lifted canvas, never recoloured to a designer's whim.
+ */
+:root {
+  --font-sans:
+    "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    system-ui, sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --brand-primary: #6e7bd6;
+  --brand-secondary: #5159b3;
+
+  --bg-primary: #22272e;
+  --bg-secondary: #2d333b;
+
+  --surface-primary: #2d333b;
+  --surface-secondary: #373e47;
+  --surface-tertiary: #444c56;
+  --surface-hover: #545d68;
+
+  --text-content: #cdd9e5;
+  --text-content-secondary: #adbac7;
+  --text-content-tertiary: #768390;
+  --text-content-quaternary: #545d68;
+
+  --border-primary: rgba(205, 217, 229, 0.08);
+  --border-secondary: rgba(205, 217, 229, 0.16);
+  --border-tertiary: rgba(205, 217, 229, 0.24);
+
+  --selection-text: #ffffff;
+
+  /*
+   * Tree-sitter capture palette. Mirrors github-dark-dimmed so Shiki
+   * blocks and tree-sitter-highlighted custom-language blocks share a
+   * family on the lifted canvas.
+   */
+  --tok-default: #adbac7;
+  --tok-keyword: #f47067;
+  --tok-keyword-operator: #f47067;
+  --tok-function: #dcbdfb;
+  --tok-method: #dcbdfb;
+  --tok-constructor: #dcbdfb;
+  --tok-type: #f69d50;
+  --tok-constant: #6cb6ff;
+  --tok-number: #6cb6ff;
+  --tok-boolean: #6cb6ff;
+  --tok-string: #96d0ff;
+  --tok-escape: #96d0ff;
+  --tok-comment: #768390;
+  --tok-variable: #adbac7;
+  --tok-property: #6cb6ff;
+  --tok-parameter: #adbac7;
+  --tok-operator: #f47067;
+  --tok-punctuation: #768390;
+  --tok-tag: #8ddb8c;
+  --tok-attribute: #6cb6ff;
+  --tok-namespace: #f69d50;
+  --tok-label: #f69d50;
+
+  /* Status pill palette, drawn from github-dark-dimmed's semantic
+   * colours so badges read with the same affordance as the rest of
+   * the lifted-dark chrome. */
+  --status-draft: #c69026;
+  --status-proposed: #c69026;
+  --status-accepted: #57ab5a;
+  --status-active: #539bf5;
+  --status-superseded: #768390;
+  --status-deprecated: #f47067;
+  --status-archived: #545d68;
+}

@@ -1758,6 +1758,115 @@ a.docs-meta-pill:focus-visible {
 }
 
 /*
+ * Mermaid — cortex-slate refinements.
+ *
+ * Mermaid's themeVariables can recolour but not restyle: stroke
+ * weights and per-node fill cycling are out of reach from JS init.
+ * We handle both here, scoped to data-theme="cortex-slate" so other
+ * themes keep their stock Mermaid look.
+ *
+ * Strokes drop to 1px so the diagrams read as schematics rather
+ * than clip-art. Node fills cycle through a 5-tone muted palette
+ * (indigo, teal, amber, rose, sage) — desaturated dark tints that
+ * sit one step above the canvas, distinct enough to parse but never
+ * candy-bright. CSS specificity needs !important to beat Mermaid's
+ * injected <style> block inside the SVG.
+ */
+html[data-theme="cortex-slate"] .mermaid svg .node rect,
+html[data-theme="cortex-slate"] .mermaid svg .node polygon,
+html[data-theme="cortex-slate"] .mermaid svg .node circle,
+html[data-theme="cortex-slate"] .mermaid svg .node ellipse,
+html[data-theme="cortex-slate"] .mermaid svg .node path,
+html[data-theme="cortex-slate"] .mermaid svg .cluster rect {
+  stroke-width: 1px !important;
+}
+
+html[data-theme="cortex-slate"] .mermaid svg .edgePath .path,
+html[data-theme="cortex-slate"] .mermaid svg .flowchart-link,
+html[data-theme="cortex-slate"] .mermaid svg .messageLine0,
+html[data-theme="cortex-slate"] .mermaid svg .messageLine1,
+html[data-theme="cortex-slate"] .mermaid svg .actor-line {
+  stroke-width: 1px !important;
+}
+
+html[data-theme="cortex-slate"] .mermaid svg .arrowheadPath,
+html[data-theme="cortex-slate"] .mermaid svg .marker {
+  stroke-width: 1px !important;
+}
+
+/* Flowchart / state diagram: cycle node fills + matching borders
+ * across a 5-tone palette so charts read as composed rather than
+ * monochrome. nth-of-type targets the <g class="node"> children of
+ * the <g class="nodes"> parent, so the cycle is per-graph. */
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 1) > rect,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 1) > polygon,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 1) > circle,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 1) > ellipse,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 1) > path {
+  fill: #383f5e !important;
+  stroke: #5a6493 !important;
+}
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 2) > rect,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 2) > polygon,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 2) > circle,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 2) > ellipse,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 2) > path {
+  fill: #2f4a4a !important;
+  stroke: #4d7a78 !important;
+}
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 3) > rect,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 3) > polygon,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 3) > circle,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 3) > ellipse,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 3) > path {
+  fill: #4a3f2f !important;
+  stroke: #7a6948 !important;
+}
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 4) > rect,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 4) > polygon,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 4) > circle,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 4) > ellipse,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 4) > path {
+  fill: #4a323e !important;
+  stroke: #7a525f !important;
+}
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 5) > rect,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 5) > polygon,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 5) > circle,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 5) > ellipse,
+html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 5) > path {
+  fill: #3a4a3a !important;
+  stroke: #5e7a5e !important;
+}
+
+/* Node label text always reads against any of the five tints. */
+html[data-theme="cortex-slate"] .mermaid svg .node .label,
+html[data-theme="cortex-slate"] .mermaid svg .node .label *,
+html[data-theme="cortex-slate"] .mermaid svg .nodeLabel,
+html[data-theme="cortex-slate"] .mermaid svg .nodeLabel * {
+  color: #cdd9e5 !important;
+  fill: #cdd9e5 !important;
+}
+
+/* Cluster / subgraph background: a hair lifted off the canvas. */
+html[data-theme="cortex-slate"] .mermaid svg .cluster rect {
+  fill: #2d333b !important;
+  stroke: #444c56 !important;
+}
+
+/* Edge labels — keep the chip readable against the canvas. */
+html[data-theme="cortex-slate"] .mermaid svg .edgeLabel,
+html[data-theme="cortex-slate"] .mermaid svg .edgeLabel rect {
+  background-color: #2d333b !important;
+  fill: #2d333b !important;
+  color: #adbac7 !important;
+}
+html[data-theme="cortex-slate"] .mermaid svg .edgeLabel * {
+  color: #adbac7 !important;
+  fill: #adbac7 !important;
+}
+
+/*
  * Shiki dual-theme activation.
  *
  * astro.config.mjs emits both light and dark token colours as CSS vars

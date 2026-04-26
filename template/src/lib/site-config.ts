@@ -6,7 +6,7 @@ export interface NavigationSectionConfig {
   label: string | null;
 }
 
-export type SiteTheme = "cortex-dark" | "cortex-light";
+export type SiteTheme = "cortex-dark" | "cortex-light" | "cortex-slate";
 
 export interface SiteConfig {
   navigation: NavigationSectionConfig[];
@@ -47,9 +47,12 @@ export const siteConfig = {
     ...rawConfig.site,
     routeBase: normalizeRouteBase(rawConfig.site.routeBase),
   },
-  theme: ((rawConfig as {theme?: string}).theme === "cortex-light"
-    ? "cortex-light"
-    : "cortex-dark") as SiteTheme,
+  theme: ((): SiteTheme => {
+    const raw = (rawConfig as {theme?: string}).theme;
+    if (raw === "cortex-light") return "cortex-light";
+    if (raw === "cortex-slate") return "cortex-slate";
+    return "cortex-dark";
+  })(),
 } as SiteConfig;
 
 export function kebabToTitle(value: string) {

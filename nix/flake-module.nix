@@ -41,7 +41,7 @@
       };
 
       theme = lib.mkOption {
-        type = lib.types.enum ["cortex-dark" "cortex-light"];
+        type = lib.types.enum ["cortex-dark" "cortex-light" "cortex-slate"];
         default = "cortex-dark";
         example = "cortex-light";
         description = ''
@@ -53,6 +53,11 @@
             warm paper, charcoal ink, and a single scholarly blue.
             Pairs with Mermaid's default light theme and KaTeX output
             for print-like figures.
+          - `cortex-slate`: a lifted dark palette in the GitHub
+            Dimmed / Linear / VS Code lineage — elevated cool-grey
+            canvas, periwinkle indigo accent, github-dark-dimmed
+            tokens. Built for sustained reading on bright displays
+            where pure-black canvases fatigue the eye.
 
           Consumers can still override `template/src/styles/palette.css`
           through `templateFiles` to ship their own palette entirely.
