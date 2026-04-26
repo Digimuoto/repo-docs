@@ -633,12 +633,11 @@ html[data-mode="light"] .docs-mode-toggle svg {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  /* Pad-left so the section label's text baseline lines up with the
-   * leaf items below it (leaf text starts 1.625rem from the row's
-   * left edge = toggle-placeholder 1.125rem + link padding 0.5rem).
-   * Section chevron + gap ≈ 0.9625rem, so padding-left + 0.9625 =
-   * 1.625 → padding-left 0.6625rem. */
-  padding: 0.1875rem 0.375rem 0.1875rem 0.6625rem;
+  /* Section header sits flush with the nav's left edge — its chevron
+   * is the leftmost column. L1 items below indent past it so their
+   * own chevrons align with the section *label* (the section's "inner
+   * scope"), making the parent → child hierarchy visible at a glance. */
+  padding: 0.1875rem 0.375rem 0.1875rem 0;
   margin-bottom: 0.125rem;
   background: transparent;
   border: none;
@@ -668,10 +667,20 @@ html[data-mode="light"] .docs-mode-toggle svg {
   padding: 0;
 }
 
-/* Nested lists: indent only — L2 rows use the same rounded highlight as L1. */
+/* L1 list under a labelled section: indent so each L1 chevron aligns
+ * with the section label's text-start (one chevron+gap to the right
+ * of the section chevron). The unlabelled-root list keeps padding 0
+ * since there's no section header to scope under. */
+.docs-nav-list:not(.docs-nav-list-root) {
+  padding-left: 0.9625rem;
+}
+
+/* L2+ sublists: indent so each child chevron aligns with the parent
+ * row's text-start (toggle 1.125rem + link padding-left 0.5rem). This
+ * makes the chevron column of every level a vertical guide for "what
+ * scope am I in" at a glance. */
 .docs-nav-sublist {
-  margin-left: 0.25rem;
-  padding-left: 0.75rem;
+  padding-left: 1.625rem;
 }
 
 [data-nav-open="false"] {

@@ -65,8 +65,9 @@
               routeBase = "/repo-docs";
             };
             repo.repoUrl = "https://github.com/Digimuoto/repo-docs";
-            navigation.sectionLabels = {
-              guides = "Guides";
+            navigation = {
+              sectionLabels.guides = "Guides";
+              topLevelOrder = ["guides"];
             };
             languages.ts-json = {
               grammarSrc = inputs.tree-sitter-json;

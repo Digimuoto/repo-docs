@@ -225,7 +225,16 @@ function autoGenerateNavigation(markdownFiles, navigationConfig) {
     });
   }
 
-  for (const directory of [...topLevelDirectories].sort()) {
+  // Pick the directory order: caller-supplied list (strict) when set,
+  // otherwise alphabetical. The strict list must be a permutation of
+  // the actual top-level directories — any mismatch surfaces as a
+  // hard build error so silent omissions can't sneak through.
+  const orderedDirectories = resolveTopLevelOrder(
+    topLevelDirectories,
+    navigationConfig.topLevelOrder,
+  );
+
+  for (const directory of orderedDirectories) {
     sections.push({
       dir: directory,
       label: navigationConfig.sectionLabels?.[directory] ?? titleCase(directory),
@@ -233,6 +242,42 @@ function autoGenerateNavigation(markdownFiles, navigationConfig) {
   }
 
   return sections;
+}
+
+function resolveTopLevelOrder(actualDirectories, requestedOrder) {
+  if (!Array.isArray(requestedOrder)) {
+    return [...actualDirectories].sort();
+  }
+
+  const requested = requestedOrder.map((name) => String(name).trim()).filter(Boolean);
+  const requestedSet = new Set(requested);
+  if (requested.length !== requestedSet.size) {
+    const seen = new Set();
+    const dups = requested.filter((name) =>
+      seen.has(name) ? true : (seen.add(name), false),
+    );
+    throw new Error(
+      `navigation.topLevelOrder contains duplicates: ${[...new Set(dups)].join(", ")}.`,
+    );
+  }
+
+  const actual = new Set(actualDirectories);
+  const unknown = requested.filter((name) => !actual.has(name));
+  const missing = [...actual].filter((name) => !requestedSet.has(name)).sort();
+
+  if (unknown.length > 0 || missing.length > 0) {
+    const lines = ["navigation.topLevelOrder must list every top-level docs folder exactly once."];
+    if (unknown.length > 0) {
+      lines.push(`  Unknown name(s) (no matching folder): ${unknown.join(", ")}`);
+    }
+    if (missing.length > 0) {
+      lines.push(`  Missing folder(s) (present in tree, absent from list): ${missing.join(", ")}`);
+    }
+    lines.push(`  Found folders: ${[...actual].sort().join(", ") || "(none)"}`);
+    throw new Error(lines.join("\n"));
+  }
+
+  return requested;
 }
 
 async function removePrivateMarkdown(contentRoot, allowedMarkdown) {

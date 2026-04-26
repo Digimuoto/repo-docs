@@ -58,6 +58,14 @@ If you do not set `navigation.sections` explicitly, the module derives sidebar s
 
 Use `navigation.sectionLabels` to set human-readable labels for directory sections, or `navigation.sections` for full control over ordering and grouping.
 
+For the in-between case — auto-generated sections, but a fixed display order — use `navigation.topLevelOrder`:
+
+```nix
+navigation.topLevelOrder = [ "guides" "reference" "examples" ];
+```
+
+This is strict: every name must match an actual top-level folder, and every actual top-level folder must appear in the list. Misspellings, missing folders, and unlisted folders all fail the build with an explicit error message.
+
 ## Template Overrides
 
 The `templateFiles` option lets you replace any file in the shared Astro template. Common overrides:

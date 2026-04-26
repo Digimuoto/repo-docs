@@ -206,6 +206,29 @@
               default = {};
               description = "Directory-to-label mapping for auto-generated navigation sections.";
             };
+
+            topLevelOrder = lib.mkOption {
+              type = lib.types.nullOr (lib.types.listOf lib.types.str);
+              default = null;
+              example = ["guides" "reference" "examples"];
+              description = ''
+                Manual ordering of auto-generated top-level folder
+                sections. When set, sections appear in exactly this
+                order (the auto-generated "Overview" section for
+                root-level pages still comes first, if present).
+
+                Strict by design: every name in this list must match
+                an actual top-level directory in `contentDir`, and
+                every actual top-level directory must appear in this
+                list. Misspellings, missing folders, or unlisted
+                folders all fail the build with an explicit error
+                message — opting in to manual order means owning the
+                full enumeration.
+
+                Has no effect when `navigation.sections` is set
+                explicitly (which already controls order).
+              '';
+            };
           };
         };
         default = {};
