@@ -142,21 +142,36 @@
         return {theme: isDark ? ("dark" as const) : ("default" as const)};
       }
 
+      let renderToken = 0;
       async function renderAll() {
+        // Bump the token so any in-flight render from a previous mode
+        // toggle bails out before clobbering the freshly-rendered SVG.
+        const token = ++renderToken;
         mermaid.initialize({
           securityLevel: "strict",
           startOnLoad: false,
           ...buildConfig(),
         });
-        const nodes = diagrams.map((entry) => {
-          // Reset diagram contents so Mermaid will re-process it.
-          // Without this, Mermaid sees the existing data-processed
-          // attribute and skips the render.
-          entry.diagram.textContent = entry.source;
-          entry.diagram.removeAttribute("data-processed");
-          return entry.diagram;
-        });
-        await mermaid.run({nodes});
+        // Use mermaid.render() rather than .run() so we get fresh SVG
+        // markup back (v11 caches IDs internally and .run() can skip
+        // already-processed nodes even after we wipe their content).
+        // Each call needs a unique id; we mix the iteration index +
+        // token so re-renders don't collide.
+        await Promise.all(
+          diagrams.map(async (entry, index) => {
+            const id = `mermaid-diagram-${index}-${token}`;
+            try {
+              const {svg, bindFunctions} = await mermaid.render(id, entry.source);
+              if (token !== renderToken) return; // newer render in flight
+              entry.diagram.innerHTML = svg;
+              if (bindFunctions) {
+                bindFunctions(entry.diagram);
+              }
+            } catch (err) {
+              console.warn("[mermaid] render failed:", err);
+            }
+          }),
+        );
       }
 
       await renderAll();
@@ -164,8 +179,24 @@
       // Re-render whenever the reader flips the colour mode so SVGs
       // pick up the new theme's palette (CSS overrides alone can't
       // change Mermaid's baked-in inline fills for non-slate themes).
+      // Watch <html> attribute changes too as a belt-and-braces fallback
+      // in case the custom event misses (e.g. system colour-scheme flip
+      // while the page is open).
       document.addEventListener("repodocs:mode-change", () => {
         void renderAll();
+      });
+
+      let lastTheme = document.documentElement.dataset.theme;
+      const observer = new MutationObserver(() => {
+        const next = document.documentElement.dataset.theme;
+        if (next !== lastTheme) {
+          lastTheme = next;
+          void renderAll();
+        }
+      });
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["data-theme"],
       });
     }
   }
