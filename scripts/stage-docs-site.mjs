@@ -522,12 +522,23 @@ ${lightVars}
     await fs.chmod(paletteTarget, 0o644);
   }
 
+  // lean4: forward-looking integration slot. Validate the shape but
+  // don't act on it yet — consumer MDX components / build hooks will.
+  let lean4 = null;
+  if (config.lean4 && typeof config.lean4 === "object") {
+    if (typeof config.lean4.theoryDir !== "string" || config.lean4.theoryDir.trim() === "") {
+      throw new Error("docsSite.lean4.theoryDir must be a non-empty string when lean4 is set.");
+    }
+    lean4 = {theoryDir: config.lean4.theoryDir.trim()};
+  }
+
   const finalConfig = {
     navigation: navigationSections,
     repo: config.repo ?? {},
     site: config.site,
     theme,
     themeModes,
+    lean4,
   };
 
   await fs.writeFile(

@@ -13,7 +13,12 @@ export interface SiteThemeModes {
   light: SiteTheme;
 }
 
+export interface SiteLean4Config {
+  theoryDir: string;
+}
+
 export interface SiteConfig {
+  lean4: SiteLean4Config | null;
   navigation: NavigationSectionConfig[];
   repo?: {
     editBaseUrl?: string;
@@ -72,7 +77,17 @@ export const siteConfig = {
     return "cortex-dark";
   })(),
   themeModes: parseThemeModes((rawConfig as {themeModes?: unknown}).themeModes),
+  lean4: parseLean4((rawConfig as {lean4?: unknown}).lean4),
 } as SiteConfig;
+
+function parseLean4(raw: unknown): SiteLean4Config | null {
+  if (!raw || typeof raw !== "object") return null;
+  const candidate = raw as {theoryDir?: unknown};
+  if (typeof candidate.theoryDir !== "string" || candidate.theoryDir.trim() === "") {
+    return null;
+  }
+  return {theoryDir: candidate.theoryDir.trim()};
+}
 
 export function kebabToTitle(value: string) {
   return value

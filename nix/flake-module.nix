@@ -154,6 +154,33 @@
         description = "Repository metadata exposed to the template.";
       };
 
+      lean4 = lib.mkOption {
+        type = lib.types.nullOr (lib.types.submodule {
+          options = {
+            theoryDir = lib.mkOption {
+              type = lib.types.str;
+              example = "theory";
+              description = ''
+                Relative path (from the repo root) to the Lean 4
+                theory directory for this site. Surfaced to the
+                template as `siteConfig.lean4.theoryDir` so consumer
+                MDX components / Verso integrations can resolve
+                source paths and build edit-on-source links.
+              '';
+            };
+          };
+        });
+        default = null;
+        example = {theoryDir = "theory";};
+        description = ''
+          Lean 4 / Verso integration config for this site. The module
+          itself does not yet build Lean content — this slot lets a
+          consumer declare *where* their formal substrate lives so
+          downstream MDX components or build hooks have a single
+          contract to read from.
+        '';
+      };
+
       navigation = lib.mkOption {
         type = lib.types.submodule {
           options = {
@@ -349,6 +376,7 @@
           };
           theme = siteCfg.theme;
           themeModes = siteCfg.themeModes;
+          lean4 = siteCfg.lean4;
         };
         templateFiles = siteCfg.templateFiles;
         languages = builtLanguages;
