@@ -241,6 +241,40 @@
                 grep -q "CUSTOM_ROUTE_OVERRIDE_MARKER" "$staged/src/pages/[...slug].astro"
               '';
             };
+
+          docs-lean4-theory = let
+            leanSite = mkDocsSite {
+              name = "docs-lean4-theory";
+              contentDir = ./docs;
+              config = {
+                site = {
+                  title = "lean4-test";
+                  publicBaseUrl = "https://example.com";
+                };
+                content.excludePaths = ["private"];
+                lean4.theoryDir = "fixtures/lean-theory";
+              };
+              lean4SourceDir = ./fixtures/lean-theory;
+            };
+          in
+            mkAssertionCheck {
+              name = "docs-lean4-theory";
+              script = ''
+                site="${leanSite.package}"
+                staged="${leanSite.stagedSrc}"
+
+                test -f "$site/Theory/index.html"
+                test -f "$site/Theory/Demo/Proof/index.html"
+
+                grep -q '"dir": "Theory"' "$staged/src/generated/site-config.json"
+                grep -q '"theoryDir": "fixtures/lean-theory"' "$staged/src/generated/site-config.json"
+
+                grep -q 'Theory' "$site/index.html"
+                grep -q 'Demo.Proof' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'theorem' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'identity' "$site/Theory/Demo/Proof/index.html"
+              '';
+            };
         };
 
         devShells.default = pkgs.mkShell {

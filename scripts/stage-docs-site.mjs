@@ -4,10 +4,11 @@ import path from "node:path";
 const MARKDOWN_EXTENSIONS = new Set([".md", ".mdx"]);
 const RESERVED_CONFIG_NAMES = new Set(["config.yaml", "config.yml", "config.json"]);
 const BUILTIN_THEMES = new Set(["cortex-dark", "cortex-light", "cortex-slate"]);
+const GENERATED_THEORY_DIR = "Theory";
 
 function usage() {
   console.error(
-    "Usage: node stage-docs-site.mjs --content-dir <dir> --config-json <file> --template-files-json <file> --languages-json <file> --out-dir <dir>",
+    "Usage: node stage-docs-site.mjs --content-dir <dir> --config-json <file> --template-files-json <file> --languages-json <file> [--lean4-source-dir <dir>] --out-dir <dir>",
   );
   process.exit(1);
 }
@@ -47,6 +48,167 @@ function titleCase(value) {
     .filter(Boolean)
     .map((segment) => `${segment[0]?.toUpperCase() ?? ""}${segment.slice(1)}`)
     .join(" ");
+}
+
+function yamlString(value) {
+  return JSON.stringify(value);
+}
+
+function markdownFence(language, content) {
+  const maxTicks = Math.max(
+    2,
+    ...[...content.matchAll(/`+/g)].map((match) => match[0].length),
+  );
+  const fence = "`".repeat(maxTicks + 1);
+  return `${fence}${language}\n${content}\n${fence}`;
+}
+
+function sourcePathToTheoryTitle(relativePath) {
+  const withoutExtension = relativePath.replace(/\.lean$/i, "");
+  return withoutExtension.replace(/\//g, ".");
+}
+
+function sourcePathToSidebarLabel(relativePath) {
+  const withoutExtension = relativePath.replace(/\.lean$/i, "");
+  const lastSlash = withoutExtension.lastIndexOf("/");
+  return lastSlash === -1 ? withoutExtension : withoutExtension.slice(lastSlash + 1);
+}
+
+function sourcePathToMarkdownPath(relativePath) {
+  return `${relativePath.replace(/\.lean$/i, "")}.md`;
+}
+
+function relativeMarkdownLink(relativePath) {
+  return sourcePathToMarkdownPath(relativePath);
+}
+
+function parseLean4Config(config, sourceDir) {
+  if (!config.lean4) {
+    return null;
+  }
+  if (typeof config.lean4 !== "object") {
+    throw new Error("docsSite.lean4 must be an object when set.");
+  }
+  if (typeof config.lean4.theoryDir !== "string" || config.lean4.theoryDir.trim() === "") {
+    throw new Error("docsSite.lean4.theoryDir must be a non-empty string when lean4 is set.");
+  }
+  if (!sourceDir) {
+    throw new Error("Internal error: docsSite.lean4 is set, but no Lean source directory was staged.");
+  }
+
+  return {
+    sourceDir,
+    theoryDir: config.lean4.theoryDir.trim(),
+  };
+}
+
+function renderTheoryIndex(leanFiles, theoryDir) {
+  const rows = leanFiles
+    .map((relativePath) => {
+      const title = sourcePathToTheoryTitle(relativePath);
+      const link = relativeMarkdownLink(relativePath);
+      return `| [${title}](${link}) | \`${theoryDir}/${relativePath}\` |`;
+    })
+    .join("\n");
+
+  return [
+    "---",
+    `title: ${yamlString("Theory")}`,
+    `description: ${yamlString(`Lean 4 theory generated from ${theoryDir}.`)}`,
+    "sidebar:",
+    `  label: ${yamlString("Theory")}`,
+    "---",
+    "",
+    "# Theory",
+    "",
+    `Generated from the Lean 4 source tree at \`${theoryDir}\`.`,
+    "",
+    "| Module | Source |",
+    "| ------ | ------ |",
+    rows,
+    "",
+  ].join("\n");
+}
+
+function renderTheorySourcePage(relativePath, source, theoryDir) {
+  const title = sourcePathToTheoryTitle(relativePath);
+  const label = sourcePathToSidebarLabel(relativePath);
+
+  return [
+    "---",
+    `title: ${yamlString(title)}`,
+    `description: ${yamlString(`Lean 4 source from ${theoryDir}/${relativePath}.`)}`,
+    "sidebar:",
+    `  label: ${yamlString(label)}`,
+    "---",
+    "",
+    `# ${title}`,
+    "",
+    `Source: \`${theoryDir}/${relativePath}\``,
+    "",
+    markdownFence("lean", source.trimEnd()),
+    "",
+  ].join("\n");
+}
+
+async function generateLean4Docs(contentRoot, lean4) {
+  if (!lean4) {
+    return null;
+  }
+
+  let stat;
+  try {
+    stat = await fs.stat(lean4.sourceDir);
+  } catch {
+    throw new Error(`Missing Lean theory directory "${lean4.theoryDir}".`);
+  }
+  if (!stat.isDirectory()) {
+    throw new Error(`Lean theory path "${lean4.theoryDir}" is not a directory.`);
+  }
+
+  const outputRoot = path.join(contentRoot, GENERATED_THEORY_DIR);
+  try {
+    await fs.stat(outputRoot);
+    throw new Error(
+      `Generated Lean theory docs would overwrite existing docs path "${GENERATED_THEORY_DIR}".`,
+    );
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  const leanFiles = (await listFiles(lean4.sourceDir))
+    .map((absolutePath) => normalizeSlashes(path.relative(lean4.sourceDir, absolutePath)))
+    .filter((relativePath) => path.extname(relativePath) === ".lean")
+    .sort(comparePaths);
+
+  if (leanFiles.length === 0) {
+    throw new Error(`No .lean files found under Lean theory directory "${lean4.theoryDir}".`);
+  }
+
+  await fs.mkdir(outputRoot, {recursive: true});
+  await fs.writeFile(
+    path.join(outputRoot, "index.md"),
+    renderTheoryIndex(leanFiles, lean4.theoryDir),
+    "utf8",
+  );
+
+  for (const relativePath of leanFiles) {
+    const source = await fs.readFile(path.join(lean4.sourceDir, relativePath), "utf8");
+    const targetPath = path.join(outputRoot, sourcePathToMarkdownPath(relativePath));
+    await fs.mkdir(path.dirname(targetPath), {recursive: true});
+    await fs.writeFile(
+      targetPath,
+      renderTheorySourcePage(relativePath, source, lean4.theoryDir),
+      "utf8",
+    );
+  }
+
+  return {
+    dir: GENERATED_THEORY_DIR,
+    label: "Theory",
+  };
 }
 
 function isPathExcluded(relativePath, excludedPaths) {
@@ -328,6 +490,7 @@ async function main() {
   const configJson = values.get("--config-json");
   const templateFilesJson = values.get("--template-files-json");
   const languagesJson = values.get("--languages-json");
+  const lean4SourceDir = values.get("--lean4-source-dir") ?? null;
   const outDir = values.get("--out-dir");
 
   if (!contentDir || !configJson || !templateFilesJson || !outDir) {
@@ -341,6 +504,7 @@ async function main() {
   const languages = languagesJson
     ? JSON.parse(await fs.readFile(languagesJson, "utf8"))
     : {};
+  const lean4 = parseLean4Config(config, lean4SourceDir);
 
   if (!config?.site?.title || !config?.site?.publicBaseUrl) {
     throw new Error("Config must define site.title and site.publicBaseUrl.");
@@ -373,18 +537,29 @@ async function main() {
 
   await pruneEmptyDirectories(contentRoot);
 
-  const discoveredMarkdown = (await listFiles(contentRoot))
+  const authoredMarkdown = (await listFiles(contentRoot))
     .map((absolutePath) => normalizeSlashes(path.relative(contentRoot, absolutePath)))
     .filter((relativePath) => MARKDOWN_EXTENSIONS.has(path.extname(relativePath)));
 
-  if (discoveredMarkdown.length === 0) {
+  if (authoredMarkdown.length === 0) {
     throw new Error("No markdown files found under the configured docs tree.");
   }
+
+  const generatedTheorySection = await generateLean4Docs(contentRoot, lean4);
 
   const navigationSections =
     Array.isArray(config.navigation.sections) && config.navigation.sections.length > 0
       ? config.navigation.sections
-      : autoGenerateNavigation(discoveredMarkdown, config.navigation);
+      : autoGenerateNavigation(authoredMarkdown, config.navigation);
+
+  if (generatedTheorySection) {
+    const hasTheorySection = navigationSections.some(
+      (section) => typeof section?.dir === "string" && normalizeSlug(section.dir) === GENERATED_THEORY_DIR,
+    );
+    if (!hasTheorySection) {
+      navigationSections.push(generatedTheorySection);
+    }
+  }
 
   if (navigationSections.length === 0) {
     throw new Error("Could not derive any navigation sections from the docs tree.");
@@ -522,23 +697,13 @@ ${lightVars}
     await fs.chmod(paletteTarget, 0o644);
   }
 
-  // lean4: forward-looking integration slot. Validate the shape but
-  // don't act on it yet — consumer MDX components / build hooks will.
-  let lean4 = null;
-  if (config.lean4 && typeof config.lean4 === "object") {
-    if (typeof config.lean4.theoryDir !== "string" || config.lean4.theoryDir.trim() === "") {
-      throw new Error("docsSite.lean4.theoryDir must be a non-empty string when lean4 is set.");
-    }
-    lean4 = {theoryDir: config.lean4.theoryDir.trim()};
-  }
-
   const finalConfig = {
     navigation: navigationSections,
     repo: config.repo ?? {},
     site: config.site,
     theme,
     themeModes,
-    lean4,
+    lean4: lean4 ? {theoryDir: lean4.theoryDir} : null,
   };
 
   await fs.writeFile(

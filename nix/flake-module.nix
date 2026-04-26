@@ -161,11 +161,13 @@
               type = lib.types.str;
               example = "theory";
               description = ''
-                Relative path (from the repo root) to the Lean 4
-                theory directory for this site. Surfaced to the
-                template as `siteConfig.lean4.theoryDir` so consumer
-                MDX components / Verso integrations can resolve
-                source paths and build edit-on-source links.
+                Relative path to the Lean 4 theory directory for this
+                site. The path is resolved from the parent of
+                `contentDir`, so the usual `contentDir = ./docs` shape
+                makes this repo-root relative. repo-docs stages the
+                `.lean` files as a generated Theory section and surfaces
+                the value to the template as
+                `siteConfig.lean4.theoryDir`.
               '';
             };
           };
@@ -173,11 +175,9 @@
         default = null;
         example = {theoryDir = "theory";};
         description = ''
-          Lean 4 / Verso integration config for this site. The module
-          itself does not yet build Lean content — this slot lets a
-          consumer declare *where* their formal substrate lives so
-          downstream MDX components or build hooks have a single
-          contract to read from.
+          Lean 4 / Verso integration config for this site. When set,
+          repo-docs adds a generated Theory section backed by the `.lean`
+          files under the configured directory.
         '';
       };
 
@@ -363,6 +363,10 @@
         };
         aliases = langCfg.aliases;
       }) siteCfg.languages;
+      lean4SourceDir =
+        if siteCfg.lean4 == null
+        then null
+        else builtins.dirOf _validatedContentDir + "/${siteCfg.lean4.theoryDir}";
     in
       mkDocsSite {
         name = "${siteKey}-site";
@@ -378,6 +382,7 @@
           themeModes = siteCfg.themeModes;
           lean4 = siteCfg.lean4;
         };
+        inherit lean4SourceDir;
         templateFiles = siteCfg.templateFiles;
         languages = builtLanguages;
       };

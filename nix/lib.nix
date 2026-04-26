@@ -17,6 +17,7 @@
     name,
     contentDir,
     config,
+    lean4SourceDir,
     templateFiles,
     languages,
     mode,
@@ -47,12 +48,16 @@
         cp -R ${templateDir}/. "$workdir"
         chmod -R u+w "$workdir"
 
-        node ${stageScript} \
-          --content-dir ${contentDir} \
-          --config-json ${configJson} \
-          --template-files-json ${templateFilesJson} \
-          --languages-json ${languagesJson} \
-          --out-dir "$workdir"
+        stageArgs=(
+          --content-dir ${contentDir}
+          --config-json ${configJson}
+          --template-files-json ${templateFilesJson}
+          --languages-json ${languagesJson}
+${lib.optionalString (lean4SourceDir != null) ''
+          --lean4-source-dir ${lean4SourceDir}
+''}          --out-dir "$workdir"
+        )
+        node ${stageScript} "''${stageArgs[@]}"
 
         cd "$workdir"
         source build-env.sh
@@ -74,6 +79,7 @@ in
     name,
     contentDir,
     config,
+    lean4SourceDir ? null,
     templateFiles ? {},
     languages ? {},
   }: let
@@ -87,12 +93,16 @@ in
       cp -R ${templateDir}/. "$out"
       chmod -R u+w "$out"
 
-      node ${stageScript} \
-        --content-dir ${contentDir} \
-        --config-json ${pkgs.writeText "${name}-config.json" (builtins.toJSON config)} \
-        --template-files-json ${pkgs.writeText "${name}-template-files.json" (builtins.toJSON (lib.mapAttrs (_: value: toString value) templateFiles))} \
-        --languages-json ${pkgs.writeText "${name}-languages.json" (builtins.toJSON (languagesManifest languages))} \
-        --out-dir "$out"
+      stageArgs=(
+        --content-dir ${contentDir}
+        --config-json ${pkgs.writeText "${name}-config.json" (builtins.toJSON config)}
+        --template-files-json ${pkgs.writeText "${name}-template-files.json" (builtins.toJSON (lib.mapAttrs (_: value: toString value) templateFiles))}
+        --languages-json ${pkgs.writeText "${name}-languages.json" (builtins.toJSON (languagesManifest languages))}
+${lib.optionalString (lean4SourceDir != null) ''
+        --lean4-source-dir ${lean4SourceDir}
+''}        --out-dir "$out"
+      )
+      node ${stageScript} "''${stageArgs[@]}"
     '';
 
     package = pkgs.buildNpmPackage {
@@ -124,14 +134,14 @@ in
 
     devApp = mkApp {
       name = "${name}-dev";
-      inherit contentDir config templateFiles languages;
+      inherit contentDir config lean4SourceDir templateFiles languages;
       mode = "dev";
       port = 4321;
     };
 
     previewApp = mkApp {
       name = "${name}-preview";
-      inherit contentDir config templateFiles languages;
+      inherit contentDir config lean4SourceDir templateFiles languages;
       mode = "preview";
       port = 4322;
     };

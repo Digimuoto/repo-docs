@@ -20,6 +20,7 @@ Reusable docs site module for `flake-parts` repositories.
 - LaTeX math rendering via KaTeX
 - Syntax-highlighted code blocks for all common languages (Shiki)
 - Tree-sitter–driven highlighting for custom languages, compiled from grammar source at build time
+- Generated Lean 4 Theory section from `lean4.theoryDir`
 - Per-site Nix outputs: `packages.<name>-site`, `apps.<name>-{dev,preview}`, `checks.<name>-site`
 
 The consumer repo keeps one or more markdown trees. Each tree is declared as a *site* under `docsSite.sites.<name>`; the module configures the shared Astro template, routing, navigation, theme, and any custom-language grammars from Nix. The consumer repo does not need its own Astro config, layout, Tailwind config, or docs `package.json`.
@@ -146,6 +147,7 @@ nix run .#cortex-preview    # Cortex research site (cortex-light)
 - `navigation.sectionLabels` — directory-to-label map for auto-generated sections
 - `templateFiles` — per-site overrides for any file in the shared template
 - `languages` — per-site tree-sitter grammar registry (see below)
+- `lean4.theoryDir` — relative path to a Lean 4 source tree to publish as a generated Theory section
 
 **Deep / complex trees** (the cortex-style layout in the example: `publications/paper-*/figures/*.mmd`, `adrs/*.md`, multi-level nested groups) work without extra configuration:
 
@@ -214,6 +216,16 @@ Built-in palette (each theme overrides the colours):
 | *(other)*      | neutral default pill      |
 
 `superseded` and `archived` also dim the label itself so the eye lands on still-current docs first.
+
+## Lean 4 Theory Section
+
+Point `lean4.theoryDir` at a Lean 4 source tree and repo-docs generates a top-level Theory section from its `.lean` files. The path is resolved from the parent of `contentDir`, so the usual `contentDir = ./docs` shape makes `"theory"` point at `./theory`. The consumer does not need to add Markdown pages for the source tree.
+
+```nix
+docsSite.sites.<your-site>.lean4.theoryDir = "theory";
+```
+
+The generated section includes an index page plus one page per `.lean` file. The setting is also available to template code as `siteConfig.lean4?.theoryDir`.
 
 ## Custom-language syntax highlighting
 
