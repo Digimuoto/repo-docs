@@ -8,4 +8,9 @@ sidebar:
 
 # Sample Publication
 
-The generated manuscript route should open a full-viewport PDF reader.
+The generated manuscript route hosts an embedded PDF reader inside the
+standard docs chrome — the sidebar and breadcrumb stay in view, and a
+small bar of action chips above the embed offers open-in-new-tab,
+download, and fullscreen escape hatches.
+
+[**Read the manuscript →**](manuscript/)

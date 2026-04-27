@@ -286,11 +286,25 @@
 
                 test -f "$site/Publications/Sample/manuscript/index.html"
                 test -f "$site/Publications/Sample/manuscript.pdf"
-                grep -q 'docs-typst-reader-frame' "$site/Publications/Sample/manuscript/index.html"
+
+                # The manuscript page embeds the PDF inside the
+                # standard docs shell (sidebar + breadcrumb stay
+                # visible) and exposes Open / Download / Fullscreen
+                # action chips above the iframe.
+                grep -q 'docs-sidebar' "$site/Publications/Sample/manuscript/index.html"
+                grep -q 'docs-title' "$site/Publications/Sample/manuscript/index.html"
+                grep -q 'docs-typst-embed-frame' "$site/Publications/Sample/manuscript/index.html"
+                grep -q 'data-typst-frame-wrap' "$site/Publications/Sample/manuscript/index.html"
+                grep -q 'data-typst-fullscreen' "$site/Publications/Sample/manuscript/index.html"
+                grep -q 'sandbox=' "$site/Publications/Sample/manuscript/index.html"
                 grep -q 'Publications/Sample/manuscript.pdf' "$site/Publications/Sample/manuscript/index.html"
                 grep -q 'Sample Typst Manuscript' "$site/Publications/Sample/manuscript/index.html"
-                if grep -q 'docs-sidebar\|docs-title\|docs-reading-sequence' "$site/Publications/Sample/manuscript/index.html"; then
-                  echo "Typst manuscript reader should not render docs chrome"; exit 1
+
+                # The reading-sequence prev/next chrome is suppressed
+                # for the PDF embed branch — it doesn't apply to a
+                # manuscript page, and would clutter the toolbar row.
+                if grep -q 'docs-sequence' "$site/Publications/Sample/manuscript/index.html"; then
+                  echo "Typst manuscript embed should not render docs-sequence"; exit 1
                 fi
               '';
             };
