@@ -141,6 +141,7 @@
     name,
     contentDir,
     config,
+    lean4SourceDir,
     lean4RenderedDir,
     templateFiles,
     languages,
@@ -179,6 +180,7 @@
           --languages-json ${languagesJson}
 ${lib.optionalString (lean4RenderedDir != null) ''
           --lean4-rendered-dir ${lean4RenderedDir}
+          --lean4-source-dir ${lean4SourceDir}
 ''}          --out-dir "$workdir"
         )
         node ${stageScript} "''${stageArgs[@]}"
@@ -229,6 +231,7 @@ in
         --languages-json ${pkgs.writeText "${name}-languages.json" (builtins.toJSON (languagesManifest languages))}
 ${lib.optionalString (lean4SourceDir != null) ''
         --lean4-rendered-dir ${lean4RenderedDir}
+        --lean4-source-dir ${lean4SourceDir}
 ''}        --out-dir "$out"
       )
       node ${stageScript} "''${stageArgs[@]}"
@@ -263,14 +266,14 @@ ${lib.optionalString (lean4SourceDir != null) ''
 
     devApp = mkApp {
       name = "${name}-dev";
-      inherit contentDir config lean4RenderedDir templateFiles languages;
+      inherit contentDir config lean4SourceDir lean4RenderedDir templateFiles languages;
       mode = "dev";
       port = 4321;
     };
 
     previewApp = mkApp {
       name = "${name}-preview";
-      inherit contentDir config lean4RenderedDir templateFiles languages;
+      inherit contentDir config lean4SourceDir lean4RenderedDir templateFiles languages;
       mode = "preview";
       port = 4322;
     };

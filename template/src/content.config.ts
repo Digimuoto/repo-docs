@@ -46,6 +46,14 @@ const docs = defineCollection({
         order: z.number().optional(),
       })
       .optional(),
+
+    // Generated Lean theory pages can point at a pre-rendered Verso
+    // HTML fragment under src/generated. Authored pages should omit this.
+    verso: z
+      .object({
+        fragment: z.string(),
+      })
+      .optional(),
   }),
 });
 

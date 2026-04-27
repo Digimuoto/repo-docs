@@ -69,6 +69,7 @@
               sectionLabels.guides = "Guides";
               topLevelOrder = ["guides"];
             };
+            lean4.theoryDir = "fixtures/lean-theory";
             languages.ts-json = {
               grammarSrc = inputs.tree-sitter-json;
               aliases = ["ts-json"];
@@ -137,8 +138,20 @@
               test -f "$site/index.html"
               test -f "$site/guides/getting-started/index.html"
               test -f "$site/guides/rendering-example/index.html"
-              test ! -e "$site/private/notes/index.html"
-              grep -q "repo-docs" "$site/index.html"
+                test -f "$site/Theory/index.html"
+                test -f "$site/Theory/Demo/Proof/index.html"
+                test ! -e "$site/private/notes/index.html"
+                grep -q "repo-docs" "$site/index.html"
+                grep -q "Demo Proof" "$site/Theory/Demo/Proof/index.html"
+                grep -q "docs-sidebar" "$site/Theory/Demo/Proof/index.html"
+                grep -q "repo-docs-lean-page" "$site/Theory/Demo/Proof/index.html"
+                grep -q "repo-docs-proof-state-panel" "$site/Theory/Demo/Proof/index.html"
+                grep -q "add_zero_demo" "$site/Theory/Demo/Proof/index.html"
+                grep -q "tactic-state" "$site/Theory/Demo/Proof/index.html"
+                grep -q "katex" "$site/Theory/Demo/Proof/index.html"
+                if grep -q 'module-tree\|literate.css' "$site/Theory/Demo/Proof/index.html"; then
+                  echo "Lean theory page should use native repo-docs chrome, not standalone Verso chrome"; exit 1
+                fi
 
               # Rendering example has mermaid diagrams
               grep -q "data-docs-mermaid=\"true\"" "$site/guides/rendering-example/index.html"
@@ -266,20 +279,27 @@
 
                 test -f "$site/Theory/index.html"
                 test -f "$site/Theory/Demo/Proof/index.html"
-                test -f "$site/Theory/repo-docs-verso.css"
-                test ! -e "$staged/src/content/docs/Theory/Demo/Proof.md"
+                test -f "$staged/src/content/docs/Theory/Demo/Proof.md"
+                test ! -e "$staged/public/Theory/Demo/Proof/index.html"
 
-                grep -q '"links"' "$staged/src/generated/site-config.json"
-                grep -q '"href": "Theory/Demo/Proof"' "$staged/src/generated/site-config.json"
+                grep -q '"entries"' "$staged/src/generated/site-config.json"
+                grep -q '"Theory/Demo/Proof"' "$staged/src/generated/site-config.json"
                 grep -q '"theoryDir": "fixtures/lean-theory"' "$staged/src/generated/site-config.json"
 
                 grep -q 'Theory' "$site/index.html"
-                grep -q 'literate.css' "$site/Theory/Demo/Proof/index.html"
-                grep -q 'repo-docs-verso.css' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'docs-sidebar' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'repo-docs-lean-page' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'repo-docs-proof-state-panel' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'code-box' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'Demo Proof' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'theorem' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'identity' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'add_zero_demo' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'tactic-state' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'katex' "$site/Theory/Demo/Proof/index.html"
+                if grep -q 'module-tree\|literate.css' "$site/Theory/Demo/Proof/index.html"; then
+                  echo "Lean theory page should use native repo-docs chrome, not standalone Verso chrome"; exit 1
+                fi
                 if grep -q '```lean' "$site/Theory/Demo/Proof/index.html"; then
                   echo "Lean theory page should be Verso HTML, not markdown code fences"; exit 1
                 fi

@@ -119,6 +119,7 @@ Tree-sitter–powered highlighting (the `ts-json` language is registered via `do
 | Mermaid diagrams | Supported | Fullscreen toggle included |
 | LaTeX math | Supported | Via KaTeX |
 | Syntax highlighting | Supported | All common languages |
+| Lean 4 theory pages | Supported | See the generated [Theory section](../../Theory/) |
 | MDX | Supported | Via `@astrojs/mdx` |
 | Dark mode | Default | Customizable via CSS variables |
 

@@ -8,7 +8,7 @@ const GENERATED_THEORY_DIR = "Theory";
 
 function usage() {
   console.error(
-    "Usage: node stage-docs-site.mjs --content-dir <dir> --config-json <file> --template-files-json <file> --languages-json <file> [--lean4-rendered-dir <dir>] --out-dir <dir>",
+    "Usage: node stage-docs-site.mjs --content-dir <dir> --config-json <file> --template-files-json <file> --languages-json <file> [--lean4-rendered-dir <dir> --lean4-source-dir <dir>] --out-dir <dir>",
   );
   process.exit(1);
 }
@@ -24,6 +24,30 @@ function normalizeRouteBase(routeBase) {
 
   const normalized = routeBase.startsWith("/") ? routeBase : `/${routeBase}`;
   return normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;
+}
+
+function withRouteBase(routeBase, ...segments) {
+  const base = normalizeRouteBase(routeBase);
+  const suffix = segments
+    .map((segment) => normalizeSlashes(String(segment)).replace(/^\/+|\/+$/g, ""))
+    .filter(Boolean)
+    .join("/");
+  if (!suffix) {
+    return base;
+  }
+  return base === "/" ? `/${suffix}` : `${base}/${suffix}`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function yamlString(value) {
+  return JSON.stringify(String(value));
 }
 
 function normalizeSlug(slug) {
@@ -57,7 +81,7 @@ function titleCase(value) {
     .join(" ");
 }
 
-function parseLean4Config(config, renderedDir) {
+function parseLean4Config(config, renderedDir, sourceDir) {
   if (!config.lean4) {
     return null;
   }
@@ -70,126 +94,15 @@ function parseLean4Config(config, renderedDir) {
   if (!renderedDir) {
     throw new Error("Internal error: docsSite.lean4 is set, but no rendered Lean output was staged.");
   }
+  if (!sourceDir) {
+    throw new Error("Internal error: docsSite.lean4 is set, but no Lean source directory was staged.");
+  }
 
   return {
     renderedDir,
+    sourceDir,
     theoryDir: config.lean4.theoryDir.trim(),
   };
-}
-
-const VERSO_THEME_PALETTES = {
-  "cortex-dark": {
-    accent: "#f0883e",
-    accentSecondary: "#d97706",
-    background: "#0e1116",
-    border: "rgba(240, 246, 252, 0.10)",
-    borderStrong: "rgba(240, 246, 252, 0.18)",
-    codeBackground: "#161b22",
-    currentForeground: "#ffffff",
-    muted: "#8b949e",
-    selected: "#30363d",
-    surface: "#161b22",
-    surfaceAlt: "#1c222a",
-    text: "#e6edf3",
-    textSecondary: "#b8c1cc",
-  },
-  "cortex-light": {
-    accent: "#0969da",
-    accentSecondary: "#0550ae",
-    background: "#ffffff",
-    border: "#d1d9e0",
-    borderStrong: "#afb8c1",
-    codeBackground: "#f6f8fa",
-    currentForeground: "#ffffff",
-    muted: "#656d76",
-    selected: "#afb8c1",
-    surface: "#f6f8fa",
-    surfaceAlt: "#eaeef2",
-    text: "#1f2328",
-    textSecondary: "#424a53",
-  },
-  "cortex-slate": {
-    accent: "#6e7bd6",
-    accentSecondary: "#5159b3",
-    background: "#22272e",
-    border: "rgba(205, 217, 229, 0.08)",
-    borderStrong: "rgba(205, 217, 229, 0.16)",
-    codeBackground: "#2d333b",
-    currentForeground: "#ffffff",
-    muted: "#768390",
-    selected: "#545d68",
-    surface: "#2d333b",
-    surfaceAlt: "#373e47",
-    text: "#cdd9e5",
-    textSecondary: "#adbac7",
-  },
-};
-
-function versoThemeVars(themeName) {
-  const palette = VERSO_THEME_PALETTES[themeName] ?? VERSO_THEME_PALETTES["cortex-dark"];
-  return [
-    `--verso-code-font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;`,
-    `--verso-text-font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;`,
-    `--verso-structure-font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;`,
-    `--verso-text-color: ${palette.text};`,
-    `--verso-structure-color: ${palette.text};`,
-    `--verso-background-color: ${palette.background};`,
-    `--verso-surface-color: ${palette.surface};`,
-    `--verso-border-color: ${palette.border};`,
-    `--verso-link-color: ${palette.accent};`,
-    `--verso-link-visited-color: ${palette.accentSecondary};`,
-    `--verso-link-hover-bg: ${palette.surfaceAlt};`,
-    `--verso-muted-color: ${palette.muted};`,
-    `--verso-current-bg: ${palette.accent};`,
-    `--verso-current-fg: ${palette.currentForeground};`,
-    `--verso-breadcrumb-color: ${palette.textSecondary};`,
-    `--verso-code-box-background-color: ${palette.codeBackground};`,
-    `--verso-code-box-border-color: ${palette.border};`,
-    `--verso-blockquote-border-color: ${palette.borderStrong};`,
-    `--verso-blockquote-color: ${palette.muted};`,
-    `--verso-inline-code-bg: ${palette.surfaceAlt};`,
-    `--verso-docstring-border-color: ${palette.borderStrong};`,
-    `--verso-imports-summary-color: ${palette.textSecondary};`,
-    `--verso-output-color: ${palette.muted};`,
-    `--verso-copy-button-bg: ${palette.surfaceAlt};`,
-    `--verso-copy-button-border: ${palette.borderStrong};`,
-    `--verso-copy-button-color: ${palette.textSecondary};`,
-    `--verso-copy-button-hover-bg: ${palette.selected};`,
-    `--verso-copy-button-copied-color: ${palette.accent};`,
-    `--verso-hamburger-bg: ${palette.surface};`,
-    `--verso-hamburger-border: ${palette.borderStrong};`,
-    `--verso-hamburger-bar-color: ${palette.text};`,
-    `--verso-selected-color: ${palette.selected};`,
-  ].join("\n  ");
-}
-
-function renderVersoThemeCss(config) {
-  const theme = BUILTIN_THEMES.has(config.theme) ? config.theme : "cortex-dark";
-  if (config.themeModes && typeof config.themeModes === "object") {
-    const light = BUILTIN_THEMES.has(config.themeModes.light) ? config.themeModes.light : theme;
-    const dark = BUILTIN_THEMES.has(config.themeModes.dark) ? config.themeModes.dark : theme;
-    return [
-      "/* Generated by repo-docs to align Verso literate output with the site palette. */",
-      ":root {",
-      `  ${versoThemeVars(light)}`,
-      "}",
-      "",
-      "@media (prefers-color-scheme: dark) {",
-      "  :root {",
-      `    ${versoThemeVars(dark).replace(/\n/g, "\n    ")}`,
-      "  }",
-      "}",
-      "",
-    ].join("\n");
-  }
-
-  return [
-    "/* Generated by repo-docs to align Verso literate output with the site palette. */",
-    ":root {",
-    `  ${versoThemeVars(theme)}`,
-    "}",
-    "",
-  ].join("\n");
 }
 
 function theoryLinkFromRenderedIndex(relativePath) {
@@ -211,33 +124,259 @@ function theoryLinkFromRenderedIndex(relativePath) {
   };
 }
 
-async function addVersoThemeStyles(outputRoot, config) {
-  const stylesheetName = "repo-docs-verso.css";
-  await fs.writeFile(
-    path.join(outputRoot, stylesheetName),
-    renderVersoThemeCss(config),
-    "utf8",
+function decodeBasicHtml(value) {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
+function extractHtmlTitle(html, fallback) {
+  const match = html.match(/<title>([\s\S]*?)<\/title>/i);
+  return match ? decodeBasicHtml(match[1].trim()) : fallback;
+}
+
+function extractFirstStyle(html) {
+  const match = html.match(/<style>\s*([\s\S]*?)<\/style>/i);
+  return match ? match[1].trim() : "";
+}
+
+function extractVersoInitScript(html, assetBaseHref) {
+  const match = html.match(/<script>\s*([\s\S]*?window\.onload[\s\S]*?)<\/script>/i);
+  if (!match) {
+    return "";
+  }
+
+  let script = match[1].trim();
+  script = script.replace(
+    /^window\.onload\s*=\s*\(\)\s*=>\s*\{/,
+    'window.addEventListener("load", () => {',
   );
+  script = script.replace(/\n\}\s*$/, "\n});");
+  script = script.replace(
+    /let docsJson = "-verso-docs\.json";/,
+    `let docsJson = ${JSON.stringify(`${assetBaseHref}/-verso-docs.json`)};`,
+  );
+  return script;
+}
 
-  const htmlFiles = (await listFiles(outputRoot))
-    .map((absolutePath) => normalizeSlashes(path.relative(outputRoot, absolutePath)))
-    .filter((relativePath) => path.extname(relativePath) === ".html");
+function extractLeanContentFragment(html) {
+  const match = html.match(/<section class="code-content"[\s\S]*?<\/section>/i);
+  if (!match) {
+    throw new Error("Verso module HTML did not contain a code-content section.");
+  }
+  return match[0];
+}
 
-  for (const relativePath of htmlFiles) {
-    const absolutePath = path.join(outputRoot, relativePath);
-    const html = await fs.readFile(absolutePath, "utf8");
-    if (html.includes(stylesheetName)) {
+function stripVersoModuleDoc(fragment) {
+  return fragment.replace(
+    /<div class="(?:md-text|verso-text) mod-doc"[\s\S]*?<\/div>\s*/g,
+    "",
+  );
+}
+
+function moduleRelativeLeanPath(relativeHtmlPath) {
+  return relativeHtmlPath.replace(/\/index\.html$/i, ".lean");
+}
+
+async function extractModuleDocMarkdown(sourceDir, relativeHtmlPath) {
+  const leanPath = path.join(sourceDir, moduleRelativeLeanPath(relativeHtmlPath));
+  let source;
+  try {
+    source = await fs.readFile(leanPath, "utf8");
+  } catch {
+    return null;
+  }
+
+  const match = source.match(/\/-!([\s\S]*?)-\//);
+  if (!match) {
+    return null;
+  }
+
+  const body = match[1].trim();
+  return body === "" ? null : body;
+}
+
+function nativeVersoOverrideStyle() {
+  // Bridge Verso's `--verso-*` custom-property contract to the
+  // repo-docs palette. The structural styling (cards, hovers, tippy
+  // popovers) lives in global.css; this only re-points Verso's own
+  // design tokens at our theme variables.
+  return `
+.repo-docs-lean-page {
+  --verso-code-font-family: var(--font-mono);
+  --verso-text-font-family: var(--font-sans);
+  --verso-structure-font-family: var(--font-sans);
+  --verso-code-color: var(--tok-default);
+  --verso-code-keyword-color: var(--tok-keyword);
+  --verso-code-const-color: var(--tok-constant);
+  --verso-code-var-color: var(--tok-variable);
+  --verso-warning-color: color-mix(in srgb, var(--status-draft) 18%, transparent);
+  --verso-error-color: var(--status-deprecated);
+  --verso-warning-indicator-color: var(--status-draft);
+  --verso-error-indicator-color: var(--status-deprecated);
+  --verso-info-indicator-color: var(--brand-primary);
+}
+`.trim();
+}
+
+function renderProofInspectorScript() {
+  return `<script>
+(() => {
+  const script = document.currentScript;
+  const page = script?.closest("[data-repo-docs-lean-page]");
+  if (!page) return;
+
+  const panel = page.querySelector("[data-lean-proof-panel]");
+  const title = page.querySelector("[data-lean-proof-title]");
+  const body = page.querySelector("[data-lean-proof-body]");
+  if (!panel || !title || !body) return;
+
+  function directChild(element, predicate) {
+    for (const child of element.children) {
+      if (predicate(child)) return child;
+    }
+    return null;
+  }
+
+  function cloneState(state) {
+    const clone = state.cloneNode(true);
+    clone.style.display = "block";
+    clone.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
+    clone.querySelectorAll("[for]").forEach((node) => node.removeAttribute("for"));
+    return clone;
+  }
+
+  let active = null;
+  function showState(tactic) {
+    const label = directChild(tactic, (child) => child.tagName === "LABEL");
+    const state = directChild(tactic, (child) => child.classList.contains("tactic-state"));
+    if (!label || !state) return;
+
+    active?.classList.remove("is-active");
+    active = tactic;
+    active.classList.add("is-active");
+
+    const labelText = label.textContent.replace(/\\s+/g, " ").trim();
+    title.textContent = labelText ? labelText.slice(0, 96) : "Proof state";
+    body.replaceChildren(cloneState(state));
+  }
+
+  const tactics = Array.from(page.querySelectorAll(".hl.lean .tactic"))
+    .filter((tactic) => directChild(tactic, (child) => child.classList.contains("tactic-state")));
+  if (tactics.length === 0) {
+    panel.hidden = true;
+    return;
+  }
+
+  for (const tactic of tactics) {
+    const label = directChild(tactic, (child) => child.tagName === "LABEL");
+    if (!label) continue;
+    label.tabIndex = 0;
+    label.addEventListener("mouseenter", () => showState(tactic));
+    label.addEventListener("focus", () => showState(tactic));
+    label.addEventListener("click", () => showState(tactic));
+  }
+
+  showState(tactics[0]);
+})();
+</script>`;
+}
+
+function renderVersoSetup(html, assetBaseHref) {
+  const style = extractFirstStyle(html);
+  const script = extractVersoInitScript(html, assetBaseHref);
+  return [
+    `<link rel="stylesheet" href="${escapeHtml(`${assetBaseHref}/tippy-border.css`)}" />`,
+    style ? `<style>\n${style}\n</style>` : "",
+    `<style>\n${nativeVersoOverrideStyle()}\n</style>`,
+    `<script src="${escapeHtml(`${assetBaseHref}/popper.js`)}"></script>`,
+    `<script src="${escapeHtml(`${assetBaseHref}/tippy.js`)}"></script>`,
+    `<script src="${escapeHtml(`${assetBaseHref}/marked.js`)}"></script>`,
+    script ? `<script>\n${script}\n</script>` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function renderTheoryIndexMarkdown(moduleLinks) {
+  const items = moduleLinks
+    .map((link) => `- [${link.label}](${link.href.replace(`${GENERATED_THEORY_DIR}/`, "")}/)`)
+    .join("\n");
+  return [
+    "---",
+    `title: ${yamlString("Theory")}`,
+    `description: ${yamlString("Generated Lean 4 theory pages rendered with Verso")}`,
+    `kind: ${yamlString("lean-theory")}`,
+    "sidebar:",
+    `  label: ${yamlString("Module Index")}`,
+    "---",
+    "",
+    "This section is generated from the configured Lean 4 Lake package. Each module keeps the repo-docs shell while embedding Verso's interactive Lean rendering.",
+    "",
+    items || "No Lean modules were rendered.",
+    "",
+  ].join("\n");
+}
+
+function renderTheoryModuleMarkdown({title, label, moduleDoc, fragmentPath}) {
+  return [
+    "---",
+    `title: ${yamlString(title)}`,
+    `description: ${yamlString(`Verso-rendered Lean 4 module ${title}`)}`,
+    `kind: ${yamlString("lean-theory")}`,
+    "sidebar:",
+    `  label: ${yamlString(label)}`,
+    "verso:",
+    `  fragment: ${yamlString(fragmentPath)}`,
+    "---",
+    "",
+    moduleDoc ?? `Generated Lean 4 module rendered with Verso. Hover Lean tokens and tactic blocks to inspect semantic information and proof states.`,
+    "",
+  ].join("\n");
+}
+
+function renderTheoryFragmentHtml({setup, fragment, assetBaseHref}) {
+  return [
+    `<div class="repo-docs-lean-page not-prose" data-repo-docs-lean-page>`,
+    setup,
+    `<div class="repo-docs-lean-workspace">`,
+    fragment,
+    `<aside class="repo-docs-proof-state-panel" data-lean-proof-panel aria-live="polite">`,
+    `<div class="repo-docs-proof-state-header">`,
+    `<span class="repo-docs-proof-state-eyebrow">Proof State</span>`,
+    `<strong data-lean-proof-title>Hover a tactic</strong>`,
+    `</div>`,
+    `<div class="repo-docs-proof-state-body" data-lean-proof-body>Hover or focus a tactic to inspect its goals.</div>`,
+    `</aside>`,
+    `</div>`,
+    renderProofInspectorScript(),
+    `<script src="${escapeHtml(`${assetBaseHref}/copy-button.js`)}"></script>`,
+    "</div>",
+    "",
+  ].join("\n");
+}
+
+async function copyVersoAssets(renderedDir, outputRoot) {
+  await removeIfExists(outputRoot);
+  await fs.mkdir(outputRoot, {recursive: true});
+
+  const files = await listFiles(renderedDir);
+  for (const absolutePath of files) {
+    const relativePath = normalizeSlashes(path.relative(renderedDir, absolutePath));
+    if (path.extname(relativePath) === ".html") {
       continue;
     }
-    await fs.writeFile(
-      absolutePath,
-      html.replace("</head>", `  <link rel="stylesheet" href="${stylesheetName}" />\n</head>`),
-      "utf8",
-    );
+    const targetPath = path.join(outputRoot, relativePath);
+    await fs.mkdir(path.dirname(targetPath), {recursive: true});
+    await fs.copyFile(absolutePath, targetPath);
+    await fs.chmod(targetPath, 0o644);
   }
 }
 
-async function generateLean4Docs(contentRoot, publicRoot, lean4, config) {
+async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, config) {
   if (!lean4) {
     return null;
   }
@@ -264,13 +403,11 @@ async function generateLean4Docs(contentRoot, publicRoot, lean4, config) {
     }
   }
 
-  const outputRoot = path.join(publicRoot, GENERATED_THEORY_DIR);
-  await removeIfExists(outputRoot);
-  await copyDirectory(lean4.renderedDir, outputRoot);
-  await makeWritableRecursive(outputRoot);
+  const publicTheoryRoot = path.join(publicRoot, GENERATED_THEORY_DIR);
+  await copyVersoAssets(lean4.renderedDir, publicTheoryRoot);
 
   try {
-    const landing = await fs.stat(path.join(outputRoot, "index.html"));
+    const landing = await fs.stat(path.join(lean4.renderedDir, "index.html"));
     if (!landing.isFile()) {
       throw new Error();
     }
@@ -278,17 +415,73 @@ async function generateLean4Docs(contentRoot, publicRoot, lean4, config) {
     throw new Error(`Verso did not render a Theory landing page for "${lean4.theoryDir}".`);
   }
 
-  await addVersoThemeStyles(outputRoot, config);
+  const htmlFiles = (await listFiles(lean4.renderedDir))
+    .map((absolutePath) => normalizeSlashes(path.relative(lean4.renderedDir, absolutePath)))
+    .filter((relativePath) => path.extname(relativePath) === ".html")
+    .sort(comparePaths);
 
-  const links = (await listFiles(outputRoot))
-    .map((absolutePath) => normalizeSlashes(path.relative(outputRoot, absolutePath)))
+  const links = htmlFiles
     .map(theoryLinkFromRenderedIndex)
     .filter((link) => link !== null)
     .sort((left, right) => comparePaths(left.href, right.href));
+  const moduleLinks = links.filter((link) => link.href !== GENERATED_THEORY_DIR);
+
+  await fs.mkdir(contentTheoryRoot, {recursive: true});
+  const fragmentRoot = path.join(generatedRoot, "lean-theory");
+  await removeIfExists(fragmentRoot);
+  await fs.mkdir(fragmentRoot, {recursive: true});
+
+  await fs.writeFile(
+    path.join(contentTheoryRoot, "index.md"),
+    renderTheoryIndexMarkdown(moduleLinks),
+    "utf8",
+  );
+
+  const assetBaseHref = withRouteBase(config.site.routeBase, GENERATED_THEORY_DIR).replace(/\/$/, "");
+  for (const relativePath of htmlFiles) {
+    if (relativePath === "index.html" || !relativePath.endsWith("/index.html")) {
+      continue;
+    }
+
+    const htmlPath = path.join(lean4.renderedDir, relativePath);
+    const html = await fs.readFile(htmlPath, "utf8");
+    const title = extractHtmlTitle(html, relativePath.slice(0, -"/index.html".length).replace(/\//g, "."));
+    const link = theoryLinkFromRenderedIndex(relativePath);
+    const moduleDoc = await extractModuleDocMarkdown(lean4.sourceDir, relativePath);
+    const fragment = moduleDoc
+      ? stripVersoModuleDoc(extractLeanContentFragment(html))
+      : extractLeanContentFragment(html);
+    const setup = renderVersoSetup(html, assetBaseHref);
+    const fragmentPath = `lean-theory/${GENERATED_THEORY_DIR}/${relativePath.replace(/\/index\.html$/i, ".html")}`;
+    const fragmentTargetPath = path.join(generatedRoot, fragmentPath);
+    const targetPath = path.join(
+      contentRoot,
+      `${GENERATED_THEORY_DIR}/${relativePath.replace(/\/index\.html$/i, ".md")}`,
+    );
+
+    await fs.mkdir(path.dirname(fragmentTargetPath), {recursive: true});
+    await fs.writeFile(
+      fragmentTargetPath,
+      renderTheoryFragmentHtml({setup, fragment, assetBaseHref}),
+      "utf8",
+    );
+
+    await fs.mkdir(path.dirname(targetPath), {recursive: true});
+    await fs.writeFile(
+      targetPath,
+      renderTheoryModuleMarkdown({
+        title,
+        label: link?.label ?? title,
+        moduleDoc,
+        fragmentPath,
+      }),
+      "utf8",
+    );
+  }
 
   return {
     label: "Theory",
-    links,
+    entries: links.map((link) => link.href),
   };
 }
 
@@ -373,15 +566,20 @@ async function listFiles(rootDir) {
 
 async function ensureMarkdownFile(contentDir, slug) {
   const basePath = path.join(contentDir, slug);
+  const candidates = [];
   for (const extension of MARKDOWN_EXTENSIONS) {
-    const candidate = `${basePath}${extension}`;
+    candidates.push(`${basePath}${extension}`);
+    candidates.push(path.join(basePath, `index${extension}`));
+  }
+
+  for (const candidate of candidates) {
     try {
       const stat = await fs.stat(candidate);
       if (stat.isFile()) {
         return normalizeSlashes(path.relative(contentDir, candidate));
       }
     } catch {
-      // Continue searching through supported extensions.
+      // Continue searching through supported shapes.
     }
   }
 
@@ -572,6 +770,7 @@ async function main() {
   const templateFilesJson = values.get("--template-files-json");
   const languagesJson = values.get("--languages-json");
   const lean4RenderedDir = values.get("--lean4-rendered-dir") ?? null;
+  const lean4SourceDir = values.get("--lean4-source-dir") ?? null;
   const outDir = values.get("--out-dir");
 
   if (!contentDir || !configJson || !templateFilesJson || !outDir) {
@@ -586,7 +785,7 @@ async function main() {
   const languages = languagesJson
     ? JSON.parse(await fs.readFile(languagesJson, "utf8"))
     : {};
-  const lean4 = parseLean4Config(config, lean4RenderedDir);
+  const lean4 = parseLean4Config(config, lean4RenderedDir, lean4SourceDir);
 
   if (!config?.site?.title || !config?.site?.publicBaseUrl) {
     throw new Error("Config must define site.title and site.publicBaseUrl.");
@@ -627,7 +826,7 @@ async function main() {
     throw new Error("No markdown files found under the configured docs tree.");
   }
 
-  const generatedTheorySection = await generateLean4Docs(contentRoot, publicRoot, lean4, config);
+  const generatedTheorySection = await generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, config);
 
   const navigationSections =
     Array.isArray(config.navigation.sections) && config.navigation.sections.length > 0
@@ -638,6 +837,8 @@ async function main() {
     const hasTheorySection = navigationSections.some(
       (section) =>
         (typeof section?.dir === "string" && normalizeSlug(section.dir) === GENERATED_THEORY_DIR) ||
+        (Array.isArray(section?.entries) &&
+          section.entries.some((entry) => normalizeSlug(entry) === GENERATED_THEORY_DIR)) ||
         (Array.isArray(section?.links) &&
           section.links.some((link) => normalizeLinkHref(link?.href) === GENERATED_THEORY_DIR)),
     );

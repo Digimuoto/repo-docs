@@ -225,7 +225,7 @@ Point `lean4.theoryDir` at a Lean 4 source tree and repo-docs generates a top-le
 docsSite.sites.<your-site>.lean4.theoryDir = "theory";
 ```
 
-The generated section includes an index page plus one page per `.lean` file. The setting is also available to template code as `siteConfig.lean4?.theoryDir`.
+The generated section includes an index page plus one page per `.lean` file. Module doc comments are rendered through the normal repo-docs Markdown pipeline, while Lean declarations are embedded from Verso so semantic hovers and tactic proof states remain interactive. The setting is also available to template code as `siteConfig.lean4?.theoryDir`.
 
 ## Custom-language syntax highlighting
 

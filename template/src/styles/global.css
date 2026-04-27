@@ -1327,6 +1327,528 @@ video {
   overflow-x: auto;
 }
 
+/* ==========================================================================
+ * Verso-rendered Lean 4 theory pages.
+ *
+ * Verso emits semantic token/proof-state markup plus its own JS for
+ * tippy hovers and tactic toggles. repo-docs owns the page shell,
+ * spacing, cards, and palette. The CSS below intentionally undoes
+ * `.prose code` inheritance (which would otherwise paint a rounded
+ * pill behind every `<code class="hl lean block">` line and break the
+ * visual continuity of the editor pane).
+ * ========================================================================== */
+
+.docs-prose > .repo-docs-lean-page {
+  --lean-card-radius: 0.875rem;
+  --lean-card-border: 1px solid var(--border-primary);
+  --lean-card-bg: var(--surface-primary);
+  --lean-card-chrome: var(--surface-secondary);
+  --lean-hover-tint: color-mix(in srgb, var(--brand-primary) 16%, transparent);
+  --lean-active-tint: color-mix(in srgb, var(--brand-primary) 26%, transparent);
+  --lean-pad-x: 1.25rem;
+  --lean-pad-y: 1.125rem;
+
+  margin-top: 2rem;
+  max-width: none;
+}
+
+/* Neutralise `.prose code` so each Verso line stops rendering as a
+ * detached rounded pill. `not-prose` doesn't help here because this
+ * project's prose rules are hand-rolled, not Tailwind-typography. */
+.repo-docs-lean-page :where(code, pre, .hl.lean, .hl.lean code) {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+
+.repo-docs-lean-workspace {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 1280px) {
+  .repo-docs-lean-workspace:has(.repo-docs-proof-state-panel:not([hidden])) {
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem);
+  }
+}
+
+/* The whole code section becomes one editor-pane card. Its children
+ * (imports header, code body) are visual sub-regions sharing the
+ * outer rounded border — no nested cards. */
+.repo-docs-lean-page .code-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--lean-card-bg);
+  border: var(--lean-card-border);
+  border-radius: var(--lean-card-radius);
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, var(--border-primary) 40%, transparent) inset,
+    0 16px 32px -24px rgba(0, 0, 0, 0.45);
+}
+
+/* Imports row: a slim header strip, similar tone to the proof panel
+ * header so the two cards read as a matched pair. */
+.repo-docs-lean-page .imports-list {
+  background: var(--lean-card-chrome);
+  border-bottom: 1px solid var(--border-primary);
+  color: var(--text-content-tertiary);
+  font-size: 0.8125rem;
+}
+
+.repo-docs-lean-page .imports-list > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem var(--lean-pad-x);
+  margin: 0;
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-content-quaternary);
+  user-select: none;
+  transition: color 120ms ease;
+}
+
+.repo-docs-lean-page .imports-list > summary::-webkit-details-marker {
+  display: none;
+}
+
+.repo-docs-lean-page .imports-list > summary::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 4px solid currentColor;
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  transition: transform 150ms ease;
+}
+
+.repo-docs-lean-page .imports-list[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.repo-docs-lean-page .imports-list > summary:hover,
+.repo-docs-lean-page .imports-list > summary:focus-visible {
+  color: var(--text-content);
+  outline: none;
+}
+
+.repo-docs-lean-page .imports-code {
+  padding: 0.875rem var(--lean-pad-x) 1rem;
+  border-top: 1px solid var(--border-primary);
+  background: transparent;
+  color: var(--text-content-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  overflow-x: auto;
+}
+
+/* Code body: sits inside the same outer card, no border of its own. */
+.repo-docs-lean-page .code-box {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  padding: var(--lean-pad-y) var(--lean-pad-x);
+  background: transparent;
+  color: var(--tok-default);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+
+.repo-docs-lean-page .hl.lean {
+  background: transparent;
+  border-radius: 0;
+  color: var(--tok-default);
+  font-family: var(--font-mono);
+  font-size: inherit;
+  padding: 0;
+  tab-size: 2;
+}
+
+.repo-docs-lean-page .hl.lean.block {
+  display: block;
+  margin: 0 -0.25rem;
+  padding: 0.0625rem 0.25rem;
+}
+
+.repo-docs-lean-page .hl.lean .keyword { color: var(--tok-keyword); }
+.repo-docs-lean-page .hl.lean .const,
+.repo-docs-lean-page .hl.lean .module-name { color: var(--tok-constant); }
+.repo-docs-lean-page .hl.lean .var { color: var(--tok-variable); }
+.repo-docs-lean-page .hl.lean .literal { color: var(--tok-string); }
+.repo-docs-lean-page .hl.lean .unknown,
+.repo-docs-lean-page .hl.lean .inter-text { color: var(--tok-default); }
+
+/* Themed token highlights. `!important` trumps Verso's hardcoded
+ * `#eee` in the inline <style> block. */
+.repo-docs-lean-page .hl.lean .token.binding-hl,
+.repo-docs-lean-page .hl.lean .literal.string:hover,
+.repo-docs-lean-page .hl.lean .token.typed:hover,
+.repo-docs-lean-page .hl.lean .has-info.warning:hover,
+.repo-docs-lean-page .hl.lean .has-info.error:hover,
+.repo-docs-lean-page .hl.lean .has-info.information:hover,
+.repo-docs-lean-page .hl.lean .tactic:has(.tactic-toggle:not(:checked)) > label:hover {
+  background-color: var(--lean-hover-tint) !important;
+  border-radius: 0.25rem !important;
+  transition: background-color 120ms ease !important;
+}
+
+.repo-docs-lean-page .hl.lean a {
+  color: inherit;
+  text-decoration: currentcolor underline dotted;
+  text-underline-offset: 0.2em;
+}
+
+.repo-docs-lean-page .hl.lean a:hover {
+  color: var(--brand-primary);
+  text-decoration: currentcolor underline solid;
+}
+
+/* Tactic toggle pill — the small dash that turns into the brand colour
+ * when expanded. Both the resting and hover states are themed. */
+.repo-docs-lean-page .hl.lean .tactic > label::after {
+  border-color: var(--border-secondary) !important;
+  background: color-mix(in srgb, var(--brand-primary) 18%, transparent) !important;
+}
+
+.repo-docs-lean-page .hl.lean .tactic > label:has(+ .tactic-toggle:checked)::after {
+  background: var(--brand-primary) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+.repo-docs-lean-page .hl.lean .tactic.is-active > label {
+  background-color: var(--lean-active-tint) !important;
+  border-radius: 0.25rem !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-primary) 32%, transparent);
+}
+
+/* The inline tactic-state that Verso reveals when a toggle is checked. */
+.repo-docs-lean-page .hl.lean .tactic-state,
+.hl.lean.popup .tactic-state {
+  background: var(--surface-secondary) !important;
+  border: 1px solid var(--border-primary) !important;
+  border-radius: 0.5rem !important;
+  padding: 0.625rem 0.75rem !important;
+  color: var(--text-content) !important;
+  font-family: var(--font-sans) !important;
+}
+
+/* Lean-output gutter colours used for warning/error/info badges. */
+.repo-docs-lean-page .lean-output {
+  border-left-color: var(--border-secondary);
+}
+.repo-docs-lean-page .lean-output.error {
+  border-left-color: var(--status-deprecated);
+}
+.repo-docs-lean-page .lean-output.warning {
+  border-left-color: var(--status-draft);
+}
+.repo-docs-lean-page .lean-output.information {
+  border-left-color: var(--brand-primary);
+}
+
+/* ----- Proof state panel ------------------------------------------------- */
+
+.repo-docs-proof-state-panel {
+  background: var(--lean-card-bg);
+  border: var(--lean-card-border);
+  border-radius: var(--lean-card-radius);
+  color: var(--text-content-secondary);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, var(--border-primary) 40%, transparent) inset,
+    0 16px 32px -24px rgba(0, 0, 0, 0.45);
+}
+
+@media (min-width: 1280px) {
+  .repo-docs-proof-state-panel {
+    position: sticky;
+    top: 2rem;
+    align-self: start;
+    max-height: calc(100vh - 4rem);
+  }
+}
+
+.repo-docs-proof-state-panel[hidden] {
+  display: none;
+}
+
+.repo-docs-proof-state-header {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.625rem var(--lean-pad-x);
+  background: var(--lean-card-chrome);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.repo-docs-proof-state-eyebrow {
+  color: var(--text-content-quaternary);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.repo-docs-proof-state-header strong {
+  color: var(--text-content);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.repo-docs-proof-state-body {
+  max-height: inherit;
+  overflow: auto;
+  padding: var(--lean-pad-y) var(--lean-pad-x);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.repo-docs-proof-state-body .tactic-state {
+  display: block !important;
+  position: static !important;
+  width: auto !important;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  color: var(--text-content-secondary) !important;
+}
+
+.repo-docs-proof-state-body .goal + .goal {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--border-primary);
+}
+
+.repo-docs-proof-state-body .case-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-content-tertiary);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.repo-docs-proof-state-body .hypotheses,
+.repo-docs-proof-state-body .conclusion {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.84375rem;
+}
+
+.repo-docs-proof-state-body .hypothesis {
+  display: grid;
+  grid-template-columns: max-content 1rem minmax(0, 1fr);
+  gap: 0.25rem;
+  margin-bottom: 0.375rem;
+}
+
+.repo-docs-proof-state-body .hypothesis > * {
+  min-width: 0;
+}
+
+.repo-docs-proof-state-body .hypotheses + .conclusion {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-primary);
+}
+
+.repo-docs-proof-state-body .prefix {
+  color: var(--brand-primary);
+  font-weight: 700;
+}
+
+.repo-docs-proof-state-body .name,
+.repo-docs-proof-state-body .goal-name {
+  color: var(--tok-constant);
+}
+
+.repo-docs-proof-state-body .type {
+  color: var(--tok-default);
+}
+
+/* ----- Copy button ------------------------------------------------------- */
+
+.repo-docs-lean-page .copy-button {
+  position: absolute;
+  right: 0.75rem;
+  top: 0.75rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: color-mix(in srgb, var(--surface-secondary) 80%, transparent);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border-primary);
+  border-radius: 9999px;
+  color: var(--text-content-secondary);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  padding: 0.4rem 0.7rem;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.repo-docs-lean-page .code-content:hover .copy-button,
+.repo-docs-lean-page .copy-button:focus-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.repo-docs-lean-page .copy-button:hover,
+.repo-docs-lean-page .copy-button:focus-visible {
+  background: var(--surface-hover);
+  border-color: var(--border-secondary);
+  color: var(--text-content);
+  outline: none;
+}
+
+.repo-docs-lean-page .copy-button.copied {
+  color: var(--brand-primary);
+  border-color: color-mix(in srgb, var(--brand-primary) 50%, var(--border-primary));
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ----- Tippy hover popovers --------------------------------------------- */
+
+.tippy-box[data-theme~="lean"],
+.tippy-box[data-theme~="tactic"],
+.tippy-box[data-theme~="warning"],
+.tippy-box[data-theme~="error"],
+.tippy-box[data-theme~="info"] {
+  background: var(--surface-primary) !important;
+  border: 1px solid var(--border-secondary) !important;
+  border-radius: 0.75rem !important;
+  color: var(--text-content) !important;
+  font-family: var(--font-sans) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.55 !important;
+  box-shadow: 0 1.25rem 2.5rem -0.5rem rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Re-tint the diagnostic accent borders so warning/error/info popovers
+ * still read as their kind without falling back to Verso's hardcoded
+ * `#f7a7af`-style salmon. */
+.tippy-box[data-theme~="warning"] {
+  border-color: color-mix(in srgb, var(--status-draft) 60%, var(--border-secondary)) !important;
+}
+.tippy-box[data-theme~="error"] {
+  border-color: color-mix(in srgb, var(--status-deprecated) 60%, var(--border-secondary)) !important;
+}
+.tippy-box[data-theme~="info"] {
+  border-color: color-mix(in srgb, var(--brand-primary) 60%, var(--border-secondary)) !important;
+}
+
+.tippy-box[data-theme~="lean"] .tippy-content,
+.tippy-box[data-theme~="tactic"] .tippy-content,
+.tippy-box[data-theme~="warning"] .tippy-content,
+.tippy-box[data-theme~="error"] .tippy-content,
+.tippy-box[data-theme~="info"] .tippy-content {
+  max-width: min(44rem, calc(100vw - 2rem));
+  max-height: min(32rem, calc(100vh - 2rem));
+  overflow: auto;
+  padding: 0.875rem 1rem !important;
+}
+
+.tippy-box .hl.lean,
+.tippy-box .hover-info,
+.tippy-box .docstring {
+  color: var(--text-content-secondary) !important;
+  font-family: var(--font-sans) !important;
+  white-space: normal !important;
+}
+
+.tippy-box .hl.lean code,
+.tippy-box .hover-info code,
+.tippy-box .verso-message,
+.tippy-box .tactic-state .hypotheses,
+.tippy-box .tactic-state .conclusion {
+  background: transparent !important;
+  color: var(--text-content) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.tippy-box .hl.lean .keyword { color: var(--tok-keyword) !important; }
+.tippy-box .hl.lean .const,
+.tippy-box .hl.lean .module-name { color: var(--tok-constant) !important; }
+.tippy-box .hl.lean .var { color: var(--tok-variable) !important; }
+.tippy-box .hl.lean .literal { color: var(--tok-string) !important; }
+
+.tippy-box .docstring p,
+.tippy-box .hover-info p {
+  margin: 0 0 0.75rem;
+}
+
+.tippy-box .docstring p:last-child,
+.tippy-box .hover-info p:last-child {
+  margin-bottom: 0;
+}
+
+.tippy-box .docstring ul,
+.tippy-box .hover-info ul,
+.tippy-box .extra-doc-links {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.tippy-box .extra-doc-links a {
+  color: var(--brand-primary);
+}
+
+.tippy-box .hover-info .sep {
+  border-top: 1px solid var(--border-primary) !important;
+}
+
+.tippy-box .tactic-state {
+  display: block !important;
+  position: static !important;
+  width: auto !important;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+}
+
+/* Tippy arrow inherits the surface so it visually melts into the popover. */
+.tippy-box[data-theme~="lean"] > .tippy-arrow::before,
+.tippy-box[data-theme~="tactic"] > .tippy-arrow::before,
+.tippy-box[data-theme~="warning"] > .tippy-arrow::before,
+.tippy-box[data-theme~="error"] > .tippy-arrow::before,
+.tippy-box[data-theme~="info"] > .tippy-arrow::before {
+  border-top-color: var(--surface-primary) !important;
+  border-bottom-color: var(--surface-primary) !important;
+  border-left-color: var(--surface-primary) !important;
+  border-right-color: var(--surface-primary) !important;
+}
+
 /*
  * Hide the first-child <h1> inside the markdown content: the DocsTitle
  * component owns page titles now, but existing docs commonly still carry

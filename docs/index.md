@@ -13,6 +13,7 @@ The consumer repo keeps a `docs/` tree of markdown files. The Nix module handles
 
 - [Getting Started](guides/getting-started/)
 - [Rendering Example](guides/rendering-example/)
+- [Lean 4 Theory Demo](Theory/)
 
 ## Consumer Outputs
 
@@ -29,5 +30,6 @@ Once imported, the module exposes:
 - Mermaid diagram rendering with fullscreen support
 - LaTeX math via KaTeX
 - Syntax-highlighted code blocks
+- Generated Lean 4 theory pages via Verso
 - Dark theme with customizable CSS variables
 - Template file overrides from Nix
