@@ -21,11 +21,22 @@ Reusable docs site module for `flake-parts` repositories.
 - Syntax-highlighted code blocks for all common languages (Shiki)
 - Tree-sitter–driven highlighting for custom languages, compiled from grammar source at build time
 - Generated Lean 4 Theory section from `lean4.theoryDir`
+- Typst manuscript PDF compilation and generated reader pages from explicit manuscript folders
 - Per-site Nix outputs: `packages.<name>-site`, `apps.<name>-{dev,preview}`, `checks.<name>-site`
 
 The consumer repo keeps one or more markdown trees. Each tree is declared as a *site* under `docsSite.sites.<name>`; the module configures the shared Astro template, routing, navigation, theme, and any custom-language grammars from Nix. The consumer repo does not need its own Astro config, layout, Tailwind config, or docs `package.json`.
 
 This repository dogfoods both single- and multi-site shapes: `docsSite.sites.docs` builds `packages.docs-site` (cortex-light) from `./docs`, and `docsSite.sites.internal` builds `packages.internal-site` (cortex-dark) from `./docs-internal`.
+
+## Documentation
+
+- [Getting Started](docs/guides/getting-started.md) — minimal consumer setup.
+- [Feature Reference](docs/guides/feature-reference.md) — rendering and generated integration inventory.
+- [Configuration Guide](docs/guides/configuration.md) — practical Nix examples.
+- [Rendering Example](docs/guides/rendering-example.md) — kitchen-sink Markdown page.
+- [Mermaid Diagrams](docs/guides/mermaid-diagrams.md) — diagram authoring guidance.
+- [Typst Manuscripts](docs/guides/typst-manuscripts.md) — PDF manuscript projects.
+- [Development Guide](docs/guides/development.md) — repo-docs maintainer workflow.
 
 ## Consumer shape
 
@@ -148,6 +159,7 @@ nix run .#cortex-preview    # Cortex research site (cortex-light)
 - `templateFiles` — per-site overrides for any file in the shared template
 - `languages` — per-site tree-sitter grammar registry (see below)
 - `lean4.theoryDir` — relative path to a Lean 4 source tree to publish as a generated Theory section
+- `typst.manuscripts` — explicit Typst manuscript folders to compile and publish as PDF reader pages
 
 **Deep / complex trees** (the cortex-style layout in the example: `publications/paper-*/figures/*.mmd`, `adrs/*.md`, multi-level nested groups) work without extra configuration:
 
@@ -225,7 +237,29 @@ Point `lean4.theoryDir` at a Lean 4 source tree and repo-docs generates a top-le
 docsSite.sites.<your-site>.lean4.theoryDir = "theory";
 ```
 
-The generated section includes an index page plus one page per `.lean` file. Module doc comments are rendered through the normal repo-docs Markdown pipeline, while Lean declarations are embedded from Verso so semantic hovers and tactic proof states remain interactive. The setting is also available to template code as `siteConfig.lean4?.theoryDir`.
+The generated section includes an index page plus one page per `.lean` file. Verso renders module docs, declaration docs, semantic hovers, declaration links, and tactic proof states; repo-docs supplies the surrounding shell and styling so the page reads as prose interleaved with Lean blocks. The setting is also available to template code as `siteConfig.lean4?.theoryDir`.
+
+## Typst manuscript PDFs
+
+Configure explicit manuscript folders under `contentDir` to compile PDFs during the Nix build and publish generated reader routes:
+
+```nix
+docsSite.sites.<your-site>.typst.manuscripts.paper1.dir = "Publications/Paper-1/typst";
+```
+
+Each folder must include `repo-docs-typst.json`:
+
+```json
+{
+  "entry": "manuscript.typ",
+  "output": "manuscript.pdf",
+  "route": "Publications/Paper-1/manuscript",
+  "title": "Paper 1",
+  "sidebar": { "label": "Manuscript", "order": 2 }
+}
+```
+
+repo-docs runs `typst compile`, copies the PDF into the static site, and generates the reader page. It does not autodetect `.typ` files because manuscript folders usually contain local layouts, figures, bibliographies, scratch files, and alternate drafts.
 
 ## Custom-language syntax highlighting
 
@@ -269,6 +303,11 @@ Then use (replace `docs` with whatever site name(s) you declared):
 
 ## Local verification
 
+- `node --check scripts/stage-docs-site.mjs`
 - `nix flake check --builders ''`
 - `nix build --builders '' .#docs-site`
+- `nix build --builders '' .#checks.x86_64-linux.docs-html`
+- `nix build --builders '' .#checks.x86_64-linux.docs-lean4-theory`
+- `nix build --builders '' .#checks.x86_64-linux.docs-typst-manuscripts`
 - `nix run .#docs-dev`
+- `git diff --check`

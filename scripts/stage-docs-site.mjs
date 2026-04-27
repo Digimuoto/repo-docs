@@ -8,7 +8,7 @@ const GENERATED_THEORY_DIR = "Theory";
 
 function usage() {
   console.error(
-    "Usage: node stage-docs-site.mjs --content-dir <dir> --config-json <file> --template-files-json <file> --languages-json <file> [--lean4-rendered-dir <dir> --lean4-source-dir <dir>] --out-dir <dir>",
+    "Usage: node stage-docs-site.mjs --content-dir <dir> --config-json <file> --template-files-json <file> --languages-json <file> [--lean4-rendered-dir <dir> --lean4-source-dir <dir>] [--typst-rendered-dir <dir>] --out-dir <dir>",
   );
   process.exit(1);
 }
@@ -373,6 +373,121 @@ function renderTheoryModuleMarkdown({title, label, fragmentPath, tags}) {
     "---",
     "",
   ].join("\n");
+}
+
+function assertSafeRelativePath(value, label) {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`${label} must be a non-empty relative path.`);
+  }
+  const normalized = normalizeSlashes(value.trim()).replace(/^\/+|\/+$/g, "");
+  if (normalized === "" || normalized.split("/").some((segment) => segment === "..")) {
+    throw new Error(`${label} must be a relative path without '..'.`);
+  }
+  return normalized;
+}
+
+async function ensureTypstRouteAvailable(contentRoot, route) {
+  const basePath = path.join(contentRoot, route);
+  for (const extension of MARKDOWN_EXTENSIONS) {
+    for (const candidate of [`${basePath}${extension}`, path.join(basePath, `index${extension}`)]) {
+      try {
+        const stat = await fs.stat(candidate);
+        if (stat.isFile()) {
+          throw new Error(`Generated Typst manuscript route "${route}" would overwrite existing docs page "${normalizeSlashes(path.relative(contentRoot, candidate))}".`);
+        }
+      } catch (error) {
+        if (error?.code !== "ENOENT") {
+          throw error;
+        }
+      }
+    }
+  }
+}
+
+function renderTypstManuscriptMarkdown({title, description, pdfPath, sidebar}) {
+  const lines = [
+    "---",
+    `title: ${yamlString(title)}`,
+  ];
+  if (description) {
+    lines.push(`description: ${yamlString(description)}`);
+  }
+  lines.push(
+    `kind: ${yamlString("typst-manuscript")}`,
+    "sidebar:",
+    `  label: ${yamlString(sidebar.label ?? "Manuscript")}`,
+  );
+  if (typeof sidebar.order === "number") {
+    lines.push(`  order: ${sidebar.order}`);
+  }
+  lines.push(
+    "typst:",
+    `  pdf: ${yamlString(pdfPath)}`,
+    "---",
+    "",
+  );
+  return lines.join("\n");
+}
+
+async function generateTypstManuscripts(contentRoot, publicRoot, typstRenderedDir) {
+  if (!typstRenderedDir) {
+    return [];
+  }
+
+  const manifestPath = path.join(typstRenderedDir, "manuscripts.json");
+  let manuscripts;
+  try {
+    manuscripts = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+  } catch (error) {
+    throw new Error(`Could not read rendered Typst manifest: ${error.message}`);
+  }
+  if (!Array.isArray(manuscripts)) {
+    throw new Error("Rendered Typst manifest must be a JSON array.");
+  }
+
+  const generated = [];
+  for (const manuscript of manuscripts) {
+    if (!manuscript || typeof manuscript !== "object") {
+      throw new Error("Rendered Typst manifest entries must be objects.");
+    }
+    const key = typeof manuscript.key === "string" && manuscript.key.trim() !== ""
+      ? manuscript.key.trim()
+      : "manuscript";
+    const route = assertSafeRelativePath(manuscript.route, `Typst manuscript "${key}" route`);
+    const asset = assertSafeRelativePath(manuscript.asset, `Typst manuscript "${key}" asset`);
+    const title = typeof manuscript.title === "string" && manuscript.title.trim() !== ""
+      ? manuscript.title.trim()
+      : key;
+    const description = typeof manuscript.description === "string" && manuscript.description.trim() !== ""
+      ? manuscript.description.trim()
+      : null;
+    const sidebar = manuscript.sidebar && typeof manuscript.sidebar === "object"
+      ? manuscript.sidebar
+      : {};
+    if (sidebar.order != null && typeof sidebar.order !== "number") {
+      throw new Error(`Typst manuscript "${key}" sidebar.order must be a number when set.`);
+    }
+
+    await ensureTypstRouteAvailable(contentRoot, route);
+
+    const pdfPath = `${route}.pdf`;
+    const sourcePdf = path.join(typstRenderedDir, "assets", asset);
+    const targetPdf = path.join(publicRoot, pdfPath);
+    await fs.mkdir(path.dirname(targetPdf), {recursive: true});
+    await fs.copyFile(sourcePdf, targetPdf);
+    await fs.chmod(targetPdf, 0o644);
+
+    const targetMarkdown = path.join(contentRoot, `${route}.md`);
+    await fs.mkdir(path.dirname(targetMarkdown), {recursive: true});
+    await fs.writeFile(
+      targetMarkdown,
+      renderTypstManuscriptMarkdown({title, description, pdfPath, sidebar}),
+      "utf8",
+    );
+    generated.push(`${route}.md`);
+  }
+
+  return generated;
 }
 
 function renderLeanMathScript() {
@@ -865,6 +980,7 @@ async function main() {
   const languagesJson = values.get("--languages-json");
   const lean4RenderedDir = values.get("--lean4-rendered-dir") ?? null;
   const lean4SourceDir = values.get("--lean4-source-dir") ?? null;
+  const typstRenderedDir = values.get("--typst-rendered-dir") ?? null;
   const outDir = values.get("--out-dir");
 
   if (!contentDir || !configJson || !templateFilesJson || !outDir) {
@@ -911,6 +1027,8 @@ async function main() {
   }
 
   await pruneEmptyDirectories(contentRoot);
+
+  await generateTypstManuscripts(contentRoot, publicRoot, typstRenderedDir);
 
   const authoredMarkdown = (await listFiles(contentRoot))
     .map((absolutePath) => normalizeSlashes(path.relative(contentRoot, absolutePath)))

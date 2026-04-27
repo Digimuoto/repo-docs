@@ -37,6 +37,106 @@
     Cli
   ];
 
+  mkTypstManuscripts = {
+    name,
+    contentDir,
+    typstManuscripts,
+  }: let
+    manuscriptsFile = pkgs.writeText "${name}-typst-manuscripts.json" (builtins.toJSON typstManuscripts);
+  in
+    pkgs.stdenv.mkDerivation {
+      pname = "${name}-typst-manuscripts";
+      version = "0.1.0";
+      src = contentDir;
+
+      nativeBuildInputs = [
+        pkgs.jq
+        pkgs.typst
+      ];
+
+      dontConfigure = true;
+
+      buildPhase = ''
+        runHook preBuild
+
+        mkdir -p "$out/assets"
+        items="$TMPDIR/typst-manuscripts.jsonl"
+        : > "$items"
+
+        while IFS= read -r key; do
+          dir=$(jq -r --arg key "$key" '.[$key].dir // empty' ${manuscriptsFile})
+          if [ -z "$dir" ]; then
+            echo "docsSite.typst.manuscripts.$key.dir must be set" >&2
+            exit 1
+          fi
+
+          case "$dir" in
+            /*|*..*)
+              echo "docsSite.typst.manuscripts.$key.dir must be a relative docs path without '..'" >&2
+              exit 1
+              ;;
+          esac
+
+          manifest="$PWD/$dir/repo-docs-typst.json"
+          if [ ! -f "$manifest" ]; then
+            echo "Typst manuscript '$key' is missing $dir/repo-docs-typst.json" >&2
+            exit 1
+          fi
+
+          entry=$(jq -r '.entry // empty' "$manifest")
+          if [ -z "$entry" ]; then
+            echo "Typst manuscript '$key' manifest must define entry" >&2
+            exit 1
+          fi
+
+          output=$(jq -r '.output // "manuscript.pdf"' "$manifest")
+          case "$output" in
+            *.pdf) ;;
+            *)
+              echo "Typst manuscript '$key' output must end in .pdf" >&2
+              exit 1
+              ;;
+          esac
+
+          route=$(jq -r '.route // empty' "$manifest")
+          if [ -z "$route" ]; then
+            parent="''${dir%/*}"
+            route="$parent/''${output%.pdf}"
+          fi
+
+          title=$(jq -r '.title // empty' "$manifest")
+          if [ -z "$title" ]; then
+            title="$key"
+          fi
+          description=$(jq -r '.description // empty' "$manifest")
+          sidebar=$(jq -c '.sidebar // {}' "$manifest")
+
+          asset="''${key//[^A-Za-z0-9_.-]/-}.pdf"
+          typst compile --root "$PWD" "$dir/$entry" "$out/assets/$asset"
+
+          jq -n \
+            --arg key "$key" \
+            --arg dir "$dir" \
+            --arg route "$route" \
+            --arg title "$title" \
+            --arg description "$description" \
+            --arg asset "$asset" \
+            --argjson sidebar "$sidebar" \
+            '{key: $key, dir: $dir, route: $route, title: $title, description: $description, asset: $asset, sidebar: $sidebar}' \
+            >> "$items"
+        done < <(jq -r 'keys[]' ${manuscriptsFile})
+
+        jq -s '.' "$items" > "$out/manuscripts.json"
+
+        runHook postBuild
+      '';
+
+      installPhase = ''
+        runHook preInstall
+        runHook postInstall
+      '';
+    };
+
   mkLean4VersoHtml = {
     name,
     lean4SourceDir,
@@ -143,6 +243,7 @@
     config,
     lean4SourceDir,
     lean4RenderedDir,
+    typstRenderedDir,
     templateFiles,
     languages,
     mode,
@@ -181,6 +282,8 @@
 ${lib.optionalString (lean4RenderedDir != null) ''
           --lean4-rendered-dir ${lean4RenderedDir}
           --lean4-source-dir ${lean4SourceDir}
+''}${lib.optionalString (typstRenderedDir != null) ''
+          --typst-rendered-dir ${typstRenderedDir}
 ''}          --out-dir "$workdir"
         )
         node ${stageScript} "''${stageArgs[@]}"
@@ -210,10 +313,18 @@ in
     templateFiles ? {},
     languages ? {},
   }: let
+    typstManuscripts =
+      if config ? typst && config.typst ? manuscripts
+      then config.typst.manuscripts
+      else {};
     lean4RenderedDir =
       if lean4SourceDir == null
       then null
       else mkLean4VersoHtml {inherit name lean4SourceDir lean4Deps;};
+    typstRenderedDir =
+      if typstManuscripts == {}
+      then null
+      else mkTypstManuscripts {inherit name contentDir typstManuscripts;};
     stagedSrc = pkgs.runCommand "${name}-src" {
       nativeBuildInputs = [
         pkgs.nodejs_22
@@ -232,6 +343,8 @@ in
 ${lib.optionalString (lean4SourceDir != null) ''
         --lean4-rendered-dir ${lean4RenderedDir}
         --lean4-source-dir ${lean4SourceDir}
+''}${lib.optionalString (typstRenderedDir != null) ''
+        --typst-rendered-dir ${typstRenderedDir}
 ''}        --out-dir "$out"
       )
       node ${stageScript} "''${stageArgs[@]}"
@@ -266,14 +379,14 @@ ${lib.optionalString (lean4SourceDir != null) ''
 
     devApp = mkApp {
       name = "${name}-dev";
-      inherit contentDir config lean4SourceDir lean4RenderedDir templateFiles languages;
+      inherit contentDir config lean4SourceDir lean4RenderedDir typstRenderedDir templateFiles languages;
       mode = "dev";
       port = 4321;
     };
 
     previewApp = mkApp {
       name = "${name}-preview";
-      inherit contentDir config lean4SourceDir lean4RenderedDir templateFiles languages;
+      inherit contentDir config lean4SourceDir lean4RenderedDir typstRenderedDir templateFiles languages;
       mode = "preview";
       port = 4322;
     };
