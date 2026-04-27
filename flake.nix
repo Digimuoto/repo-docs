@@ -260,6 +260,41 @@
               '';
             };
 
+          docs-typst-manuscripts = let
+            typstSite = mkDocsSite {
+              name = "docs-typst-manuscripts";
+              contentDir = ./fixtures/typst-docs;
+              config = {
+                site = {
+                  title = "typst-test";
+                  publicBaseUrl = "https://example.com";
+                };
+                typst.manuscripts.sample.dir = "Publications/Sample/typst";
+              };
+            };
+          in
+            mkAssertionCheck {
+              name = "docs-typst-manuscripts";
+              script = ''
+                site="${typstSite.package}"
+                staged="${typstSite.stagedSrc}"
+
+                test -f "$staged/src/content/docs/Publications/Sample/manuscript.md"
+                test -f "$staged/public/Publications/Sample/manuscript.pdf"
+                grep -q 'kind: "typst-manuscript"' "$staged/src/content/docs/Publications/Sample/manuscript.md"
+                grep -q 'pdf: "Publications/Sample/manuscript.pdf"' "$staged/src/content/docs/Publications/Sample/manuscript.md"
+
+                test -f "$site/Publications/Sample/manuscript/index.html"
+                test -f "$site/Publications/Sample/manuscript.pdf"
+                grep -q 'docs-typst-reader-frame' "$site/Publications/Sample/manuscript/index.html"
+                grep -q 'Publications/Sample/manuscript.pdf' "$site/Publications/Sample/manuscript/index.html"
+                grep -q 'Sample Typst Manuscript' "$site/Publications/Sample/manuscript/index.html"
+                if grep -q 'docs-sidebar\|docs-title\|docs-reading-sequence' "$site/Publications/Sample/manuscript/index.html"; then
+                  echo "Typst manuscript reader should not render docs chrome"; exit 1
+                fi
+              '';
+            };
+
           docs-lean4-theory = let
             leanSite = mkDocsSite {
               name = "docs-lean4-theory";

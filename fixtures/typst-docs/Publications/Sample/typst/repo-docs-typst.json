@@ -1,0 +1,11 @@
+{
+  "entry": "manuscript.typ",
+  "output": "manuscript.pdf",
+  "route": "Publications/Sample/manuscript",
+  "title": "Sample Typst Manuscript",
+  "description": "A generated Typst PDF fixture.",
+  "sidebar": {
+    "label": "Manuscript",
+    "order": 2
+  }
+}

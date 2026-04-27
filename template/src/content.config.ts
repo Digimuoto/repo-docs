@@ -54,6 +54,14 @@ const docs = defineCollection({
         fragment: z.string(),
       })
       .optional(),
+
+    // Generated Typst manuscript reader pages point at a compiled PDF
+    // under public/. Authored pages should omit this.
+    typst: z
+      .object({
+        pdf: z.string(),
+      })
+      .optional(),
   }),
 });
 

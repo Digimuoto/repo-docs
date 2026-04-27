@@ -1344,6 +1344,25 @@ video {
   overflow-x: auto;
 }
 
+/* Typst manuscript routes are intentionally chrome-free: the PDF is the
+ * reading surface, with the browser's native PDF controls as the only UI. */
+body.docs-typst-reader {
+  margin: 0;
+  width: 100vw;
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--surface-primary);
+}
+
+.docs-typst-reader-frame {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  border: 0;
+  background: #fff;
+}
+
 /* ==========================================================================
  * Verso-rendered Lean 4 theory pages.
  *

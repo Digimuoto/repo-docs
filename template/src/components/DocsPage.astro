@@ -6,6 +6,7 @@ import DocsLayout from "../layouts/DocsLayout.astro";
 import DocsMetaBlock from "./DocsMetaBlock.astro";
 import DocsReadingSequence from "./DocsReadingSequence.astro";
 import DocsTitle from "./DocsTitle.astro";
+import TypstPdfPage from "./TypstPdfPage.astro";
 import {deriveDocKind} from "../lib/doc-kind";
 import {buildSidebar, findReadingSequence, normalizeEntryId} from "../lib/navigation";
 import {siteConfig, withBasePath} from "../lib/site-config";
@@ -33,6 +34,7 @@ const hasMermaid =
   (versoFragment != null && VERSO_MERMAID_RE.test(versoFragment));
 const description = doc.data.description ?? siteConfig.site.description;
 const docKind = deriveDocKind(doc);
+const typstPdfHref = doc.data.typst?.pdf ? withBasePath(doc.data.typst.pdf) : null;
 
 // Reading-sequence prev/next: derived from the materialised nav tree
 // (same order the sidebar shows). Skipped silently for the docs root
@@ -42,17 +44,21 @@ const currentHref = withBasePath(docKey === "index" ? "" : docKey);
 const sequence = findReadingSequence(navigation, currentHref);
 ---
 
-<DocsLayout
-  title={doc.data.title}
-  description={description}
-  navigation={navigation}
-  headings={headings}
-  hasMermaid={hasMermaid}
-  docKind={docKind}
->
-  <DocsTitle doc={doc} />
-  <DocsMetaBlock doc={doc} />
-  <Content />
-  {versoFragment && <Fragment set:html={versoFragment} />}
-  <DocsReadingSequence prev={sequence.prev} next={sequence.next} />
-</DocsLayout>
+{typstPdfHref ? (
+  <TypstPdfPage title={doc.data.title} description={description} pdfHref={typstPdfHref} />
+) : (
+  <DocsLayout
+    title={doc.data.title}
+    description={description}
+    navigation={navigation}
+    headings={headings}
+    hasMermaid={hasMermaid}
+    docKind={docKind}
+  >
+    <DocsTitle doc={doc} />
+    <DocsMetaBlock doc={doc} />
+    <Content />
+    {versoFragment && <Fragment set:html={versoFragment} />}
+    <DocsReadingSequence prev={sequence.prev} next={sequence.next} />
+  </DocsLayout>
+)}

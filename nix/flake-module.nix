@@ -181,6 +181,41 @@
         '';
       };
 
+      typst = lib.mkOption {
+        type = lib.types.submodule {
+          options = {
+            manuscripts = lib.mkOption {
+              type = lib.types.attrsOf (lib.types.submodule {
+                options = {
+                  dir = lib.mkOption {
+                    type = lib.types.str;
+                    example = "Publications/Paper-1/typst";
+                    description = ''
+                      Relative path under `contentDir` containing a Typst
+                      manuscript project. The directory must include
+                      `repo-docs-typst.json`, which names the entry file,
+                      generated route, title, and sidebar metadata.
+                    '';
+                  };
+                };
+              });
+              default = {};
+              description = ''
+                Explicit Typst manuscript projects to compile and expose as
+                full-viewport PDF reader pages. repo-docs does not autodetect
+                Typst files because manuscripts typically carry local layout,
+                bibliographies, figures, and scratch material.
+              '';
+            };
+          };
+        };
+        default = {};
+        example = {
+          manuscripts.paper1.dir = "Publications/Paper-1-staged-reduction/typst";
+        };
+        description = "Typst manuscript rendering configuration for this site.";
+      };
+
       navigation = lib.mkOption {
         type = lib.types.submodule {
           options = {
@@ -381,6 +416,7 @@
           theme = siteCfg.theme;
           themeModes = siteCfg.themeModes;
           lean4 = siteCfg.lean4;
+          typst = siteCfg.typst;
         };
         inherit lean4SourceDir;
         templateFiles = siteCfg.templateFiles;
