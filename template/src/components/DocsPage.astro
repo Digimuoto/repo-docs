@@ -18,11 +18,12 @@ const versoFragmentPath = doc.data.verso?.fragment
   ? path.resolve(process.cwd(), "src/generated", doc.data.verso.fragment)
   : null;
 const versoFragment = versoFragmentPath ? fs.readFileSync(versoFragmentPath, "utf8") : null;
+const docBody = doc.body ?? "";
 const hasMermaid =
-  doc.body.includes("```mermaid") ||
-  doc.body.includes("language-mermaid") ||
-  doc.body.includes("lang-mermaid") ||
-  doc.body.includes("data-language=\"mermaid\"");
+  docBody.includes("```mermaid") ||
+  docBody.includes("language-mermaid") ||
+  docBody.includes("lang-mermaid") ||
+  docBody.includes("data-language=\"mermaid\"");
 const description = doc.data.description ?? siteConfig.site.description;
 const docKind = deriveDocKind(doc);
 

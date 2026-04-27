@@ -283,6 +283,10 @@
                 test ! -e "$staged/public/Theory/Demo/Proof/index.html"
                 grep -q 'tags:' "$staged/src/content/docs/Theory/Demo/Proof.md"
                 grep -q '"proofs"' "$staged/src/content/docs/Theory/Demo/Proof.md"
+                grep -q 'font-style: italic;' "$staged/src/styles/global.css"
+                if grep -q 'This module demonstrates the native repo-docs Theory integration' "$staged/src/content/docs/Theory/Demo/Proof.md"; then
+                  echo "Lean module prose should stay in the Verso fragment, not staged markdown"; exit 1
+                fi
 
                 grep -q '"entries"' "$staged/src/generated/site-config.json"
                 grep -q '"Theory/Demo/Proof"' "$staged/src/generated/site-config.json"
@@ -290,6 +294,8 @@
 
                 grep -q 'Theory' "$site/index.html"
                 grep -q 'docs-sidebar' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'docs-nav-proof' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'This module demonstrates the native repo-docs Theory integration' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'repo-docs-lean-page' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'repo-docs-proof-state-panel' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'code-box' "$site/Theory/Demo/Proof/index.html"
@@ -305,6 +311,9 @@
                 fi
                 if grep -q '```lean' "$site/Theory/Demo/Proof/index.html"; then
                   echo "Lean theory page should be Verso HTML, not markdown code fences"; exit 1
+                fi
+                if grep -q 'Generated Lean 4 module rendered with Verso' "$staged/src/content/docs/Theory/Demo/Proof.md" "$site/Theory/Demo/Proof/index.html"; then
+                  echo "Lean theory page should render module prose instead of fallback text"; exit 1
                 fi
               '';
             };

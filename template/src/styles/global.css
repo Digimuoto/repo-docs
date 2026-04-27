@@ -783,7 +783,8 @@ html[data-mode="light"] .docs-mode-toggle svg {
  * a sidebar full of green pills carries no information. Override
  * via templateFiles if you want them visible.
  */
-.docs-nav-status {
+.docs-nav-status,
+.docs-nav-proof {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -797,6 +798,7 @@ html[data-mode="light"] .docs-mode-toggle svg {
   background: color-mix(in srgb, currentColor 10%, transparent);
   color: var(--text-content-tertiary);
 }
+.docs-nav-proof             { color: var(--brand-primary); }
 .docs-nav-status-draft       { color: var(--status-draft); }
 .docs-nav-status-proposed    { color: var(--status-proposed); }
 .docs-nav-status-superseded  { color: var(--status-superseded); }
@@ -1970,6 +1972,7 @@ video {
   font-size: 1.0625rem;
   line-height: 1.55;
   color: var(--text-content-secondary);
+  font-style: italic;
   font-weight: 400;
 }
 

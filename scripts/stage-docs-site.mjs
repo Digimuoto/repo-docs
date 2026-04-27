@@ -213,13 +213,6 @@ function extractLeanContentFragment(html) {
   return match[0];
 }
 
-function stripVersoModuleDoc(fragment) {
-  return fragment.replace(
-    /<div class="(?:md-text|verso-text) mod-doc"[\s\S]*?<\/div>\s*/g,
-    "",
-  );
-}
-
 function moduleRelativeLeanPath(relativeHtmlPath) {
   return relativeHtmlPath.replace(/\/index\.html$/i, ".lean");
 }
@@ -231,19 +224,6 @@ async function readLeanModuleSource(sourceDir, relativeHtmlPath) {
   } catch {
     return null;
   }
-}
-
-function extractModuleDocMarkdown(source) {
-  if (!source) {
-    return null;
-  }
-  const match = source.match(/\/-!([\s\S]*?)-\//);
-  if (!match) {
-    return null;
-  }
-
-  const body = match[1].trim();
-  return body === "" ? null : body;
 }
 
 function classifyLeanModuleTags(source) {
@@ -379,7 +359,7 @@ function renderTheoryIndexMarkdown(moduleLinks) {
   ].join("\n");
 }
 
-function renderTheoryModuleMarkdown({title, label, moduleDoc, fragmentPath, tags}) {
+function renderTheoryModuleMarkdown({title, label, fragmentPath, tags}) {
   return [
     "---",
     `title: ${yamlString(title)}`,
@@ -392,8 +372,6 @@ function renderTheoryModuleMarkdown({title, label, moduleDoc, fragmentPath, tags
     "verso:",
     `  fragment: ${yamlString(fragmentPath)}`,
     "---",
-    "",
-    moduleDoc ?? `Generated Lean 4 module rendered with Verso. Hover Lean tokens and tactic blocks to inspect semantic information and proof states.`,
     "",
   ].join("\n");
 }
@@ -519,11 +497,9 @@ async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, 
     const title = extractHtmlTitle(html, relativePath.slice(0, -"/index.html".length).replace(/\//g, "."));
     const link = theoryLinkFromRenderedIndex(relativePath);
     const source = await readLeanModuleSource(lean4.sourceDir, relativePath);
-    const moduleDoc = extractModuleDocMarkdown(source);
+    const contentFragment = extractLeanContentFragment(html);
     const tags = classifyLeanModuleTags(source);
-    const fragment = rewriteVersoLinks(moduleDoc
-      ? stripVersoModuleDoc(extractLeanContentFragment(html))
-      : extractLeanContentFragment(html), assetBaseHref);
+    const fragment = rewriteVersoLinks(contentFragment, assetBaseHref);
     const setup = renderVersoSetup(html, assetBaseHref);
     const fragmentPath = `lean-theory/${GENERATED_THEORY_DIR}/${relativePath.replace(/\/index\.html$/i, ".html")}`;
     const fragmentTargetPath = path.join(generatedRoot, fragmentPath);
@@ -545,7 +521,6 @@ async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, 
       renderTheoryModuleMarkdown({
         title,
         label: link?.label ?? title,
-        moduleDoc,
         fragmentPath,
         tags,
       }),

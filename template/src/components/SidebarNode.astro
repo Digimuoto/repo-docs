@@ -41,6 +41,7 @@ const hasChildren = node.children.length > 0;
 const active = node.href ? isActiveHref(node.href) : false;
 const descendantActive = !active && node.children.some(containsActive);
 const initialOpen = active || descendantActive;
+const hasProofs = node.tags?.includes("proofs") ?? false;
 ---
 
 <li
@@ -86,6 +87,7 @@ const initialOpen = active || descendantActive;
           },
         ]}
         data-status={node.status}
+        data-has-proofs={hasProofs ? "true" : undefined}
       >
         <span>{node.label}</span>
         {node.status && (
@@ -96,6 +98,11 @@ const initialOpen = active || descendantActive;
             title={node.status}
           >
             {node.status}
+          </span>
+        )}
+        {hasProofs && (
+          <span class="docs-nav-proof" title="Contains Lean proofs">
+            proofs
           </span>
         )}
       </a>
