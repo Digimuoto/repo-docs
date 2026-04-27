@@ -156,6 +156,8 @@
               # Rendering example has mermaid diagrams
               grep -q "data-docs-mermaid=\"true\"" "$site/guides/rendering-example/index.html"
               grep -q "data-docs-mermaid=\"false\"" "$site/index.html"
+              grep -R "foreignObject" "$site/_astro"
+              grep -R "edgeLabel p" "$site/_astro"
 
               # Tree-sitter highlighting: the ts-json block should be
               # tokenised (tree-sitter-pre wrapper + at least one tok-

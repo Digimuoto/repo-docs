@@ -2405,6 +2405,34 @@ a.docs-meta-pill:focus-visible {
   overflow-x: auto;
 }
 
+/* Mermaid renders flowchart labels as XHTML inside SVG foreignObject
+ * nodes. Keep prose/code styling from leaking into those measured boxes,
+ * and allow a little paint overflow so antialiasing and label chips are
+ * not clipped at the exact Mermaid-computed bounds. */
+.prose .mermaid svg,
+.prose .mermaid svg foreignObject,
+.prose .mermaid svg .label,
+.prose .mermaid svg .nodeLabel,
+.prose .mermaid svg .edgeLabel {
+  overflow: visible !important;
+}
+.prose .mermaid svg :where(.label, .nodeLabel, .edgeLabel) p {
+  margin: 0 !important;
+  line-height: 1.35 !important;
+}
+.prose .mermaid svg :where(.label, .nodeLabel, .edgeLabel) code {
+  padding: 0 !important;
+  color: inherit !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  font: inherit !important;
+}
+.prose .mermaid svg .edgeLabel p {
+  display: inline-block;
+  padding: 0.08rem 0.35rem !important;
+  border-radius: 0.25rem;
+}
+
 .prose .mermaid svg {
   display: block;
   margin: 0 auto;
@@ -2428,10 +2456,10 @@ a.docs-meta-pill:focus-visible {
 }
 
 .prose .mermaid-card:fullscreen .mermaid {
-  align-items: center;
   display: flex;
   flex: 1 1 auto;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   overflow: auto;
 }
 
@@ -2539,7 +2567,10 @@ html[data-theme="cortex-slate"] .mermaid svg .edgeLabel rect {
   fill: #2d333b !important;
   color: #adbac7 !important;
 }
-html[data-theme="cortex-slate"] .mermaid svg .edgeLabel * {
+html[data-theme="cortex-slate"] .mermaid svg .edgeLabel p {
+  background-color: #2d333b !important;
+}
+html[data-theme="cortex-slate"] .mermaid svg .edgeLabel :where(span, p, text, tspan) {
   color: #adbac7 !important;
   fill: #adbac7 !important;
 }
