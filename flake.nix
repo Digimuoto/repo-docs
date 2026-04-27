@@ -142,7 +142,10 @@
                 test -f "$site/Theory/Demo/Proof/index.html"
                 test ! -e "$site/private/notes/index.html"
                 grep -q "repo-docs" "$site/index.html"
-                grep -q "Demo Proof" "$site/Theory/Demo/Proof/index.html"
+                # Module's canonical name lands in <title> and the
+                # page heading regardless of how the in-file
+                # `/-! # ... -/` H1 is worded.
+                grep -q "Demo\.Proof" "$site/Theory/Demo/Proof/index.html"
                 grep -q "docs-sidebar" "$site/Theory/Demo/Proof/index.html"
                 grep -q "repo-docs-lean-page" "$site/Theory/Demo/Proof/index.html"
                 grep -q "repo-docs-proof-state-panel" "$site/Theory/Demo/Proof/index.html"
@@ -287,7 +290,10 @@
                 grep -q '"proofs"' "$staged/src/content/docs/Theory/Demo/Proof.md"
                 grep -q 'font-style: italic;' "$staged/src/styles/global.css"
                 grep -q 'code-box > .md-text:not(.mod-doc)' "$staged/src/styles/global.css"
-                if grep -q 'This module demonstrates the native repo-docs Theory integration' "$staged/src/content/docs/Theory/Demo/Proof.md"; then
+                if grep -q 'Verso-rendered Lean 4 module' "$staged/src/content/docs/Theory/Demo/Proof.md"; then
+                  echo "Lean theory pages should not emit generated description ingress"; exit 1
+                fi
+                if grep -q 'literate proof' "$staged/src/content/docs/Theory/Demo/Proof.md"; then
                   echo "Lean module prose should stay in the Verso fragment, not staged markdown"; exit 1
                 fi
 
@@ -298,11 +304,11 @@
                 grep -q 'Theory' "$site/index.html"
                 grep -q 'docs-sidebar' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'docs-nav-proof' "$site/Theory/Demo/Proof/index.html"
-                grep -q 'This module demonstrates the native repo-docs Theory integration' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'literate proof' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'repo-docs-lean-page' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'repo-docs-proof-state-panel' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'code-box' "$site/Theory/Demo/Proof/index.html"
-                grep -q 'Demo Proof' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'Demo\.Proof' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'theorem' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'identity' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'identity_again' "$site/Theory/Demo/Proof/index.html"

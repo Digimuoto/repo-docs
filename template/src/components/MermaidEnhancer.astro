@@ -1,10 +1,23 @@
 <script>
   if (document.body.dataset.docsMermaid === "true") {
-    const sourceNodes = Array.from(
+    // Verso (Lean theory pages) emits diagrams as bare <pre><code>
+    // blocks with no language tag, so we can't rely on the
+    // selector alone — sniff each pre > code's leading keyword to
+    // pick up Mermaid diagrams that the markdown pipeline tagged
+    // *and* Verso's untagged variants.
+    const VERSO_MERMAID_LEAD = /^\s*(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|gitGraph|mindmap|timeline|quadrantChart|requirementDiagram|sankey-beta|xychart-beta|block-beta|C4(?:Context|Container|Component|Dynamic|Deployment))\b/;
+    const tagged = Array.from(
       document.querySelectorAll(
         "pre[data-language='mermaid'] > code, pre > code.language-mermaid, pre > code.lang-mermaid",
       ),
     );
+    const taggedSet = new Set(tagged);
+    const sniffed = Array.from(
+      document.querySelectorAll(".repo-docs-lean-page pre > code"),
+    ).filter(
+      (node) => !taggedSet.has(node) && VERSO_MERMAID_LEAD.test(node.textContent ?? ""),
+    );
+    const sourceNodes = [...tagged, ...sniffed];
 
     if (sourceNodes.length > 0) {
       const {default: mermaid} = await import("mermaid");
