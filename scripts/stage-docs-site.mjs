@@ -363,7 +363,6 @@ function renderTheoryModuleMarkdown({title, label, fragmentPath, tags}) {
   return [
     "---",
     `title: ${yamlString(title)}`,
-    `description: ${yamlString(`Verso-rendered Lean 4 module ${title}`)}`,
     `kind: ${yamlString("lean-theory")}`,
     "tags:",
     ...tags.map((tag) => `  - ${yamlString(tag)}`),
@@ -374,6 +373,51 @@ function renderTheoryModuleMarkdown({title, label, fragmentPath, tags}) {
     "---",
     "",
   ].join("\n");
+}
+
+function renderLeanMathScript() {
+  // Verso emits docstring/module-doc text verbatim — `$x$` and `$$…$$`
+  // pass through as raw characters because Verso has no KaTeX pass.
+  // We load KaTeX's auto-render on the client and run it across the
+  // lean page's text containers (module docs, declaration docstrings,
+  // and tippy-injected hover bodies). The stylesheet is already
+  // loaded by DocsLayout for the Markdown pipeline; only the JS
+  // pieces are added here, and only on lean pages.
+  return `<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js" crossorigin="anonymous" onload="(function(){
+  var page = document.querySelector('[data-repo-docs-lean-page]');
+  if (!page || !window.renderMathInElement) return;
+  var opts = {
+    delimiters: [
+      { left: '$$', right: '$$', display: true },
+      { left: '\\\\[', right: '\\\\]', display: true },
+      { left: '$', right: '$', display: false },
+      { left: '\\\\(', right: '\\\\)', display: false }
+    ],
+    throwOnError: false,
+    ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+  };
+  function render(root) {
+    if (!root) return;
+    try { window.renderMathInElement(root, opts); } catch (err) { console.warn('[lean-math]', err); }
+  }
+  page.querySelectorAll('.md-text, .verso-text').forEach(render);
+  // Tippy hover popups are injected into <body> on demand. Watch for
+  // them and re-render once their hover-info / docstring content is in
+  // so math inside docstrings shows up on hover.
+  var seen = new WeakSet();
+  new MutationObserver(function(records){
+    records.forEach(function(r){
+      r.addedNodes && r.addedNodes.forEach(function(node){
+        if (!(node instanceof HTMLElement)) return;
+        if (node.classList && node.classList.contains('tippy-box') && !seen.has(node)) {
+          seen.add(node);
+          render(node);
+        }
+      });
+    });
+  }).observe(document.body, { childList: true, subtree: true });
+})();"></script>`;
 }
 
 function renderTheoryFragmentHtml({setup, fragment, assetBaseHref}) {
@@ -392,6 +436,7 @@ function renderTheoryFragmentHtml({setup, fragment, assetBaseHref}) {
     `</div>`,
     renderProofInspectorScript(),
     `<script src="${escapeHtml(`${assetBaseHref}/copy-button.js`)}"></script>`,
+    renderLeanMathScript(),
     "</div>",
     "",
   ].join("\n");

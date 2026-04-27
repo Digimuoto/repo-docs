@@ -19,11 +19,18 @@ const versoFragmentPath = doc.data.verso?.fragment
   : null;
 const versoFragment = versoFragmentPath ? fs.readFileSync(versoFragmentPath, "utf8") : null;
 const docBody = doc.body ?? "";
+// Mermaid keywords that can appear at the top of a fenced block. Used
+// for Verso-rendered Lean pages, which inline diagrams as bare
+// <pre><code>flowchart LR …</code></pre> with no language tag — we can
+// only detect them by content.
+const VERSO_MERMAID_RE =
+  /<pre>\s*<code>\s*(?:flowchart|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|gitGraph|mindmap|timeline|quadrantChart|requirementDiagram|sankey-beta|xychart-beta|block-beta|C4(?:Context|Container|Component|Dynamic|Deployment))\b/;
 const hasMermaid =
   docBody.includes("```mermaid") ||
   docBody.includes("language-mermaid") ||
   docBody.includes("lang-mermaid") ||
-  docBody.includes("data-language=\"mermaid\"");
+  docBody.includes("data-language=\"mermaid\"") ||
+  (versoFragment != null && VERSO_MERMAID_RE.test(versoFragment));
 const description = doc.data.description ?? siteConfig.site.description;
 const docKind = deriveDocKind(doc);
 

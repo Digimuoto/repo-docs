@@ -783,8 +783,7 @@ html[data-mode="light"] .docs-mode-toggle svg {
  * a sidebar full of green pills carries no information. Override
  * via templateFiles if you want them visible.
  */
-.docs-nav-status,
-.docs-nav-proof {
+.docs-nav-status {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -798,7 +797,23 @@ html[data-mode="light"] .docs-mode-toggle svg {
   background: color-mix(in srgb, currentColor 10%, transparent);
   color: var(--text-content-tertiary);
 }
-.docs-nav-proof             { color: var(--brand-primary); }
+
+/* Proof indicator: a small brand-tinted dot trailing the label,
+ * not a labelled chip. The "proofs" label adds no information
+ * beyond what the section context already communicates; the dot
+ * is enough to mark the link as a proof page at a glance. */
+.docs-nav-proof {
+  flex-shrink: 0;
+  width: 0.375rem;
+  height: 0.375rem;
+  margin-left: 0.125rem;
+  border-radius: 999px;
+  background: var(--brand-primary);
+  /* Hide the inner text node so the element renders as just the dot. */
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+}
 .docs-nav-status-draft       { color: var(--status-draft); }
 .docs-nav-status-proposed    { color: var(--status-proposed); }
 .docs-nav-status-superseded  { color: var(--status-superseded); }
@@ -1209,7 +1224,7 @@ video {
 }
 
 .prose blockquote {
-  border-left: 4px solid var(--brand-primary);
+  border-left: 2px solid var(--border-secondary);
   padding-left: 1rem;
   margin-left: 0;
   color: var(--text-content-tertiary);
@@ -1341,14 +1356,14 @@ video {
  * ========================================================================== */
 
 .docs-prose > .repo-docs-lean-page {
-  --lean-card-radius: 0.875rem;
+  --lean-card-radius: 0.5rem;
   --lean-card-border: 1px solid var(--border-primary);
   --lean-card-bg: var(--surface-primary);
   --lean-card-chrome: var(--surface-secondary);
   --lean-hover-tint: color-mix(in srgb, var(--brand-primary) 16%, transparent);
   --lean-active-tint: color-mix(in srgb, var(--brand-primary) 26%, transparent);
-  --lean-pad-x: 1.25rem;
-  --lean-pad-y: 1.125rem;
+  --lean-pad-x: 1rem;
+  --lean-pad-y: 0.875rem;
 
   margin-top: 2rem;
   max-width: none;
@@ -1378,45 +1393,34 @@ video {
   }
 }
 
-/* The whole code section becomes one editor-pane card. Its children
- * (imports header, code body) are visual sub-regions sharing the
- * outer rounded border — no nested cards. */
 .repo-docs-lean-page .code-content {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  background: var(--lean-card-bg);
-  border: var(--lean-card-border);
-  border-radius: var(--lean-card-radius);
-  overflow: hidden;
-  box-shadow:
-    0 1px 0 0 color-mix(in srgb, var(--border-primary) 40%, transparent) inset,
-    0 16px 32px -24px rgba(0, 0, 0, 0.45);
+  min-width: 0;
 }
 
-/* Imports row: a slim header strip, similar tone to the proof panel
- * header so the two cards read as a matched pair. */
 .repo-docs-lean-page .imports-list {
+  margin: 0 0 1.5rem;
   background: var(--lean-card-chrome);
-  border-bottom: 1px solid var(--border-primary);
+  border: var(--lean-card-border);
+  border-radius: 0.5rem;
   color: var(--text-content-tertiary);
   font-size: 0.8125rem;
+  overflow: hidden;
 }
 
 .repo-docs-lean-page .imports-list > summary {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.625rem var(--lean-pad-x);
+  padding: 0.5rem var(--lean-pad-x);
   margin: 0;
   cursor: pointer;
   list-style: none;
   font-family: var(--font-sans);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-content-quaternary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-content-tertiary);
   user-select: none;
   transition: color 120ms ease;
 }
@@ -1448,7 +1452,7 @@ video {
 .repo-docs-lean-page .imports-code {
   padding: 0.875rem var(--lean-pad-x) 1rem;
   border-top: 1px solid var(--border-primary);
-  background: transparent;
+  background: var(--lean-card-bg);
   color: var(--text-content-secondary);
   font-family: var(--font-mono);
   font-size: 0.8125rem;
@@ -1456,17 +1460,81 @@ video {
   overflow-x: auto;
 }
 
-/* Code body: sits inside the same outer card, no border of its own. */
+.repo-docs-lean-page :where(.md-text, .verso-text) {
+  max-width: 70ch;
+  margin: 0 0 1.5rem;
+  color: var(--text-content-secondary);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+.repo-docs-lean-page :where(.md-text, .verso-text) h1,
+.repo-docs-lean-page :where(.md-text, .verso-text) h2,
+.repo-docs-lean-page :where(.md-text, .verso-text) h3,
+.repo-docs-lean-page :where(.md-text, .verso-text) h4,
+.repo-docs-lean-page :where(.md-text, .verso-text) h5,
+.repo-docs-lean-page :where(.md-text, .verso-text) h6 {
+  margin: 2rem 0 1rem;
+  color: var(--text-content);
+  font-family: var(--font-display, var(--font-sans));
+  font-weight: var(--heading-font-weight, 600);
+  line-height: 1.3;
+}
+.repo-docs-lean-page :where(.md-text, .verso-text) h1:first-child,
+.repo-docs-lean-page :where(.md-text, .verso-text) h2:first-child,
+.repo-docs-lean-page :where(.md-text, .verso-text) h3:first-child {
+  margin-top: 0;
+}
+.repo-docs-lean-page :where(.md-text, .verso-text) p,
+.repo-docs-lean-page :where(.md-text, .verso-text) ul,
+.repo-docs-lean-page :where(.md-text, .verso-text) ol,
+.repo-docs-lean-page :where(.md-text, .verso-text) pre,
+.repo-docs-lean-page :where(.md-text, .verso-text) blockquote {
+  margin: 0 0 1.25rem;
+}
+.repo-docs-lean-page :where(.md-text, .verso-text) > :last-child {
+  margin-bottom: 0;
+}
+.repo-docs-lean-page :where(.md-text, .verso-text) ul,
+.repo-docs-lean-page :where(.md-text, .verso-text) ol {
+  padding-left: 1.5rem;
+}
+/* Verso emits list items as bare <p> children of <ul>/<ol> (no <li>
+ * wrapper), so the browser's default list-marker rendering never
+ * fires. Promote these <p>s to list-items so bullets/numbers show. */
+.repo-docs-lean-page :where(.md-text, .verso-text) :where(ul, ol) > p {
+  display: list-item;
+  margin: 0 0 0.375rem;
+}
+.repo-docs-lean-page :where(.md-text, .verso-text) ul > p {
+  list-style: disc outside;
+}
+.repo-docs-lean-page :where(.md-text, .verso-text) ol > p {
+  list-style: decimal outside;
+}
+.repo-docs-lean-page :where(.md-text, .verso-text) pre {
+  padding: 1rem;
+  overflow-x: auto;
+  background: var(--lean-card-bg);
+  border: var(--lean-card-border);
+  border-radius: 0.5rem;
+}
+.repo-docs-lean-page :where(.md-text, .verso-text) :not(pre) > code {
+  padding: 0.125rem 0.375rem;
+  color: var(--brand-primary);
+  background: var(--surface-secondary);
+  border-radius: 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
 .repo-docs-lean-page .code-box {
   position: relative;
-  flex: 1;
   width: 100%;
-  padding: var(--lean-pad-y) var(--lean-pad-x);
+  padding: 0;
   background: transparent;
-  color: var(--tok-default);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  line-height: 1.7;
+  color: var(--text-content-secondary);
+  font-family: var(--font-sans);
   overflow-x: auto;
 }
 
@@ -1480,29 +1548,45 @@ video {
   tab-size: 2;
 }
 
+/* Each block is its own self-contained code fragment (border + radius
+ * on all four sides). Consecutive blocks no longer fuse into one
+ * "editor pane" that spans the file — they stack as discrete code
+ * cards interleaved with prose, which is the documentation pattern
+ * the Lean rendering aims for. A declaration docstring (.md-text
+ * non-mod-doc, see below) sits adjacent to its following block via
+ * tightened margin so the doc → declaration relationship is visible
+ * without a callout box. */
 .repo-docs-lean-page .hl.lean.block {
   display: block;
-  margin: 0 -0.25rem;
-  padding: 0.0625rem 0.25rem;
+  margin: 0.625rem 0;
+  padding: var(--lean-pad-y) var(--lean-pad-x);
+  width: max-content;
+  min-width: 100%;
+  background: var(--lean-card-bg);
+  border: var(--lean-card-border);
+  border-radius: var(--lean-card-radius);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  overflow-x: visible;
+  white-space: pre;
+}
+.repo-docs-lean-page .code-box > .hl.lean.block:first-child {
+  margin-top: 1rem;
+}
+.repo-docs-lean-page .code-box > .hl.lean.block:last-child {
+  margin-bottom: 0;
 }
 
-/* Verso places declaration docstrings as Markdown blocks inside the
- * code-box immediately before the declaration they document. Style
- * those blocks as preambles so dense Lean pages do not read them as
- * captions for the previous declaration. Module docs use .mod-doc and
- * intentionally keep Verso's normal prose treatment. */
 .repo-docs-lean-page .code-box > .md-text:not(.mod-doc),
 .repo-docs-lean-page .code-box > .verso-text:not(.mod-doc) {
-  margin: 1.35rem 0 0.35rem;
-  padding: 0.625rem 0.75rem 0.625rem 0.875rem;
-  max-width: 78ch;
-  color: var(--text-content-secondary);
-  background: color-mix(in srgb, var(--brand-primary) 7%, transparent);
-  border-left: 3px solid color-mix(in srgb, var(--brand-primary) 62%, var(--border-secondary));
-  border-radius: 0.5rem;
-  font-family: var(--font-sans);
-  font-size: 0.875rem;
-  line-height: 1.55;
+  margin: 1.5rem 0 0.25rem;
+  padding: 0;
+}
+/* Declaration-doc → following code block: drop the block's own
+ * top margin so the gap is just the docstring's small bottom margin
+ * (≈4px) — visibly attached, not overlapping. */
+.repo-docs-lean-page .code-box > :where(.md-text, .verso-text):not(.mod-doc) + .hl.lean.block {
+  margin-top: 0;
 }
 .repo-docs-lean-page .code-box > .md-text:not(.mod-doc) > :first-child,
 .repo-docs-lean-page .code-box > .verso-text:not(.mod-doc) > :first-child {
@@ -1514,13 +1598,13 @@ video {
 }
 .repo-docs-lean-page .code-box > .md-text:not(.mod-doc) code,
 .repo-docs-lean-page .code-box > .verso-text:not(.mod-doc) code {
-  padding: 0.08em 0.28em;
-  color: var(--tok-default);
-  background: color-mix(in srgb, var(--surface-tertiary) 72%, transparent);
-  border: 1px solid var(--border-primary);
-  border-radius: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  color: var(--brand-primary);
+  background: var(--surface-secondary);
+  border: 0;
+  border-radius: 0.375rem;
   font-family: var(--font-mono);
-  font-size: 0.92em;
+  font-size: 0.875em;
 }
 
 .repo-docs-lean-page .hl.lean .keyword { color: var(--tok-keyword); }
@@ -1636,10 +1720,10 @@ video {
 }
 
 .repo-docs-proof-state-eyebrow {
-  color: var(--text-content-quaternary);
+  color: var(--text-content-tertiary);
   font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -1728,8 +1812,8 @@ video {
 
 .repo-docs-lean-page .copy-button {
   position: absolute;
-  right: 0.75rem;
-  top: 0.75rem;
+  right: 0.625rem;
+  top: 0.625rem;
   z-index: 2;
   display: inline-flex;
   align-items: center;
@@ -1737,16 +1821,15 @@ video {
   background: color-mix(in srgb, var(--surface-secondary) 80%, transparent);
   backdrop-filter: blur(6px);
   border: 1px solid var(--border-primary);
-  border-radius: 9999px;
+  border-radius: 0.375rem;
   color: var(--text-content-secondary);
   cursor: pointer;
   font-family: var(--font-sans);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0;
   line-height: 1;
-  padding: 0.4rem 0.7rem;
+  padding: 0.3125rem 0.5rem;
   opacity: 0;
   transform: translateY(-2px);
   transition:
@@ -1786,12 +1869,12 @@ video {
 .tippy-box[data-theme~="info"] {
   background: var(--surface-primary) !important;
   border: 1px solid var(--border-secondary) !important;
-  border-radius: 0.75rem !important;
+  border-radius: 0.5rem !important;
   color: var(--text-content) !important;
   font-family: var(--font-sans) !important;
   font-size: 0.875rem !important;
   line-height: 1.55 !important;
-  box-shadow: 0 1.25rem 2.5rem -0.5rem rgba(0, 0, 0, 0.45) !important;
+  box-shadow: 0 0.625rem 1.5rem -0.5rem rgba(0, 0, 0, 0.32) !important;
 }
 
 /* Re-tint the diagnostic accent borders so warning/error/info popovers
@@ -1967,15 +2050,15 @@ video {
   display: inline-flex;
   align-items: center;
   gap: 0.3125rem;
-  padding: 0.1875rem 0.5625rem;
+  padding: 0.1875rem 0.4375rem;
   font-size: 0.625rem;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
   color: var(--text-content-tertiary);
-  background: var(--surface-secondary);
+  background: transparent;
   border: 1px solid var(--border-primary);
-  border-radius: 999px;
+  border-radius: 0.25rem;
   line-height: 1.35;
   transition: border-color 120ms ease, color 120ms ease, background-color 120ms ease;
 }
@@ -1987,20 +2070,11 @@ video {
 .docs-title-badge:has(a:focus-visible) {
   color: var(--text-content);
   border-color: var(--border-secondary);
-  background: var(--surface-tertiary);
+  background: var(--surface-secondary);
 }
 .docs-title-badge-draft {
   color: var(--brand-primary);
-  background: color-mix(in srgb, var(--brand-primary) 8%, transparent);
-  border-color: color-mix(in srgb, var(--brand-primary) 26%, transparent);
-}
-.docs-title-badge-draft::before {
-  content: "";
-  width: 0.375rem;
-  height: 0.375rem;
-  border-radius: 999px;
-  background: currentColor;
-  opacity: 0.85;
+  border-color: color-mix(in srgb, var(--brand-primary) 32%, transparent);
 }
 
 .docs-title-description {
@@ -2131,19 +2205,23 @@ a.docs-meta-pill:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  padding: 0.875rem 1rem;
-  border: 1px solid var(--border-primary);
-  border-radius: 0.5rem;
-  background: var(--surface-primary);
+  padding: 0;
+  background: transparent;
+  border: 0;
   color: var(--text-content-secondary);
   text-decoration: none;
-  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+  transition: color 120ms ease;
 }
-.docs-sequence-link:hover,
+.docs-sequence-link:hover .docs-sequence-title,
+.docs-sequence-link:focus-visible .docs-sequence-title {
+  color: var(--brand-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
 .docs-sequence-link:focus-visible {
-  border-color: var(--brand-primary);
-  color: var(--text-content);
-  outline: none;
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 4px;
+  border-radius: 0.125rem;
 }
 .docs-sequence-prev {
   align-items: flex-start;
@@ -2365,37 +2443,60 @@ a.docs-meta-pill:focus-visible {
 }
 
 .prose .mermaid-card {
+  position: relative;
   background-color: var(--surface-primary);
   border: 1px solid var(--border-primary);
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   margin-bottom: 1.5rem;
   overflow: hidden;
 }
 
+/* Toolbar is just an absolute-positioned overlay carrying the
+ * fullscreen button — no background, no bottom rule, so the card
+ * reads as a diagram block, not as an embedded application frame. */
 .prose .mermaid-toolbar {
-  align-items: center;
-  background-color: var(--surface-secondary);
-  border-bottom: 1px solid var(--border-primary);
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 1;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  padding: 0.5rem 0.75rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  pointer-events: none;
 }
 
 .prose .mermaid-expand-button {
-  background-color: var(--surface-tertiary);
+  pointer-events: auto;
+  background-color: color-mix(in srgb, var(--surface-secondary) 80%, transparent);
+  backdrop-filter: blur(6px);
   border: 1px solid var(--border-primary);
-  border-radius: 9999px;
-  color: var(--text-content);
+  border-radius: 0.375rem;
+  color: var(--text-content-secondary);
   cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
   line-height: 1;
-  padding: 0.45rem 0.8rem;
+  padding: 0.3125rem 0.5rem;
+  opacity: 0;
+  transition:
+    opacity 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.prose .mermaid-card:hover .mermaid-expand-button,
+.prose .mermaid-expand-button:focus-visible {
+  opacity: 1;
 }
 
 .prose .mermaid-expand-button:hover,
 .prose .mermaid-expand-button:focus-visible {
-  background-color: var(--surface-hover);
+  background-color: var(--surface-secondary);
+  color: var(--text-content);
   outline: none;
 }
 
@@ -2450,9 +2551,11 @@ a.docs-meta-pill:focus-visible {
   width: 100%;
 }
 
-.prose .mermaid-card:fullscreen .mermaid-toolbar {
-  border-radius: 0.75rem 0.75rem 0 0;
-  flex: 0 0 auto;
+.prose .mermaid-card:fullscreen .mermaid-expand-button {
+  /* In fullscreen the card fills the viewport and the hover-reveal
+   * affordance is awkward (no surrounding chrome to hover off of).
+   * Pin the button visible so the exit-fullscreen escape is obvious. */
+  opacity: 1;
 }
 
 .prose .mermaid-card:fullscreen .mermaid {
