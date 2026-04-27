@@ -284,6 +284,7 @@
                 grep -q 'tags:' "$staged/src/content/docs/Theory/Demo/Proof.md"
                 grep -q '"proofs"' "$staged/src/content/docs/Theory/Demo/Proof.md"
                 grep -q 'font-style: italic;' "$staged/src/styles/global.css"
+                grep -q 'code-box > .md-text:not(.mod-doc)' "$staged/src/styles/global.css"
                 if grep -q 'This module demonstrates the native repo-docs Theory integration' "$staged/src/content/docs/Theory/Demo/Proof.md"; then
                   echo "Lean module prose should stay in the Verso fragment, not staged markdown"; exit 1
                 fi
@@ -303,6 +304,8 @@
                 grep -q 'theorem' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'identity' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'identity_again' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'docstring attachment' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'Demo___cross' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'add_zero_demo' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'tactic-state' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'katex' "$site/Theory/Demo/Proof/index.html"
