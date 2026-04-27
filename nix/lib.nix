@@ -64,7 +64,9 @@
 
       nativeBuildInputs = [
         pkgs.gitMinimal
-        pkgs.lean4
+        # Match the Lean toolchain used by pkgs.leanPackages.* artifacts so
+        # Lake can reuse dependency config traces from the Nix store.
+        pkgs.leanPackages.lean4
       ];
       buildInputs = allLeanDeps;
 

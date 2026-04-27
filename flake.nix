@@ -255,7 +255,7 @@
                 lean4.theoryDir = "fixtures/lean-theory";
               };
               lean4SourceDir = ./fixtures/lean-theory;
-              lean4Deps = [];
+              lean4Deps = [pkgs.leanPackages.batteries];
             };
           in
             mkAssertionCheck {
