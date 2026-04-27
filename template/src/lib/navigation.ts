@@ -323,6 +323,22 @@ export function buildSidebar(entries: DocsEntry[]): SidebarSection[] {
       };
     }
 
+    if (section.links) {
+      return {
+        items: section.links.map(
+          (link): SidebarNode => ({
+            children: [],
+            href: withBasePath(link.href),
+            isGroup: false,
+            key: `link:${link.href}`,
+            label: link.label,
+          }),
+        ),
+        key: sectionKey,
+        label,
+      };
+    }
+
     const rootKey = normalizeConfigPath(section.dir!);
     const dirPages = pages.filter(
       (page) => page.key === rootKey || page.key.startsWith(`${rootKey}/`),

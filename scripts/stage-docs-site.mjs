@@ -8,7 +8,7 @@ const GENERATED_THEORY_DIR = "Theory";
 
 function usage() {
   console.error(
-    "Usage: node stage-docs-site.mjs --content-dir <dir> --config-json <file> --template-files-json <file> --languages-json <file> [--lean4-source-dir <dir>] --out-dir <dir>",
+    "Usage: node stage-docs-site.mjs --content-dir <dir> --config-json <file> --template-files-json <file> --languages-json <file> [--lean4-rendered-dir <dir>] --out-dir <dir>",
   );
   process.exit(1);
 }
@@ -38,6 +38,13 @@ function normalizeSlug(slug) {
   return normalized;
 }
 
+function normalizeLinkHref(href) {
+  if (typeof href !== "string" || href.trim() === "") {
+    throw new Error("Navigation link hrefs must be non-empty strings.");
+  }
+  return normalizeSlashes(href.trim()).replace(/^\/+|\/+$/g, "");
+}
+
 async function removeIfExists(targetPath) {
   await fs.rm(targetPath, { force: true, recursive: true });
 }
@@ -50,39 +57,7 @@ function titleCase(value) {
     .join(" ");
 }
 
-function yamlString(value) {
-  return JSON.stringify(value);
-}
-
-function markdownFence(language, content) {
-  const maxTicks = Math.max(
-    2,
-    ...[...content.matchAll(/`+/g)].map((match) => match[0].length),
-  );
-  const fence = "`".repeat(maxTicks + 1);
-  return `${fence}${language}\n${content}\n${fence}`;
-}
-
-function sourcePathToTheoryTitle(relativePath) {
-  const withoutExtension = relativePath.replace(/\.lean$/i, "");
-  return withoutExtension.replace(/\//g, ".");
-}
-
-function sourcePathToSidebarLabel(relativePath) {
-  const withoutExtension = relativePath.replace(/\.lean$/i, "");
-  const lastSlash = withoutExtension.lastIndexOf("/");
-  return lastSlash === -1 ? withoutExtension : withoutExtension.slice(lastSlash + 1);
-}
-
-function sourcePathToMarkdownPath(relativePath) {
-  return `${relativePath.replace(/\.lean$/i, "")}.md`;
-}
-
-function relativeMarkdownLink(relativePath) {
-  return sourcePathToMarkdownPath(relativePath);
-}
-
-function parseLean4Config(config, sourceDir) {
+function parseLean4Config(config, renderedDir) {
   if (!config.lean4) {
     return null;
   }
@@ -92,83 +67,194 @@ function parseLean4Config(config, sourceDir) {
   if (typeof config.lean4.theoryDir !== "string" || config.lean4.theoryDir.trim() === "") {
     throw new Error("docsSite.lean4.theoryDir must be a non-empty string when lean4 is set.");
   }
-  if (!sourceDir) {
-    throw new Error("Internal error: docsSite.lean4 is set, but no Lean source directory was staged.");
+  if (!renderedDir) {
+    throw new Error("Internal error: docsSite.lean4 is set, but no rendered Lean output was staged.");
   }
 
   return {
-    sourceDir,
+    renderedDir,
     theoryDir: config.lean4.theoryDir.trim(),
   };
 }
 
-function renderTheoryIndex(leanFiles, theoryDir) {
-  const rows = leanFiles
-    .map((relativePath) => {
-      const title = sourcePathToTheoryTitle(relativePath);
-      const link = relativeMarkdownLink(relativePath);
-      return `| [${title}](${link}) | \`${theoryDir}/${relativePath}\` |`;
-    })
-    .join("\n");
+const VERSO_THEME_PALETTES = {
+  "cortex-dark": {
+    accent: "#f0883e",
+    accentSecondary: "#d97706",
+    background: "#0e1116",
+    border: "rgba(240, 246, 252, 0.10)",
+    borderStrong: "rgba(240, 246, 252, 0.18)",
+    codeBackground: "#161b22",
+    currentForeground: "#ffffff",
+    muted: "#8b949e",
+    selected: "#30363d",
+    surface: "#161b22",
+    surfaceAlt: "#1c222a",
+    text: "#e6edf3",
+    textSecondary: "#b8c1cc",
+  },
+  "cortex-light": {
+    accent: "#0969da",
+    accentSecondary: "#0550ae",
+    background: "#ffffff",
+    border: "#d1d9e0",
+    borderStrong: "#afb8c1",
+    codeBackground: "#f6f8fa",
+    currentForeground: "#ffffff",
+    muted: "#656d76",
+    selected: "#afb8c1",
+    surface: "#f6f8fa",
+    surfaceAlt: "#eaeef2",
+    text: "#1f2328",
+    textSecondary: "#424a53",
+  },
+  "cortex-slate": {
+    accent: "#6e7bd6",
+    accentSecondary: "#5159b3",
+    background: "#22272e",
+    border: "rgba(205, 217, 229, 0.08)",
+    borderStrong: "rgba(205, 217, 229, 0.16)",
+    codeBackground: "#2d333b",
+    currentForeground: "#ffffff",
+    muted: "#768390",
+    selected: "#545d68",
+    surface: "#2d333b",
+    surfaceAlt: "#373e47",
+    text: "#cdd9e5",
+    textSecondary: "#adbac7",
+  },
+};
+
+function versoThemeVars(themeName) {
+  const palette = VERSO_THEME_PALETTES[themeName] ?? VERSO_THEME_PALETTES["cortex-dark"];
+  return [
+    `--verso-code-font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;`,
+    `--verso-text-font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;`,
+    `--verso-structure-font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;`,
+    `--verso-text-color: ${palette.text};`,
+    `--verso-structure-color: ${palette.text};`,
+    `--verso-background-color: ${palette.background};`,
+    `--verso-surface-color: ${palette.surface};`,
+    `--verso-border-color: ${palette.border};`,
+    `--verso-link-color: ${palette.accent};`,
+    `--verso-link-visited-color: ${palette.accentSecondary};`,
+    `--verso-link-hover-bg: ${palette.surfaceAlt};`,
+    `--verso-muted-color: ${palette.muted};`,
+    `--verso-current-bg: ${palette.accent};`,
+    `--verso-current-fg: ${palette.currentForeground};`,
+    `--verso-breadcrumb-color: ${palette.textSecondary};`,
+    `--verso-code-box-background-color: ${palette.codeBackground};`,
+    `--verso-code-box-border-color: ${palette.border};`,
+    `--verso-blockquote-border-color: ${palette.borderStrong};`,
+    `--verso-blockquote-color: ${palette.muted};`,
+    `--verso-inline-code-bg: ${palette.surfaceAlt};`,
+    `--verso-docstring-border-color: ${palette.borderStrong};`,
+    `--verso-imports-summary-color: ${palette.textSecondary};`,
+    `--verso-output-color: ${palette.muted};`,
+    `--verso-copy-button-bg: ${palette.surfaceAlt};`,
+    `--verso-copy-button-border: ${palette.borderStrong};`,
+    `--verso-copy-button-color: ${palette.textSecondary};`,
+    `--verso-copy-button-hover-bg: ${palette.selected};`,
+    `--verso-copy-button-copied-color: ${palette.accent};`,
+    `--verso-hamburger-bg: ${palette.surface};`,
+    `--verso-hamburger-border: ${palette.borderStrong};`,
+    `--verso-hamburger-bar-color: ${palette.text};`,
+    `--verso-selected-color: ${palette.selected};`,
+  ].join("\n  ");
+}
+
+function renderVersoThemeCss(config) {
+  const theme = BUILTIN_THEMES.has(config.theme) ? config.theme : "cortex-dark";
+  if (config.themeModes && typeof config.themeModes === "object") {
+    const light = BUILTIN_THEMES.has(config.themeModes.light) ? config.themeModes.light : theme;
+    const dark = BUILTIN_THEMES.has(config.themeModes.dark) ? config.themeModes.dark : theme;
+    return [
+      "/* Generated by repo-docs to align Verso literate output with the site palette. */",
+      ":root {",
+      `  ${versoThemeVars(light)}`,
+      "}",
+      "",
+      "@media (prefers-color-scheme: dark) {",
+      "  :root {",
+      `    ${versoThemeVars(dark).replace(/\n/g, "\n    ")}`,
+      "  }",
+      "}",
+      "",
+    ].join("\n");
+  }
 
   return [
-    "---",
-    `title: ${yamlString("Theory")}`,
-    `description: ${yamlString(`Lean 4 theory generated from ${theoryDir}.`)}`,
-    "sidebar:",
-    `  label: ${yamlString("Theory")}`,
-    "---",
-    "",
-    "# Theory",
-    "",
-    `Generated from the Lean 4 source tree at \`${theoryDir}\`.`,
-    "",
-    "| Module | Source |",
-    "| ------ | ------ |",
-    rows,
+    "/* Generated by repo-docs to align Verso literate output with the site palette. */",
+    ":root {",
+    `  ${versoThemeVars(theme)}`,
+    "}",
     "",
   ].join("\n");
 }
 
-function renderTheorySourcePage(relativePath, source, theoryDir) {
-  const title = sourcePathToTheoryTitle(relativePath);
-  const label = sourcePathToSidebarLabel(relativePath);
+function theoryLinkFromRenderedIndex(relativePath) {
+  if (relativePath === "index.html") {
+    return {href: GENERATED_THEORY_DIR, label: "Module Index"};
+  }
+  if (!relativePath.endsWith("/index.html")) {
+    return null;
+  }
 
-  return [
-    "---",
-    `title: ${yamlString(title)}`,
-    `description: ${yamlString(`Lean 4 source from ${theoryDir}/${relativePath}.`)}`,
-    "sidebar:",
-    `  label: ${yamlString(label)}`,
-    "---",
-    "",
-    `# ${title}`,
-    "",
-    `Source: \`${theoryDir}/${relativePath}\``,
-    "",
-    markdownFence("lean", source.trimEnd()),
-    "",
-  ].join("\n");
+  const directory = relativePath.slice(0, -"/index.html".length);
+  if (directory === "" || directory.startsWith("-verso-")) {
+    return null;
+  }
+
+  return {
+    href: `${GENERATED_THEORY_DIR}/${directory}`,
+    label: directory.replace(/\//g, "."),
+  };
 }
 
-async function generateLean4Docs(contentRoot, lean4) {
+async function addVersoThemeStyles(outputRoot, config) {
+  const stylesheetName = "repo-docs-verso.css";
+  await fs.writeFile(
+    path.join(outputRoot, stylesheetName),
+    renderVersoThemeCss(config),
+    "utf8",
+  );
+
+  const htmlFiles = (await listFiles(outputRoot))
+    .map((absolutePath) => normalizeSlashes(path.relative(outputRoot, absolutePath)))
+    .filter((relativePath) => path.extname(relativePath) === ".html");
+
+  for (const relativePath of htmlFiles) {
+    const absolutePath = path.join(outputRoot, relativePath);
+    const html = await fs.readFile(absolutePath, "utf8");
+    if (html.includes(stylesheetName)) {
+      continue;
+    }
+    await fs.writeFile(
+      absolutePath,
+      html.replace("</head>", `  <link rel="stylesheet" href="${stylesheetName}" />\n</head>`),
+      "utf8",
+    );
+  }
+}
+
+async function generateLean4Docs(contentRoot, publicRoot, lean4, config) {
   if (!lean4) {
     return null;
   }
 
   let stat;
   try {
-    stat = await fs.stat(lean4.sourceDir);
+    stat = await fs.stat(lean4.renderedDir);
   } catch {
-    throw new Error(`Missing Lean theory directory "${lean4.theoryDir}".`);
+    throw new Error(`Missing rendered Lean theory output for "${lean4.theoryDir}".`);
   }
   if (!stat.isDirectory()) {
-    throw new Error(`Lean theory path "${lean4.theoryDir}" is not a directory.`);
+    throw new Error(`Rendered Lean theory output for "${lean4.theoryDir}" is not a directory.`);
   }
 
-  const outputRoot = path.join(contentRoot, GENERATED_THEORY_DIR);
+  const contentTheoryRoot = path.join(contentRoot, GENERATED_THEORY_DIR);
   try {
-    await fs.stat(outputRoot);
+    await fs.stat(contentTheoryRoot);
     throw new Error(
       `Generated Lean theory docs would overwrite existing docs path "${GENERATED_THEORY_DIR}".`,
     );
@@ -178,36 +264,31 @@ async function generateLean4Docs(contentRoot, lean4) {
     }
   }
 
-  const leanFiles = (await listFiles(lean4.sourceDir))
-    .map((absolutePath) => normalizeSlashes(path.relative(lean4.sourceDir, absolutePath)))
-    .filter((relativePath) => path.extname(relativePath) === ".lean")
-    .sort(comparePaths);
+  const outputRoot = path.join(publicRoot, GENERATED_THEORY_DIR);
+  await removeIfExists(outputRoot);
+  await copyDirectory(lean4.renderedDir, outputRoot);
+  await makeWritableRecursive(outputRoot);
 
-  if (leanFiles.length === 0) {
-    throw new Error(`No .lean files found under Lean theory directory "${lean4.theoryDir}".`);
+  try {
+    const landing = await fs.stat(path.join(outputRoot, "index.html"));
+    if (!landing.isFile()) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error(`Verso did not render a Theory landing page for "${lean4.theoryDir}".`);
   }
 
-  await fs.mkdir(outputRoot, {recursive: true});
-  await fs.writeFile(
-    path.join(outputRoot, "index.md"),
-    renderTheoryIndex(leanFiles, lean4.theoryDir),
-    "utf8",
-  );
+  await addVersoThemeStyles(outputRoot, config);
 
-  for (const relativePath of leanFiles) {
-    const source = await fs.readFile(path.join(lean4.sourceDir, relativePath), "utf8");
-    const targetPath = path.join(outputRoot, sourcePathToMarkdownPath(relativePath));
-    await fs.mkdir(path.dirname(targetPath), {recursive: true});
-    await fs.writeFile(
-      targetPath,
-      renderTheorySourcePage(relativePath, source, lean4.theoryDir),
-      "utf8",
-    );
-  }
+  const links = (await listFiles(outputRoot))
+    .map((absolutePath) => normalizeSlashes(path.relative(outputRoot, absolutePath)))
+    .map(theoryLinkFromRenderedIndex)
+    .filter((link) => link !== null)
+    .sort((left, right) => comparePaths(left.href, right.href));
 
   return {
-    dir: GENERATED_THEORY_DIR,
     label: "Theory",
+    links,
   };
 }
 
@@ -490,7 +571,7 @@ async function main() {
   const configJson = values.get("--config-json");
   const templateFilesJson = values.get("--template-files-json");
   const languagesJson = values.get("--languages-json");
-  const lean4SourceDir = values.get("--lean4-source-dir") ?? null;
+  const lean4RenderedDir = values.get("--lean4-rendered-dir") ?? null;
   const outDir = values.get("--out-dir");
 
   if (!contentDir || !configJson || !templateFilesJson || !outDir) {
@@ -499,12 +580,13 @@ async function main() {
 
   const contentRoot = path.join(outDir, "src", "content", "docs");
   const generatedRoot = path.join(outDir, "src", "generated");
+  const publicRoot = path.join(outDir, "public");
   const config = JSON.parse(await fs.readFile(configJson, "utf8"));
   const templateFiles = JSON.parse(await fs.readFile(templateFilesJson, "utf8"));
   const languages = languagesJson
     ? JSON.parse(await fs.readFile(languagesJson, "utf8"))
     : {};
-  const lean4 = parseLean4Config(config, lean4SourceDir);
+  const lean4 = parseLean4Config(config, lean4RenderedDir);
 
   if (!config?.site?.title || !config?.site?.publicBaseUrl) {
     throw new Error("Config must define site.title and site.publicBaseUrl.");
@@ -545,7 +627,7 @@ async function main() {
     throw new Error("No markdown files found under the configured docs tree.");
   }
 
-  const generatedTheorySection = await generateLean4Docs(contentRoot, lean4);
+  const generatedTheorySection = await generateLean4Docs(contentRoot, publicRoot, lean4, config);
 
   const navigationSections =
     Array.isArray(config.navigation.sections) && config.navigation.sections.length > 0
@@ -554,7 +636,10 @@ async function main() {
 
   if (generatedTheorySection) {
     const hasTheorySection = navigationSections.some(
-      (section) => typeof section?.dir === "string" && normalizeSlug(section.dir) === GENERATED_THEORY_DIR,
+      (section) =>
+        (typeof section?.dir === "string" && normalizeSlug(section.dir) === GENERATED_THEORY_DIR) ||
+        (Array.isArray(section?.links) &&
+          section.links.some((link) => normalizeLinkHref(link?.href) === GENERATED_THEORY_DIR)),
     );
     if (!hasTheorySection) {
       navigationSections.push(generatedTheorySection);
@@ -586,10 +671,11 @@ async function main() {
 
     const hasEntries = Array.isArray(section.entries);
     const hasDir = typeof section.dir === "string" && section.dir.trim() !== "";
+    const hasLinks = Array.isArray(section.links);
 
-    if (hasEntries === hasDir) {
+    if ([hasEntries, hasDir, hasLinks].filter(Boolean).length !== 1) {
       throw new Error(
-        `Navigation section "${section.label ?? "(root)"}" must define exactly one of "entries" or "dir".`,
+        `Navigation section "${section.label ?? "(root)"}" must define exactly one of "entries", "dir", or "links".`,
       );
     }
 
@@ -597,6 +683,19 @@ async function main() {
       for (const slug of section.entries) {
         const normalizedSlug = normalizeSlug(slug);
         allowedMarkdown.add(await ensureMarkdownFile(contentRoot, normalizedSlug));
+      }
+      continue;
+    }
+
+    if (hasLinks) {
+      for (const link of section.links) {
+        if (!link || typeof link !== "object") {
+          throw new Error(`Navigation section "${section.label ?? "(root)"}" links must be objects.`);
+        }
+        normalizeLinkHref(link.href);
+        if (typeof link.label !== "string" || link.label.trim() === "") {
+          throw new Error(`Navigation section "${section.label ?? "(root)"}" links must have non-empty labels.`);
+        }
       }
       continue;
     }

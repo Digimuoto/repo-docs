@@ -1,4 +1,20 @@
 {pkgs, lib}: let
+  wasiSysroot = pkgs.runCommand "tree-sitter-wasi-sysroot" {} ''
+    mkdir -p "$out"
+    ln -s ${pkgs.pkgsCross.wasi32.wasilibc.dev}/include "$out/include"
+    ln -s ${pkgs.pkgsCross.wasi32.wasilibc}/lib "$out/lib"
+  '';
+
+  wasiClang = pkgs.writeShellApplication {
+    name = "clang";
+    text = ''
+      exec ${pkgs.llvmPackages.clang-unwrapped}/bin/clang \
+        --sysroot=${wasiSysroot} \
+        -fuse-ld=${pkgs.llvmPackages.lld}/bin/wasm-ld \
+        "$@"
+    '';
+  };
+
   /*
    * Build a tree-sitter grammar source tree into a WebAssembly parser
    * plus its queries tree.
@@ -36,6 +52,7 @@
         pkgs.tree-sitter
         pkgs.nodejs_22
         pkgs.emscripten
+        wasiClang
       ];
 
       dontConfigure = true;
@@ -50,6 +67,7 @@
         cp -r ${pkgs.emscripten}/share/emscripten/cache "$TMPDIR/em-cache"
         chmod -R u+w "$TMPDIR/em-cache"
         export EM_CACHE="$TMPDIR/em-cache"
+        export TREE_SITTER_WASI_SDK_PATH=${wasiClang}
 
         # Some upstream grammars commit src/parser.c; others only ship
         # grammar.js and expect consumers to generate. Handle both.

@@ -4,6 +4,10 @@ export interface NavigationSectionConfig {
   dir?: string;
   entries?: string[];
   label: string | null;
+  links?: Array<{
+    href: string;
+    label: string;
+  }>;
 }
 
 export type SiteTheme = "cortex-dark" | "cortex-light" | "cortex-slate";

@@ -255,6 +255,7 @@
                 lean4.theoryDir = "fixtures/lean-theory";
               };
               lean4SourceDir = ./fixtures/lean-theory;
+              lean4Deps = [];
             };
           in
             mkAssertionCheck {
@@ -265,14 +266,23 @@
 
                 test -f "$site/Theory/index.html"
                 test -f "$site/Theory/Demo/Proof/index.html"
+                test -f "$site/Theory/repo-docs-verso.css"
+                test ! -e "$staged/src/content/docs/Theory/Demo/Proof.md"
 
-                grep -q '"dir": "Theory"' "$staged/src/generated/site-config.json"
+                grep -q '"links"' "$staged/src/generated/site-config.json"
+                grep -q '"href": "Theory/Demo/Proof"' "$staged/src/generated/site-config.json"
                 grep -q '"theoryDir": "fixtures/lean-theory"' "$staged/src/generated/site-config.json"
 
                 grep -q 'Theory' "$site/index.html"
-                grep -q 'Demo.Proof' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'literate.css' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'repo-docs-verso.css' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'code-box' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'Demo Proof' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'theorem' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'identity' "$site/Theory/Demo/Proof/index.html"
+                if grep -q '```lean' "$site/Theory/Demo/Proof/index.html"; then
+                  echo "Lean theory page should be Verso HTML, not markdown code fences"; exit 1
+                fi
               '';
             };
         };

@@ -164,9 +164,9 @@
                 Relative path to the Lean 4 theory directory for this
                 site. The path is resolved from the parent of
                 `contentDir`, so the usual `contentDir = ./docs` shape
-                makes this repo-root relative. repo-docs stages the
-                `.lean` files as a generated Theory section and surfaces
-                the value to the template as
+                makes this repo-root relative. repo-docs renders the
+                Lake package with Verso literate HTML, publishes it as a
+                generated Theory section, and surfaces the value to the template as
                 `siteConfig.lean4.theoryDir`.
               '';
             };
@@ -176,8 +176,8 @@
         example = {theoryDir = "theory";};
         description = ''
           Lean 4 / Verso integration config for this site. When set,
-          repo-docs adds a generated Theory section backed by the `.lean`
-          files under the configured directory.
+          repo-docs adds a generated Theory section backed by Verso-rendered
+          Lean modules under the configured Lake package directory.
         '';
       };
 
