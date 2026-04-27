@@ -7,7 +7,7 @@ tags:
   - reference
   - renderer
 sidebar:
-  order: 2
+  order: 4
 ---
 
 # Rendering Example
@@ -120,6 +120,7 @@ Tree-sitter–powered highlighting (the `ts-json` language is registered via `do
 | LaTeX math | Supported | Via KaTeX |
 | Syntax highlighting | Supported | All common languages |
 | Lean 4 theory pages | Supported | See the generated [Theory section](../../Theory/) |
+| Typst manuscripts | Supported | See [Typst Manuscripts](typst-manuscripts.md) |
 | MDX | Supported | Via `@astrojs/mdx` |
 | Dark mode | Default | Customizable via CSS variables |
 
@@ -219,3 +220,18 @@ Reference-style footnotes work via standard GFM syntax[^1] and are rendered as a
 
 [^1]: A simple numbered footnote with the back-reference arrow rendered automatically.
 [^kerr2024]: Kerr, J. (2024). *Documentation as a system input*. Self-published. Footnotes accept arbitrary identifiers, not just numbers.
+
+## References
+
+For end-of-paper bibliographies that don't tie to inline `[^N]` markers, write a `## References` (or `## Bibliography`) heading followed by a numbered Markdown list. The styling auto-applies — italic titles via `*…*`, monospace brand-tinted URLs, tabular-nums counter in muted ink. The same shape as the Footnotes block above, so a doc that uses both reads consistently.
+
+1. Astro Technology Company. *Astro: The web framework for content-driven websites*. <https://astro.build>
+2. Pagefind. *Pagefind: static low-bandwidth search at scale*. <https://pagefind.app>
+3. de Moura, L., Ullrich, S. (2021). *The Lean 4 Theorem Prover and Programming Language*. CADE 28: 625–635.
+4. Christiansen, D. R. *Verso: authoring tools for Lean*. <https://github.com/leanprover/verso>
+5. Madsen, M., Haug, L. (2023). *Typst: a new markup-based typesetting system that is powerful, easy to learn, and fast*. <https://typst.app>
+6. Knuth, D. E. (1984). *Literate Programming*. The Computer Journal 27(2):97–111.
+7. GitHub. *Primer: GitHub's design system*. <https://primer.style>
+8. Mermaid Contributors. *Mermaid: generation of diagrams from textual descriptions*. <https://mermaid.js.org>
+9. Sotin, B. (2018). *KaTeX: the fastest math typesetting library for the web*. <https://katex.org>
+10. Hercules CI. *flake-parts: a flake-friendly module system*. <https://flake.parts>

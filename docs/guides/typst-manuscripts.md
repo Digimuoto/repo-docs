@@ -1,6 +1,8 @@
 ---
 title: Typst Manuscripts
 description: Compile configured Typst manuscript folders into PDF reader pages.
+sidebar:
+  order: 6
 ---
 
 # Typst Manuscripts
@@ -21,6 +23,9 @@ docsSite.sites.docs = {
 ```
 
 The `dir` value is relative to `contentDir`.
+
+Use one entry per manuscript. The attribute name is only a stable build key; the
+published route comes from the manifest file.
 
 ## Folder Layout
 
@@ -52,6 +57,21 @@ and sidebar metadata:
 }
 ```
 
+Manifest fields:
+
+| Field | Required | Purpose |
+|-------|----------|---------|
+| `entry` | yes | Typst file compiled by `typst compile` |
+| `output` | no | PDF filename, defaults to `manuscript.pdf` |
+| `route` | no | Reader route, defaults beside the project folder using `output` |
+| `title` | no | Generated page title, defaults to the Nix manuscript key |
+| `description` | no | Generated page description |
+| `sidebar.label` | no | Sidebar label, defaults to `Manuscript` |
+| `sidebar.order` | no | Sidebar sort order for the generated route |
+
+The Typst compiler runs with the docs tree as the project root, so local layout
+files, figures, and bibliographies can live in or below the manuscript folder.
+
 ## Generated Output
 
 The example above publishes:
@@ -70,3 +90,24 @@ than silently replacing one with the other.
 The `typst.pdf` frontmatter field is a build-only contract; the staging
 script writes it on the generated stub page. Authored Markdown pages should
 not set it (any page that does will switch into the PDF embed view).
+
+## Linking from the Landing Page
+
+Keep the paper landing page in Markdown and link to the generated route:
+
+```markdown
+## Manuscript
+
+[Read the manuscript](manuscript/)
+[Download the PDF](manuscript.pdf)
+```
+
+This keeps the web-facing abstract, status, figures, and related material easy
+to edit while Typst owns the printable manuscript.
+
+## Why No Autodetection?
+
+A manuscript folder is not just a file. It may contain layouts, packages,
+figures, bibliographies, exported tables, alternate drafts, and local notes.
+repo-docs requires explicit configuration so only the intended entry point is
+compiled and published.

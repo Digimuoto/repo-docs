@@ -2,7 +2,7 @@
 title: Mermaid Diagrams
 description: How to author Mermaid diagrams that read well across the built-in themes
 sidebar:
-  order: 3
+  order: 5
 ---
 
 # Mermaid Diagrams
@@ -30,7 +30,7 @@ Two practical consequences:
 
 ### Keep labels short
 
-Mermaid pads labels with very little horizontal slack. Anything past ~20 characters either wraps awkwardly or pushes neighbouring nodes apart and breaks rhythm with the prose around the diagram. Prefer:
+Mermaid can render long labels, but it still sizes the graph from the text. Anything past ~20 characters either wraps awkwardly or pushes neighbouring nodes apart and breaks rhythm with the prose around the diagram. Prefer:
 
 ```mermaid
 flowchart LR

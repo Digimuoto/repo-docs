@@ -2535,6 +2535,90 @@ a.docs-meta-pill:focus-visible {
 }
 
 /*
+ * Authored bibliography / references list.
+ *
+ * GFM footnotes (above) cover inline-cited references. For an
+ * end-of-paper bibliography that doesn't tie to inline `[^N]`
+ * markers, authors write a plain `## References` (or `## Bibliography`)
+ * heading followed by an ordered list. The `<ol>` immediately
+ * following such a heading auto-styles to match the footnotes
+ * typography: tabular-nums counter in muted colour, monospace
+ * brand-tinted URLs, italic via Markdown emphasis (`*Title*`).
+ *
+ * `.docs-references` is also exposed as an opt-in class for cases
+ * where the heading id can't be relied on (translated headings,
+ * custom slugs).
+ */
+.docs-prose :is(h2, h3)[id="references"] + ol,
+.docs-prose :is(h2, h3)[id="bibliography"] + ol,
+.docs-prose ol.docs-references {
+  list-style: decimal outside;
+  padding-left: 2.25rem;
+  margin: 0.875rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--text-content-secondary);
+}
+.docs-prose :is(h2, h3)[id="references"] + ol > li,
+.docs-prose :is(h2, h3)[id="bibliography"] + ol > li,
+.docs-prose ol.docs-references > li {
+  margin-bottom: 0.625rem;
+  padding-left: 0.25rem;
+}
+.docs-prose :is(h2, h3)[id="references"] + ol > li::marker,
+.docs-prose :is(h2, h3)[id="bibliography"] + ol > li::marker,
+.docs-prose ol.docs-references > li::marker {
+  color: var(--text-content-quaternary);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78125rem;
+}
+.docs-prose :is(h2, h3)[id="references"] + ol > li > p,
+.docs-prose :is(h2, h3)[id="bibliography"] + ol > li > p,
+.docs-prose ol.docs-references > li > p {
+  margin: 0;
+}
+.docs-prose :is(h2, h3)[id="references"] + ol em,
+.docs-prose :is(h2, h3)[id="bibliography"] + ol em,
+.docs-prose ol.docs-references em {
+  color: var(--text-content);
+  font-style: italic;
+}
+.docs-prose :is(h2, h3)[id="references"] + ol a,
+.docs-prose :is(h2, h3)[id="bibliography"] + ol a,
+.docs-prose ol.docs-references a {
+  color: var(--brand-primary);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  letter-spacing: 0;
+  text-decoration: none;
+  word-break: break-word;
+}
+.docs-prose :is(h2, h3)[id="references"] + ol a:hover,
+.docs-prose :is(h2, h3)[id="references"] + ol a:focus-visible,
+.docs-prose :is(h2, h3)[id="bibliography"] + ol a:hover,
+.docs-prose :is(h2, h3)[id="bibliography"] + ol a:focus-visible,
+.docs-prose ol.docs-references a:hover,
+.docs-prose ol.docs-references a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  outline: none;
+}
+/* Soften the heading itself so the section reads as a quiet
+ * citation block rather than another full-weight section break. */
+.docs-prose :is(h2, h3):is([id="references"], [id="bibliography"]) {
+  margin-top: 3rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-primary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-content-quaternary);
+  margin-bottom: 0;
+  font-family: var(--font-sans);
+}
+
+/*
  * Per-tag index page.
  *
  * Plain editorial listing — date + title + description, no card
