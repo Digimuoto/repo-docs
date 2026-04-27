@@ -18,6 +18,7 @@ export interface SidebarNode {
   key: string;
   label: string;
   status?: DocStatus;
+  tags?: string[];
 }
 
 export interface SidebarSection {
@@ -36,6 +37,7 @@ interface PageMeta {
   order: number | null;
   relativeSegments: string[];
   status?: DocStatus;
+  tags: string[];
 }
 
 const ISO_DATE_PREFIX = /^(\d{4}-\d{2}-\d{2})-/;
@@ -95,6 +97,7 @@ function getPageMeta(entry: DocsEntry): PageMeta {
     order: entry.data.sidebar?.order ?? null,
     relativeSegments,
     status: (entry.data as {status?: DocStatus}).status,
+    tags: entry.data.tags ?? [],
   };
 }
 
@@ -208,6 +211,7 @@ function materializeDirectoryNode(
       key: `page:${page.key}`,
       label: page.label,
       status: page.status,
+      tags: page.tags,
     });
   }
 
@@ -227,6 +231,7 @@ function materializeDirectoryNode(
       key: href ? `page:${child.page!.key}` : `group:${childPath}`,
       label,
       status: child.page?.status,
+      tags: child.page?.tags,
     });
   }
 
@@ -316,6 +321,7 @@ export function buildSidebar(entries: DocsEntry[]): SidebarSection[] {
               key: `page:${page.key}`,
               label: page.label,
               status: page.status,
+              tags: page.tags,
             }),
           ),
         key: sectionKey,

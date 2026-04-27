@@ -26,6 +26,11 @@ theorem identity (value : Nat) : value = value := rfl
 
 theorem identity_again (value : Nat) : value = value := identity value
 
+def overlay (left right : Nat) : Nat := left + right
+
+/-- `cross left right` is a documented declaration used to check docstring attachment. -/
+def cross (left right : Nat) : Nat := left * right
+
 theorem add_zero_demo (n : Nat) : n + 0 = n := by
   induction n with
   | zero =>

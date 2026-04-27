@@ -783,7 +783,8 @@ html[data-mode="light"] .docs-mode-toggle svg {
  * a sidebar full of green pills carries no information. Override
  * via templateFiles if you want them visible.
  */
-.docs-nav-status {
+.docs-nav-status,
+.docs-nav-proof {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -797,6 +798,7 @@ html[data-mode="light"] .docs-mode-toggle svg {
   background: color-mix(in srgb, currentColor 10%, transparent);
   color: var(--text-content-tertiary);
 }
+.docs-nav-proof             { color: var(--brand-primary); }
 .docs-nav-status-draft       { color: var(--status-draft); }
 .docs-nav-status-proposed    { color: var(--status-proposed); }
 .docs-nav-status-superseded  { color: var(--status-superseded); }
@@ -1484,6 +1486,43 @@ video {
   padding: 0.0625rem 0.25rem;
 }
 
+/* Verso places declaration docstrings as Markdown blocks inside the
+ * code-box immediately before the declaration they document. Style
+ * those blocks as preambles so dense Lean pages do not read them as
+ * captions for the previous declaration. Module docs use .mod-doc and
+ * intentionally keep Verso's normal prose treatment. */
+.repo-docs-lean-page .code-box > .md-text:not(.mod-doc),
+.repo-docs-lean-page .code-box > .verso-text:not(.mod-doc) {
+  margin: 1.35rem 0 0.35rem;
+  padding: 0.625rem 0.75rem 0.625rem 0.875rem;
+  max-width: 78ch;
+  color: var(--text-content-secondary);
+  background: color-mix(in srgb, var(--brand-primary) 7%, transparent);
+  border-left: 3px solid color-mix(in srgb, var(--brand-primary) 62%, var(--border-secondary));
+  border-radius: 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+.repo-docs-lean-page .code-box > .md-text:not(.mod-doc) > :first-child,
+.repo-docs-lean-page .code-box > .verso-text:not(.mod-doc) > :first-child {
+  margin-top: 0;
+}
+.repo-docs-lean-page .code-box > .md-text:not(.mod-doc) > :last-child,
+.repo-docs-lean-page .code-box > .verso-text:not(.mod-doc) > :last-child {
+  margin-bottom: 0;
+}
+.repo-docs-lean-page .code-box > .md-text:not(.mod-doc) code,
+.repo-docs-lean-page .code-box > .verso-text:not(.mod-doc) code {
+  padding: 0.08em 0.28em;
+  color: var(--tok-default);
+  background: color-mix(in srgb, var(--surface-tertiary) 72%, transparent);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
 .repo-docs-lean-page .hl.lean .keyword { color: var(--tok-keyword); }
 .repo-docs-lean-page .hl.lean .const,
 .repo-docs-lean-page .hl.lean .module-name { color: var(--tok-constant); }
@@ -1970,6 +2009,7 @@ video {
   font-size: 1.0625rem;
   line-height: 1.55;
   color: var(--text-content-secondary);
+  font-style: italic;
   font-weight: 400;
 }
 
