@@ -24,6 +24,8 @@ namespace Demo
 
 theorem identity (value : Nat) : value = value := rfl
 
+theorem identity_again (value : Nat) : value = value := identity value
+
 theorem add_zero_demo (n : Nat) : n + 0 = n := by
   induction n with
   | zero =>

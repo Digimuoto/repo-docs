@@ -281,6 +281,8 @@
                 test -f "$site/Theory/Demo/Proof/index.html"
                 test -f "$staged/src/content/docs/Theory/Demo/Proof.md"
                 test ! -e "$staged/public/Theory/Demo/Proof/index.html"
+                grep -q 'tags:' "$staged/src/content/docs/Theory/Demo/Proof.md"
+                grep -q '"proofs"' "$staged/src/content/docs/Theory/Demo/Proof.md"
 
                 grep -q '"entries"' "$staged/src/generated/site-config.json"
                 grep -q '"Theory/Demo/Proof"' "$staged/src/generated/site-config.json"
@@ -294,6 +296,7 @@
                 grep -q 'Demo Proof' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'theorem' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'identity' "$site/Theory/Demo/Proof/index.html"
+                grep -q 'identity_again' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'add_zero_demo' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'tactic-state' "$site/Theory/Demo/Proof/index.html"
                 grep -q 'katex' "$site/Theory/Demo/Proof/index.html"

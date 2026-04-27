@@ -138,6 +138,49 @@ function extractHtmlTitle(html, fallback) {
   return match ? decodeBasicHtml(match[1].trim()) : fallback;
 }
 
+function rewriteVersoHref(rawHref, assetBaseHref) {
+  const href = decodeBasicHtml(rawHref).trim();
+  if (
+    href === "" ||
+    href.startsWith("#") ||
+    href.startsWith("/") ||
+    /^[a-z][a-z0-9+.-]*:/i.test(href)
+  ) {
+    return rawHref;
+  }
+
+  const normalized = href.replace(/^\.\//, "").replace(/^\/+/, "");
+  return escapeHtml(`${assetBaseHref}/${normalized}`);
+}
+
+function rewriteVersoDataLinks(rawValue, assetBaseHref) {
+  try {
+    const links = JSON.parse(decodeBasicHtml(rawValue));
+    if (!Array.isArray(links)) {
+      return rawValue;
+    }
+    return escapeHtml(JSON.stringify(
+      links.map((link) => {
+        if (!link || typeof link !== "object" || typeof link.href !== "string") {
+          return link;
+        }
+        return {...link, href: decodeBasicHtml(rewriteVersoHref(link.href, assetBaseHref))};
+      }),
+    ));
+  } catch {
+    return rawValue;
+  }
+}
+
+function rewriteVersoLinks(html, assetBaseHref) {
+  return html
+    .replace(/\bhref="([^"]*)"/g, (_match, href) => `href="${rewriteVersoHref(href, assetBaseHref)}"`)
+    .replace(
+      /\bdata-verso-links="([^"]*)"/g,
+      (_match, links) => `data-verso-links="${rewriteVersoDataLinks(links, assetBaseHref)}"`,
+    );
+}
+
 function extractFirstStyle(html) {
   const match = html.match(/<style>\s*([\s\S]*?)<\/style>/i);
   return match ? match[1].trim() : "";
@@ -181,15 +224,19 @@ function moduleRelativeLeanPath(relativeHtmlPath) {
   return relativeHtmlPath.replace(/\/index\.html$/i, ".lean");
 }
 
-async function extractModuleDocMarkdown(sourceDir, relativeHtmlPath) {
+async function readLeanModuleSource(sourceDir, relativeHtmlPath) {
   const leanPath = path.join(sourceDir, moduleRelativeLeanPath(relativeHtmlPath));
-  let source;
   try {
-    source = await fs.readFile(leanPath, "utf8");
+    return await fs.readFile(leanPath, "utf8");
   } catch {
     return null;
   }
+}
 
+function extractModuleDocMarkdown(source) {
+  if (!source) {
+    return null;
+  }
   const match = source.match(/\/-!([\s\S]*?)-\//);
   if (!match) {
     return null;
@@ -197,6 +244,17 @@ async function extractModuleDocMarkdown(sourceDir, relativeHtmlPath) {
 
   const body = match[1].trim();
   return body === "" ? null : body;
+}
+
+function classifyLeanModuleTags(source) {
+  if (!source) {
+    return ["lean"];
+  }
+  const code = source
+    .replace(/\/-[\s\S]*?-\//g, "")
+    .replace(/--.*$/gm, "");
+  const hasProofDeclaration = /(^|\n)\s*(?:@\[[\s\S]*?\]\s*)*(?:private\s+|protected\s+|noncomputable\s+|unsafe\s+)*(?:theorem|lemma|example)\b/.test(code);
+  return hasProofDeclaration ? ["proofs"] : ["lean"];
 }
 
 function nativeVersoOverrideStyle() {
@@ -321,12 +379,14 @@ function renderTheoryIndexMarkdown(moduleLinks) {
   ].join("\n");
 }
 
-function renderTheoryModuleMarkdown({title, label, moduleDoc, fragmentPath}) {
+function renderTheoryModuleMarkdown({title, label, moduleDoc, fragmentPath, tags}) {
   return [
     "---",
     `title: ${yamlString(title)}`,
     `description: ${yamlString(`Verso-rendered Lean 4 module ${title}`)}`,
     `kind: ${yamlString("lean-theory")}`,
+    "tags:",
+    ...tags.map((tag) => `  - ${yamlString(tag)}`),
     "sidebar:",
     `  label: ${yamlString(label)}`,
     "verso:",
@@ -359,7 +419,7 @@ function renderTheoryFragmentHtml({setup, fragment, assetBaseHref}) {
   ].join("\n");
 }
 
-async function copyVersoAssets(renderedDir, outputRoot) {
+async function copyVersoAssets(renderedDir, outputRoot, assetBaseHref) {
   await removeIfExists(outputRoot);
   await fs.mkdir(outputRoot, {recursive: true});
 
@@ -371,7 +431,18 @@ async function copyVersoAssets(renderedDir, outputRoot) {
     }
     const targetPath = path.join(outputRoot, relativePath);
     await fs.mkdir(path.dirname(targetPath), {recursive: true});
-    await fs.copyFile(absolutePath, targetPath);
+    if (relativePath === "-verso-docs.json") {
+      const docs = JSON.parse(await fs.readFile(absolutePath, "utf8"));
+      const rewritten = Object.fromEntries(
+        Object.entries(docs).map(([key, value]) => [
+          key,
+          typeof value === "string" ? rewriteVersoLinks(value, assetBaseHref) : value,
+        ]),
+      );
+      await fs.writeFile(targetPath, JSON.stringify(rewritten), "utf8");
+    } else {
+      await fs.copyFile(absolutePath, targetPath);
+    }
     await fs.chmod(targetPath, 0o644);
   }
 }
@@ -404,7 +475,8 @@ async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, 
   }
 
   const publicTheoryRoot = path.join(publicRoot, GENERATED_THEORY_DIR);
-  await copyVersoAssets(lean4.renderedDir, publicTheoryRoot);
+  const assetBaseHref = withRouteBase(config.site.routeBase, GENERATED_THEORY_DIR).replace(/\/$/, "");
+  await copyVersoAssets(lean4.renderedDir, publicTheoryRoot, assetBaseHref);
 
   try {
     const landing = await fs.stat(path.join(lean4.renderedDir, "index.html"));
@@ -437,7 +509,6 @@ async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, 
     "utf8",
   );
 
-  const assetBaseHref = withRouteBase(config.site.routeBase, GENERATED_THEORY_DIR).replace(/\/$/, "");
   for (const relativePath of htmlFiles) {
     if (relativePath === "index.html" || !relativePath.endsWith("/index.html")) {
       continue;
@@ -447,10 +518,12 @@ async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, 
     const html = await fs.readFile(htmlPath, "utf8");
     const title = extractHtmlTitle(html, relativePath.slice(0, -"/index.html".length).replace(/\//g, "."));
     const link = theoryLinkFromRenderedIndex(relativePath);
-    const moduleDoc = await extractModuleDocMarkdown(lean4.sourceDir, relativePath);
-    const fragment = moduleDoc
+    const source = await readLeanModuleSource(lean4.sourceDir, relativePath);
+    const moduleDoc = extractModuleDocMarkdown(source);
+    const tags = classifyLeanModuleTags(source);
+    const fragment = rewriteVersoLinks(moduleDoc
       ? stripVersoModuleDoc(extractLeanContentFragment(html))
-      : extractLeanContentFragment(html);
+      : extractLeanContentFragment(html), assetBaseHref);
     const setup = renderVersoSetup(html, assetBaseHref);
     const fragmentPath = `lean-theory/${GENERATED_THEORY_DIR}/${relativePath.replace(/\/index\.html$/i, ".html")}`;
     const fragmentTargetPath = path.join(generatedRoot, fragmentPath);
@@ -474,6 +547,7 @@ async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, 
         label: link?.label ?? title,
         moduleDoc,
         fragmentPath,
+        tags,
       }),
       "utf8",
     );
