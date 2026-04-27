@@ -1482,8 +1482,23 @@ video {
 }
 .repo-docs-lean-page :where(.md-text, .verso-text) h1:first-child,
 .repo-docs-lean-page :where(.md-text, .verso-text) h2:first-child,
-.repo-docs-lean-page :where(.md-text, .verso-text) h3:first-child {
+.repo-docs-lean-page :where(.md-text, .verso-text) h3:first-child,
+.repo-docs-lean-page :where(.md-text, .verso-text) h4:first-child,
+.repo-docs-lean-page :where(.md-text, .verso-text) h5:first-child,
+.repo-docs-lean-page :where(.md-text, .verso-text) h6:first-child {
   margin-top: 0;
+}
+/* Section breaks (`/-! ## ... -/`) land as .md-text.mod-doc siblings
+ * of the surrounding .code-box. The code-box uses overflow-x: auto
+ * (a block formatting context), which traps its inner code blocks'
+ * margins, and the leading-heading-first-child rule above clamps
+ * the heading's own margin-top to 0. Without an explicit gap here
+ * the section-break heading butts directly against the preceding
+ * code block. Apply the gap symmetrically (around either order) so
+ * any section break reads as a section break. */
+.repo-docs-lean-page .code-content > .code-box + :where(.md-text, .verso-text),
+.repo-docs-lean-page .code-content > :where(.md-text, .verso-text) + .code-box {
+  margin-top: 2rem;
 }
 .repo-docs-lean-page :where(.md-text, .verso-text) p,
 .repo-docs-lean-page :where(.md-text, .verso-text) ul,
