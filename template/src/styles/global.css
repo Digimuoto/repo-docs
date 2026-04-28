@@ -34,6 +34,19 @@ h5[id],
 h6[id] {
   scroll-margin-top: 2rem;
 }
+@media (max-width: 1023.98px) {
+  /* The sticky top bar covers the top of the viewport on mobile;
+   * push the anchor target below it so a tapped TOC link lands on
+   * the heading, not behind the bar. */
+  h1[id],
+  h2[id],
+  h3[id],
+  h4[id],
+  h5[id],
+  h6[id] {
+    scroll-margin-top: calc(var(--docs-topbar-height) + 1rem);
+  }
+}
 
 /* ==========================================================================
  * Docs shell — three columns: nav | TOC | content. Both side panels
@@ -62,46 +75,150 @@ html[data-toc="collapsed"] {
   --docs-toc-width: var(--docs-rail-width);
 }
 
-/* Mobile menu toggle (shown below 1024px) */
-.docs-mobile-toggle {
-  position: fixed;
-  top: 1rem;
-  left: 1rem;
+/* ============================================================
+ * Mobile chrome
+ *
+ * Three pieces define the mobile / tablet experience: a sticky
+ * top bar with hamburger + brand + on-page-nav + mode toggle, an
+ * inline collapsible "On this page" disclosure that stands in for
+ * the desktop TOC sidebar, and the slide-in drawer (the existing
+ * site sidebar, toggled into a drawer below 1024px).
+ *
+ * Sizing tokens.
+ *
+ *   --docs-topbar-height   tracks the height of the sticky bar so
+ *                          breadcrumb/title scrolling and anchor
+ *                          jumps account for it.
+ *   --docs-drawer-width    width of the slide-in nav, narrow on
+ *                          small phones, generous on tablets.
+ *   --docs-touch-target    minimum tap target on coarse pointers,
+ *                          driven from a media query below.
+ * ============================================================ */
+:root {
+  --docs-topbar-height: 3rem;
+  --docs-drawer-width: min(20rem, calc(100vw - 3rem));
+  --docs-touch-target: 2.25rem;
+}
+@media (min-width: 768px) {
+  :root {
+    --docs-topbar-height: 3.25rem;
+    --docs-drawer-width: 22rem;
+  }
+}
+@media (pointer: coarse) {
+  :root {
+    /* Apple HIG / Material both call for ≥ 44px touch targets;
+     * apply on any device whose primary pointer is touch (covers
+     * phones, tablets, and 2-in-1s in tablet mode), regardless of
+     * viewport width. Desktop with mouse keeps the tighter
+     * default. */
+    --docs-touch-target: 2.75rem;
+  }
+}
+
+.docs-topbar {
+  position: sticky;
+  top: 0;
   z-index: 50;
-  width: 2.5rem;
-  height: 2.5rem;
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: var(--surface-primary);
-  border: 1px solid var(--border-primary);
-  border-radius: 0.5rem;
-  color: var(--text-content);
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-.docs-mobile-toggle:hover,
-.docs-mobile-toggle:focus-visible {
-  background: var(--surface-secondary);
-  outline: none;
-}
-.docs-mobile-toggle svg {
-  width: 1.25rem;
-  height: 1.25rem;
+  gap: 0.5rem;
+  width: 100%;
+  height: var(--docs-topbar-height);
+  padding: 0 0.625rem;
+  background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
+  backdrop-filter: saturate(160%) blur(12px);
+  -webkit-backdrop-filter: saturate(160%) blur(12px);
+  border-bottom: 1px solid var(--border-primary);
 }
 @media (min-width: 1024px) {
-  .docs-mobile-toggle {
+  .docs-topbar {
+    /* The permanent sidebar takes over from the drawer here, and
+     * the page heading carries the breadcrumb — the top bar is
+     * redundant. Hide it cleanly so it doesn't reserve layout. */
     display: none;
   }
 }
 
-/* Mobile drawer overlay */
+.docs-topbar-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--docs-touch-target);
+  height: var(--docs-touch-target);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0.5rem;
+  color: var(--text-content);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.docs-topbar-icon:hover,
+.docs-topbar-icon:focus-visible {
+  background: var(--surface-secondary);
+  outline: none;
+}
+.docs-topbar-icon[aria-expanded="true"] {
+  background: var(--surface-secondary);
+  color: var(--brand-primary);
+}
+.docs-topbar-icon svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.docs-topbar-brand {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 0.25rem;
+  text-decoration: none;
+  color: inherit;
+}
+.docs-topbar-brand-title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--brand-primary);
+}
+
+.docs-topbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  flex-shrink: 0;
+}
+.docs-topbar-actions .docs-mode-toggle {
+  /* The reusable mode toggle is small (22px) by default; in the
+   * top bar we want it sized like its siblings for thumb reach. */
+  width: var(--docs-touch-target);
+  height: var(--docs-touch-target);
+  border-radius: 0.5rem;
+}
+.docs-topbar-actions .docs-mode-toggle svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Drawer overlay — the dim backdrop behind the sidebar drawer. */
 .docs-mobile-overlay {
   position: fixed;
   inset: 0;
   z-index: 30;
   background: rgba(0, 0, 0, 0.45);
   display: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .docs-mobile-overlay[data-mobile-open="true"] {
   display: block;
@@ -110,6 +227,19 @@ html[data-toc="collapsed"] {
   .docs-mobile-overlay,
   .docs-mobile-overlay[data-mobile-open="true"] {
     display: none;
+  }
+}
+
+/* Body scroll lock applied while the drawer is open so the page
+ * behind it doesn't rubber-band on iOS / pinch on Android. */
+body.docs-scroll-locked {
+  overflow: hidden;
+  touch-action: none;
+}
+@media (min-width: 1024px) {
+  body.docs-scroll-locked {
+    overflow: visible;
+    touch-action: auto;
   }
 }
 
@@ -595,23 +725,126 @@ html[data-mode="light"] .docs-mode-toggle svg {
   transform: rotate(180deg);
 }
 
-/* Mobile sidebar (drawer) */
+/* Below 1024px the sidebar becomes a slide-in drawer. The drawer
+ * width is responsive: tight on small phones (`min(20rem, vp-3rem)`)
+ * so a thumb can still close it, generous on tablet (22rem). The
+ * rail collapse mode is disabled — drawer is always either fully
+ * open or fully off-screen, no half-state. The expanded inner panel
+ * is forced visible (the desktop `data-sidebar="collapsed"` rule
+ * doesn't apply on mobile). */
 @media (max-width: 1023.98px) {
   .docs-sidebar {
-    width: var(--docs-sidebar-natural);
+    width: var(--docs-drawer-width);
     transform: translateX(-100%);
     transition: transform 220ms var(--docs-shell-ease);
+    box-shadow: 1.25rem 0 2.5rem -1rem rgba(0, 0, 0, 0.35);
+    overscroll-behavior: contain;
   }
   .docs-sidebar[data-mobile-open="true"] {
     transform: translateX(0);
   }
-  .docs-sidebar-expanded {
-    transform: none !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
+  /* Inside the drawer we want the expanded inner panel always
+   * visible regardless of any desktop collapse state; scope the
+   * desktop transform/opacity rule out of this viewport so we
+   * don't need !important below. */
+  html[data-sidebar="collapsed"] .docs-sidebar-expanded {
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
   }
-  .docs-sidebar-rail {
+  .docs-sidebar-rail,
+  .docs-sidebar-drag {
     display: none;
+  }
+  /* Make room at the top of the drawer for the device's status bar
+   * when running as a PWA, and for the in-drawer collapse chevron
+   * (which is hidden — the drawer closes via the top bar or the
+   * overlay). */
+  .docs-sidebar-expanded {
+    padding-top: max(1.5rem, env(safe-area-inset-top));
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+  .docs-sidebar-header .docs-rail-button-inline {
+    display: none;
+  }
+}
+
+/* Drawer close button — visible only when the sidebar is in
+ * drawer mode. Picks up the row-button styling from the top bar
+ * for visual consistency between "open" (top-bar hamburger) and
+ * "close" (in-drawer X). Hidden on desktop where the rail
+ * collapse chevron handles it. */
+.docs-sidebar-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--docs-touch-target);
+  height: var(--docs-touch-target);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0.5rem;
+  color: var(--text-content);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.docs-sidebar-close svg {
+  width: 1rem;
+  height: 1rem;
+}
+.docs-sidebar-close:hover,
+.docs-sidebar-close:focus-visible {
+  background: var(--surface-secondary);
+  outline: none;
+}
+@media (max-width: 1023.98px) {
+  .docs-sidebar-close {
+    display: inline-flex;
+  }
+}
+
+/* Touch-target sizing on coarse pointers.
+ *
+ * The trick: the row's *height* expands to 44px so the link (the
+ * primary interaction at every level) gives a generous tap target,
+ * while the toggle column stays its desktop width. That keeps the
+ * tree indent step compact (still 1.625rem per level) so a 20rem
+ * drawer can carry three or four levels of nesting without the
+ * deepest labels disappearing past the right edge.
+ *
+ * The chevron toggle is a smaller target but it only needs to flip
+ * an expand state — the pseudo-element overlay below stretches its
+ * click area to fill the row's height without affecting the
+ * surrounding layout, so a thumb tap on either chevron-row or the
+ * link still works comfortably. */
+@media (pointer: coarse) {
+  .docs-nav-row {
+    min-height: var(--docs-touch-target);
+  }
+  .docs-nav-toggle,
+  .docs-nav-toggle-placeholder {
+    height: var(--docs-touch-target);
+  }
+  .docs-nav-toggle {
+    position: relative;
+  }
+  .docs-nav-toggle::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    /* Expand the hit zone slightly into the row's gutter without
+     * overlapping the link's tap area. */
+    margin: 0 -0.125rem;
+  }
+  .docs-nav-link,
+  .docs-nav-group {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    font-size: 0.9375rem;
+  }
+  .docs-nav-group-section {
+    font-size: 0.8125rem;
   }
 }
 
@@ -990,6 +1223,127 @@ html[data-toc="collapsed"] .docs-toc-rail {
 }
 
 /* ============================================================
+ * Inline mobile / tablet TOC
+ *
+ * A `<details>` disclosure that stands in for the right-side TOC
+ * sidebar at sub-1280px viewports. It sits in the article column
+ * just below the page title; tapping the summary expands an anchor
+ * list with the same hierarchy and active-state colour as the
+ * desktop TOC. Hidden whenever the desktop TOC sidebar is visible
+ * so the two never co-exist.
+ * ============================================================ */
+.docs-mobile-toc {
+  display: block;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  background: transparent;
+  border-top: 1px solid var(--border-primary);
+  border-bottom: 1px solid var(--border-primary);
+}
+@media (min-width: 1280px) {
+  .docs-mobile-toc {
+    display: none;
+  }
+}
+.docs-mobile-toc[open] {
+  background: color-mix(in srgb, var(--surface-primary) 70%, transparent);
+}
+
+.docs-mobile-toc-summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: var(--docs-touch-target);
+  padding: 0 0.25rem;
+  cursor: pointer;
+  color: var(--text-content-tertiary);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  user-select: none;
+}
+.docs-mobile-toc-summary::-webkit-details-marker {
+  display: none;
+}
+.docs-mobile-toc-summary:hover,
+.docs-mobile-toc-summary:focus-visible {
+  color: var(--text-content);
+  outline: none;
+}
+.docs-mobile-toc-glyph {
+  flex-shrink: 0;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--text-content-quaternary);
+}
+.docs-mobile-toc-label {
+  flex: 1 1 auto;
+  letter-spacing: 0.14em;
+  color: var(--text-content-secondary);
+}
+.docs-mobile-toc-chevron {
+  flex-shrink: 0;
+  width: 0.6875rem;
+  height: 0.6875rem;
+  color: var(--text-content-quaternary);
+  transition: transform 200ms var(--docs-shell-ease);
+}
+.docs-mobile-toc[open] .docs-mobile-toc-chevron {
+  transform: rotate(180deg);
+}
+
+.docs-mobile-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0.75rem;
+}
+.docs-mobile-toc-item {
+  margin: 0;
+}
+.docs-mobile-toc-link {
+  display: flex;
+  align-items: center;
+  min-height: var(--docs-touch-target);
+  padding: 0.5rem 0.5rem 0.5rem 1.25rem;
+  color: var(--text-content-secondary);
+  text-decoration: none;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  border-left: 1.5px solid transparent;
+  margin-left: 0.25rem;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+.docs-mobile-toc-link:hover,
+.docs-mobile-toc-link:focus-visible {
+  color: var(--text-content);
+  background: var(--surface-secondary);
+  outline: none;
+}
+.docs-mobile-toc-item.is-active > .docs-mobile-toc-link {
+  color: var(--brand-primary);
+  border-left-color: var(--brand-primary);
+  font-weight: 500;
+}
+.docs-mobile-toc-item-d1 > .docs-mobile-toc-link {
+  padding-left: 2.25rem;
+}
+.docs-mobile-toc-item-d2 > .docs-mobile-toc-link {
+  padding-left: 3rem;
+  font-size: 0.8125rem;
+  color: var(--text-content-tertiary);
+}
+.docs-mobile-toc-item-d3 > .docs-mobile-toc-link {
+  padding-left: 3.75rem;
+  font-size: 0.8125rem;
+  color: var(--text-content-quaternary);
+}
+
+/* ============================================================
  * Main content
  * ============================================================ */
 .docs-main {
@@ -1012,7 +1366,16 @@ html[data-toc="collapsed"] .docs-toc-rail {
   width: 100%;
   max-width: 96rem;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  /* Mobile baseline: tight horizontal so prose breathes against the
+   * viewport edges, not the page-margin convention of a desktop site
+   * scaled down. The vertical inset stays generous so the title has
+   * air after the top bar. */
+  padding: 1.5rem 1rem 3rem;
+}
+@media (min-width: 768px) {
+  .docs-main-inner {
+    padding: 2rem 1.5rem 3rem;
+  }
 }
 @media (min-width: 1024px) {
   .docs-main-inner {

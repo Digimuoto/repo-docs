@@ -1,6 +1,8 @@
 ---
 import type {MarkdownHeading} from "astro";
 import MermaidEnhancer from "../components/MermaidEnhancer.astro";
+import MobileToc from "../components/MobileToc.astro";
+import MobileTopBar from "../components/MobileTopBar.astro";
 import SidebarSection from "../components/SidebarSection.astro";
 import TableOfContents from "../components/TableOfContents.astro";
 import ThemeToggle from "../components/ThemeToggle.astro";
@@ -133,16 +135,7 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
     </script>
   </head>
   <body data-docs-mermaid={hasMermaid} data-toc-enabled={tocEnabled}>
-    <button
-      id="mobile-menu-toggle"
-      class="docs-mobile-toggle"
-      aria-label="Toggle navigation"
-      aria-controls="docs-sidebar"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-      </svg>
-    </button>
+    <MobileTopBar hasToc={tocEnabled} themeModes={themeModes} />
 
     <aside id="docs-sidebar" class="docs-sidebar" aria-label="Site navigation">
       <div class="docs-sidebar-expanded">
@@ -160,6 +153,23 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
           >
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 3.5L6 8l4.5 4.5" />
+            </svg>
+          </button>
+          {/*
+            Mobile-only close. Shares the `data-mobile-menu-toggle`
+            attribute with the top-bar hamburger, so the layout's
+            existing toggle handler closes the drawer when the
+            button is tapped from inside the open drawer.
+          */}
+          <button
+            type="button"
+            class="docs-sidebar-close"
+            data-mobile-menu-toggle
+            aria-label="Close navigation"
+            aria-controls="docs-sidebar"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4l8 8M12 4l-8 8" />
             </svg>
           </button>
         </header>
@@ -429,10 +439,17 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
       // to clicks: flip the value, update html attributes, persist,
       // and fire a custom event so the Mermaid enhancer can re-render
       // with the new active theme.
-      const modeToggle = document.querySelector<HTMLButtonElement>("[data-mode-toggle]");
-      if (modeToggle) {
-        const lightTheme = modeToggle.dataset.modeLight;
-        const darkTheme = modeToggle.dataset.modeDark;
+      // Mode toggle is now wired across multiple buttons (the
+      // sidebar footer toggle on desktop, the top-bar toggle on
+      // mobile) — collect them all and bind a single shared
+      // handler so they stay in lock-step.
+      const modeToggles = document.querySelectorAll<HTMLButtonElement>(
+        "[data-mode-toggle]",
+      );
+      if (modeToggles.length > 0) {
+        const first = modeToggles[0];
+        const lightTheme = first.dataset.modeLight;
+        const darkTheme = first.dataset.modeDark;
         const root = document.documentElement;
 
         function applyMode(mode: "light" | "dark") {
@@ -454,9 +471,11 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
           );
         }
 
-        modeToggle.addEventListener("click", () => {
-          const next = root.dataset.mode === "light" ? "dark" : "light";
-          applyMode(next);
+        modeToggles.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const next = root.dataset.mode === "light" ? "dark" : "light";
+            applyMode(next);
+          });
         });
       }
     </script>
@@ -629,24 +648,50 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
         });
       }
 
-      // Mobile sidebar drawer
-      const mobileToggle = document.getElementById("mobile-menu-toggle");
-      const mobileOverlay = document.getElementById("mobile-overlay");
+      // Mobile sidebar drawer + on-page TOC disclosure.
+      //
+      // Two pieces of mobile chrome wired here:
+      //   1. The site-nav drawer, opened from the top-bar hamburger
+      //      (`[data-mobile-menu-toggle]`) and closed by the overlay
+      //      backdrop, by an in-drawer link tap, or by Escape.
+      //   2. The on-page TOC disclosure (`<details>` with id
+      //      `docs-mobile-toc`). The top bar carries a TOC button
+      //      that opens/closes the disclosure remotely, and the
+      //      button's `aria-expanded` mirrors the disclosure state.
       const sidebarEl = document.getElementById("docs-sidebar");
+      const mobileOverlay = document.getElementById("mobile-overlay");
+      const mobileToggles = document.querySelectorAll<HTMLElement>(
+        "[data-mobile-menu-toggle]",
+      );
+      const mobileTocToggles = document.querySelectorAll<HTMLElement>(
+        "[data-mobile-toc-toggle]",
+      );
+      const mobileTocEl = document.getElementById("docs-mobile-toc") as
+        | HTMLDetailsElement
+        | null;
 
       function setMobileOpen(open: boolean) {
         if (open) {
           sidebarEl?.setAttribute("data-mobile-open", "true");
           mobileOverlay?.setAttribute("data-mobile-open", "true");
+          // Lock body scroll while the drawer is open so phones don't
+          // rubber-band the page behind it.
+          document.body.classList.add("docs-scroll-locked");
         } else {
           sidebarEl?.removeAttribute("data-mobile-open");
           mobileOverlay?.removeAttribute("data-mobile-open");
+          document.body.classList.remove("docs-scroll-locked");
         }
+        mobileToggles.forEach((btn) =>
+          btn.setAttribute("aria-expanded", open ? "true" : "false"),
+        );
       }
 
-      mobileToggle?.addEventListener("click", () => {
-        const isOpen = sidebarEl?.getAttribute("data-mobile-open") === "true";
-        setMobileOpen(!isOpen);
+      mobileToggles.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const isOpen = sidebarEl?.getAttribute("data-mobile-open") === "true";
+          setMobileOpen(!isOpen);
+        });
       });
       mobileOverlay?.addEventListener("click", () => setMobileOpen(false));
       document.querySelectorAll("#docs-sidebar a").forEach((link) => {
@@ -654,6 +699,43 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
           if (window.innerWidth < 1024) setMobileOpen(false);
         });
       });
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        if (sidebarEl?.getAttribute("data-mobile-open") === "true") {
+          setMobileOpen(false);
+        }
+      });
+
+      function syncTocToggle(open: boolean) {
+        mobileTocToggles.forEach((btn) =>
+          btn.setAttribute("aria-expanded", open ? "true" : "false"),
+        );
+      }
+      if (mobileTocEl) {
+        syncTocToggle(mobileTocEl.open);
+        mobileTocEl.addEventListener("toggle", () =>
+          syncTocToggle(mobileTocEl.open),
+        );
+        mobileTocToggles.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            mobileTocEl.open = !mobileTocEl.open;
+            // Keep the disclosure visible: scroll it into view when
+            // opened from the top bar so the reader's eye lands on
+            // the anchors instead of mid-article.
+            if (mobileTocEl.open) {
+              mobileTocEl.scrollIntoView({behavior: "smooth", block: "start"});
+            }
+          });
+        });
+        // Tapping any anchor inside the disclosure closes it so the
+        // panel doesn't keep covering the heading the reader just
+        // scrolled to.
+        mobileTocEl.querySelectorAll("a").forEach((anchor) => {
+          anchor.addEventListener("click", () => {
+            if (window.innerWidth < 1280) mobileTocEl.open = false;
+          });
+        });
+      }
 
       // TOC scroll spy.
       //
