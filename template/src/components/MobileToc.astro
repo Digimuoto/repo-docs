@@ -1,0 +1,67 @@
+---
+import type {MarkdownHeading} from "astro";
+
+interface Props {
+  headings: MarkdownHeading[];
+  minDepth?: number;
+  maxDepth?: number;
+}
+
+const {headings, minDepth = 2, maxDepth = 4} = Astro.props;
+
+const visible = headings.filter(
+  (heading) => heading.depth >= minDepth && heading.depth <= maxDepth,
+);
+
+const minVisibleDepth = visible.reduce(
+  (lowest, heading) => Math.min(lowest, heading.depth),
+  maxDepth,
+);
+---
+
+{/*
+  Mobile / small-laptop on-page navigation.
+
+  Hidden whenever the right-side sidebar TOC is visible (≥1280px),
+  so it never duplicates that affordance. Below that breakpoint —
+  phones, iPads in portrait and landscape, small laptops — it sits
+  inline at the top of the article, right after the page title, as
+  a collapsed `<details>` disclosure. Tapping it pops a sheet of
+  anchors with comfortable touch targets; tapping any anchor scrolls
+  to the heading and closes the sheet (handled by the layout's
+  `data-mobile-toc-toggle` script).
+
+  The disclosure is closed by default — readers shouldn't need to
+  scroll past a TOC to start reading. The trigger lives in the
+  mobile top bar too, so it's reachable from anywhere on the page.
+*/}
+{visible.length > 0 && (
+  <details
+    id="docs-mobile-toc"
+    class="docs-mobile-toc"
+    aria-label="On this page"
+    data-mobile-toc
+  >
+    <summary class="docs-mobile-toc-summary">
+      <svg class="docs-mobile-toc-glyph" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+        <path stroke-linecap="round" d="M3 4.5h10M3 8h10M3 11.5h7" />
+      </svg>
+      <span class="docs-mobile-toc-label">On this page</span>
+      <svg class="docs-mobile-toc-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5l3 3 3-3" />
+      </svg>
+    </summary>
+    <ol class="docs-mobile-toc-list">
+      {visible.map((heading) => (
+        <li
+          class={`docs-mobile-toc-item docs-mobile-toc-item-d${heading.depth - minVisibleDepth}`}
+          data-toc-anchor={heading.slug}
+        >
+          <a class="docs-mobile-toc-link" href={`#${heading.slug}`}>
+            <span>{heading.text}</span>
+          </a>
+        </li>
+      ))}
+    </ol>
+  </details>
+)}

@@ -7,6 +7,7 @@ import DocsLayout from "../layouts/DocsLayout.astro";
 import DocsMetaBlock from "./DocsMetaBlock.astro";
 import DocsReadingSequence from "./DocsReadingSequence.astro";
 import DocsTitle from "./DocsTitle.astro";
+import MobileToc from "./MobileToc.astro";
 import {deriveDocKind} from "../lib/doc-kind";
 import {buildSidebar, findReadingSequence, normalizeEntryId} from "../lib/navigation";
 import {siteConfig, withBasePath} from "../lib/site-config";
@@ -86,6 +87,7 @@ const sequence = findReadingSequence(navigation, currentHref);
   docKind={docKind}
 >
   <DocsTitle doc={doc} />
+  <MobileToc headings={headings} />
   {typstPdfHref ? (
     <section class="docs-typst-embed not-prose" aria-label={`${doc.data.title} — embedded PDF manuscript`}>
       <div class="docs-typst-embed-actions" role="toolbar" aria-label="Manuscript actions">

@@ -1,0 +1,78 @@
+---
+import type {SiteThemeModes} from "../lib/site-config";
+import {siteConfig, withBasePath} from "../lib/site-config";
+
+interface Props {
+  hasToc: boolean;
+  themeModes: SiteThemeModes | null;
+}
+
+const {hasToc, themeModes} = Astro.props;
+---
+
+{/*
+  Mobile top bar — the app shell.
+
+  Shown only at viewports below the breakpoint where the permanent
+  sidebar appears (≤ 1023.98px). It carries the three controls a
+  reader on a phone or iPad in portrait actually needs at all times:
+
+    1. The hamburger that opens the site nav drawer.
+    2. The site brand link (returns to the docs root).
+    3. The "On this page" trigger (only when the doc has TOC anchors)
+       and the colour-mode toggle.
+
+  This replaces the previous floating-circle hamburger which left
+  the rest of the screen visually unframed; with a sticky bar the
+  page reads as an app, not a webpage with a button overlaid on it.
+*/}
+<header class="docs-topbar" role="banner" aria-label="Site chrome">
+  <button
+    type="button"
+    class="docs-topbar-icon docs-topbar-menu"
+    aria-label="Open navigation"
+    aria-controls="docs-sidebar"
+    data-mobile-menu-toggle
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  </button>
+
+  <a class="docs-topbar-brand" href={withBasePath()}>
+    <span class="docs-topbar-brand-title">{siteConfig.site.title}</span>
+  </a>
+
+  <div class="docs-topbar-actions">
+    {hasToc && (
+      <button
+        type="button"
+        class="docs-topbar-icon docs-topbar-toc"
+        aria-label="Table of contents"
+        aria-controls="docs-mobile-toc"
+        aria-expanded="false"
+        data-mobile-toc-toggle
+      >
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <path stroke-linecap="round" d="M3 4.5h10M3 8h10M3 11.5h7" />
+        </svg>
+      </button>
+    )}
+    {themeModes && (
+      <button
+        type="button"
+        class="docs-topbar-icon docs-mode-toggle"
+        data-mode-toggle
+        data-mode-light={themeModes.light}
+        data-mode-dark={themeModes.dark}
+        aria-label="Toggle colour mode"
+        title="Toggle colour mode"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1" />
+          <path d="M8 2.5 A 5.5 5.5 0 0 1 8 13.5 Z" fill="currentColor" />
+        </svg>
+      </button>
+    )}
+  </div>
+</header>
