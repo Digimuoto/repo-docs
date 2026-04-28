@@ -33,30 +33,46 @@ const activePath = hasActiveDescendant(section.items);
 const sectionOpen = activePath;
 ---
 
+{/*
+  A labelled section renders through the same row template as a
+  tree group: a `.docs-nav-row` with a `.docs-nav-toggle` (chevron)
+  and a `.docs-nav-group` (label). Both carry the same
+  `data-nav-toggle` key, so the existing toggle handler in the
+  layout works for either click target. This keeps the section
+  header on identical geometry as L1 / L2 rows below it — chevron
+  column, internal label padding, hover background — so a section
+  label and a root-level page label naturally line up on the same
+  vertical column without bespoke overrides.
+*/}
 {section.label ? (
   <section class="docs-nav-section">
-    <button
-      type="button"
-      class="docs-nav-section-toggle"
-      data-nav-toggle={section.key}
-      aria-expanded={sectionOpen ? "true" : "false"}
-    >
-      <svg
-        class="docs-nav-chevron docs-nav-chevron-section"
-        viewBox="0 0 12 12"
-        aria-hidden="true"
+    <div class="docs-nav-row">
+      <button
+        type="button"
+        class="docs-nav-toggle"
+        data-nav-toggle={section.key}
+        aria-expanded={sectionOpen ? "true" : "false"}
+        aria-controls={section.key}
       >
-        <path
-          d="M4.5 3L8 6l-3.5 3"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.4"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-      <span>{section.label}</span>
-    </button>
+        <svg class="docs-nav-chevron" viewBox="0 0 12 12" aria-hidden="true">
+          <path
+            d="M4.5 3L8 6l-3.5 3"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+      <button
+        type="button"
+        class="docs-nav-group docs-nav-group-section"
+        data-nav-toggle={section.key}
+      >
+        <span>{section.label}</span>
+      </button>
+    </div>
     <ul
       class="docs-nav-list"
       data-nav-children-of={section.key}
