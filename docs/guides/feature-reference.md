@@ -163,6 +163,9 @@ custom palette, layout component, or route implementation.
 Verso and publishes a generated `Theory` section. Module doc comments
 `/-! ... -/` render as prose; declarations remain interactive Lean fragments
 with semantic hovers, declaration links, tactic proof states, and proof badges.
+repo-docs also normalizes Verso's current CommonMark/GFM gaps for Lean prose,
+so ordered lists, unordered lists, and pipe tables render as real HTML list and
+table elements in generated Theory pages.
 
 ### Typst Manuscripts
 

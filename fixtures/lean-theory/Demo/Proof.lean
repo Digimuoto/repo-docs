@@ -122,6 +122,13 @@ the operational counterpart of the natural-language statement
 "applying $\mathrm{succ}$ to both sides of the inductive hypothesis
 closes the successor case".
 
+The table below exercises GFM pipe-table rendering inside Lean module prose:
+
+| Construct | Expected HTML |
+|-----------|---------------|
+| `- item` | `<li>` inside `<ul>` |
+| `1. item` | `<li>` inside `<ol>` |
+
 Two observations are worth recording.
 
 1. The proof object produced by Lean is a closed term of type

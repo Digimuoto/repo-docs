@@ -2040,7 +2040,8 @@ video {
 .repo-docs-lean-page :where(.md-text, .verso-text) ul,
 .repo-docs-lean-page :where(.md-text, .verso-text) ol,
 .repo-docs-lean-page :where(.md-text, .verso-text) pre,
-.repo-docs-lean-page :where(.md-text, .verso-text) blockquote {
+.repo-docs-lean-page :where(.md-text, .verso-text) blockquote,
+.repo-docs-lean-page :where(.md-text, .verso-text) table {
   margin: 0 0 1.25rem;
 }
 .repo-docs-lean-page :where(.md-text, .verso-text) > :last-child {
@@ -2050,9 +2051,9 @@ video {
 .repo-docs-lean-page :where(.md-text, .verso-text) ol {
   padding-left: 1.5rem;
 }
-/* Verso emits list items as bare <p> children of <ul>/<ol> (no <li>
- * wrapper), so the browser's default list-marker rendering never
- * fires. Promote these <p>s to list-items so bullets/numbers show. */
+/* Defense-in-depth for older generated fragments: repo-docs normalizes
+ * malformed Verso list HTML during staging, but any remaining bare <p>
+ * children should still display with markers. */
 .repo-docs-lean-page :where(.md-text, .verso-text) :where(ul, ol) > p {
   display: list-item;
   margin: 0 0 0.375rem;
@@ -2062,6 +2063,11 @@ video {
 }
 .repo-docs-lean-page :where(.md-text, .verso-text) ol > p {
   list-style: decimal outside;
+}
+.repo-docs-lean-page :where(.md-text, .verso-text) table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
 }
 .repo-docs-lean-page :where(.md-text, .verso-text) pre {
   padding: 1rem;

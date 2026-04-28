@@ -213,6 +213,98 @@ function extractLeanContentFragment(html) {
   return match[0];
 }
 
+function normalizeMalformedVersoLists(html) {
+  return html.replace(/<(ul|ol)(\b[^>]*)>([\s\S]*?)<\/\1>/gi, (match, tagName, attributes, body) => {
+    if (/<li\b/i.test(body)) {
+      return match;
+    }
+
+    let changed = false;
+    const normalizedBody = body.replace(/<p>\s*([\s\S]*?)\s*<\/p>/gi, (_paragraph, content) => {
+      const trimmed = content.trim();
+      if (trimmed === "") {
+        return _paragraph;
+      }
+      changed = true;
+      return `<li>\n${trimmed}\n</li>`;
+    });
+
+    return changed ? `<${tagName}${attributes}>${normalizedBody}</${tagName}>` : match;
+  });
+}
+
+function splitPipeTableRow(line) {
+  let trimmed = line.trim();
+  if (trimmed.startsWith("|")) {
+    trimmed = trimmed.slice(1);
+  }
+  if (trimmed.endsWith("|")) {
+    trimmed = trimmed.slice(0, -1);
+  }
+  return trimmed.split("|").map((cell) => cell.trim());
+}
+
+function isPipeTableDelimiter(cells) {
+  return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s+/g, "")));
+}
+
+function renderHtmlTable(headers, rows) {
+  const headerHtml = headers.map((cell) => `<th scope="col">${cell}</th>`).join("");
+  const bodyHtml = rows
+    .map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`)
+    .join("\n");
+
+  return [
+    "<table>",
+    "<thead>",
+    `<tr>${headerHtml}</tr>`,
+    "</thead>",
+    "<tbody>",
+    bodyHtml,
+    "</tbody>",
+    "</table>",
+  ].join("\n");
+}
+
+function normalizeVersoPipeTableParagraph(body) {
+  const lines = body
+    .trim()
+    .split(/\r?\n/g)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length < 3 || !lines.every((line) => line.startsWith("|") && line.endsWith("|"))) {
+    return null;
+  }
+
+  const headers = splitPipeTableRow(lines[0]);
+  const delimiter = splitPipeTableRow(lines[1]);
+  if (headers.length === 0 || delimiter.length !== headers.length || !isPipeTableDelimiter(delimiter)) {
+    return null;
+  }
+
+  const rows = lines.slice(2).map(splitPipeTableRow);
+  if (rows.some((row) => row.length !== headers.length)) {
+    return null;
+  }
+
+  return renderHtmlTable(headers, rows);
+}
+
+function normalizeMalformedVersoTables(html) {
+  return html.replace(/<p>\s*([\s\S]*?)\s*<\/p>/gi, (match, body) => {
+    const table = normalizeVersoPipeTableParagraph(body);
+    return table ?? match;
+  });
+}
+
+function normalizeVersoMarkdownHtml(html) {
+  // Verso 4.29 parses CommonMark lists as <ul>/<ol> with bare <p>
+  // children, and leaves GFM pipe tables as literal paragraph text.
+  // Normalize those two shapes before repo-docs embeds the fragment.
+  return normalizeMalformedVersoTables(normalizeMalformedVersoLists(html));
+}
+
 function moduleRelativeLeanPath(relativeHtmlPath) {
   return relativeHtmlPath.replace(/\/index\.html$/i, ".lean");
 }
@@ -578,7 +670,7 @@ async function copyVersoAssets(renderedDir, outputRoot, assetBaseHref) {
       const rewritten = Object.fromEntries(
         Object.entries(docs).map(([key, value]) => [
           key,
-          typeof value === "string" ? rewriteVersoLinks(value, assetBaseHref) : value,
+          typeof value === "string" ? rewriteVersoLinks(normalizeVersoMarkdownHtml(value), assetBaseHref) : value,
         ]),
       );
       await fs.writeFile(targetPath, JSON.stringify(rewritten), "utf8");
@@ -680,7 +772,7 @@ async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, 
     const source = await readLeanModuleSource(lean4.sourceDir, relativePath);
     const contentFragment = extractLeanContentFragment(html);
     const tags = classifyLeanModuleTags(source);
-    const fragment = rewriteVersoLinks(contentFragment, assetBaseHref);
+    const fragment = rewriteVersoLinks(normalizeVersoMarkdownHtml(contentFragment), assetBaseHref);
     const setup = renderVersoSetup(html, assetBaseHref);
     const fragmentPath = `lean-theory/${GENERATED_THEORY_DIR}/${relativePath.replace(/\/index\.html$/i, ".html")}`;
     const fragmentTargetPath = path.join(generatedRoot, fragmentPath);

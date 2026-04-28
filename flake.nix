@@ -330,15 +330,20 @@
               script = ''
                 site="${leanSite.package}"
                 staged="${leanSite.stagedSrc}"
+                fragment="$staged/src/generated/lean-theory/Theory/Demo/Proof.html"
 
                 test -f "$site/Theory/index.html"
                 test -f "$site/Theory/Demo/Proof/index.html"
                 test -f "$staged/src/content/docs/Theory/Demo/Proof.md"
+                test -f "$fragment"
                 test ! -e "$staged/public/Theory/Demo/Proof/index.html"
                 grep -q 'tags:' "$staged/src/content/docs/Theory/Demo/Proof.md"
                 grep -q '"proofs"' "$staged/src/content/docs/Theory/Demo/Proof.md"
                 grep -q 'font-style: italic;' "$staged/src/styles/global.css"
                 grep -q 'code-box > .md-text:not(.mod-doc)' "$staged/src/styles/global.css"
+                grep -q '<li>' "$fragment"
+                grep -q '<table>' "$fragment"
+                grep -q '<th scope="col">Construct</th>' "$fragment"
                 if grep -q 'Verso-rendered Lean 4 module' "$staged/src/content/docs/Theory/Demo/Proof.md"; then
                   echo "Lean theory pages should not emit generated description ingress"; exit 1
                 fi
