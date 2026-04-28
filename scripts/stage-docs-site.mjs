@@ -340,21 +340,25 @@ function renderVersoSetup(html, assetBaseHref) {
 }
 
 function renderTheoryIndexMarkdown(moduleLinks) {
+  // Minimal landing page: the title from frontmatter is enough
+  // chrome, the body is just the module list. No tooling-speak
+  // description, no auto-generated intro paragraph — the modules
+  // are the content; meta-commentary about how they were built
+  // belongs in the project README, not on the page itself.
+  // Authors who want a richer landing page can drop their own
+  // `Theory/index.md` in the content tree (see callsite below).
   const items = moduleLinks
     .map((link) => `- [${link.label}](${link.href.replace(`${GENERATED_THEORY_DIR}/`, "")}/)`)
     .join("\n");
   return [
     "---",
     `title: ${yamlString("Theory")}`,
-    `description: ${yamlString("Generated Lean 4 theory pages rendered with Verso")}`,
     `kind: ${yamlString("lean-theory")}`,
     "sidebar:",
     `  label: ${yamlString("Module Index")}`,
     "---",
     "",
-    "This section is generated from the configured Lean 4 Lake package. Each module keeps the repo-docs shell while embedding Verso's interactive Lean rendering.",
-    "",
-    items || "No Lean modules were rendered.",
+    items,
     "",
   ].join("\n");
 }
@@ -641,11 +645,28 @@ async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, 
   await removeIfExists(fragmentRoot);
   await fs.mkdir(fragmentRoot, {recursive: true});
 
-  await fs.writeFile(
-    path.join(contentTheoryRoot, "index.md"),
-    renderTheoryIndexMarkdown(moduleLinks),
-    "utf8",
-  );
+  // Theory landing page: only generate one if the consumer hasn't
+  // authored their own. Authors who want to write a real
+  // introduction (project framing, mathematical context, reading
+  // order, links to companion papers) drop a `Theory/index.md`
+  // into their content tree and the staging script keeps it; the
+  // generated stub is a fallback, not a default that shadows
+  // authored content.
+  const theoryIndexPath = path.join(contentTheoryRoot, "index.md");
+  let theoryIndexExists = false;
+  try {
+    await fs.access(theoryIndexPath);
+    theoryIndexExists = true;
+  } catch {
+    /* not present — emit the generated stub below */
+  }
+  if (!theoryIndexExists) {
+    await fs.writeFile(
+      theoryIndexPath,
+      renderTheoryIndexMarkdown(moduleLinks),
+      "utf8",
+    );
+  }
 
   for (const relativePath of htmlFiles) {
     if (relativePath === "index.html" || !relativePath.endsWith("/index.html")) {
