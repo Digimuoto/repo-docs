@@ -629,37 +629,6 @@ html[data-mode="light"] .docs-mode-toggle svg {
   flex-direction: column;
 }
 
-.docs-nav-section-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  /* Section header sits flush with the nav's left edge — its chevron
-   * is the leftmost column. L1 items below indent past it so their
-   * own chevrons align with the section *label* (the section's "inner
-   * scope"), making the parent → child hierarchy visible at a glance. */
-  padding: 0.1875rem 0.375rem 0.1875rem 0;
-  margin-bottom: 0.125rem;
-  background: transparent;
-  border: none;
-  border-radius: 0.25rem;
-  color: var(--text-content-tertiary);
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  cursor: pointer;
-  transition: color 120ms ease;
-}
-.docs-nav-section-toggle:hover,
-.docs-nav-section-toggle:focus-visible {
-  color: var(--text-content-tertiary);
-  outline: none;
-}
-.docs-nav-chevron-section {
-  width: 0.5625rem;
-  height: 0.5625rem;
-}
-
 .docs-nav-list,
 .docs-nav-sublist {
   list-style: none;
@@ -667,47 +636,20 @@ html[data-mode="light"] .docs-mode-toggle svg {
   padding: 0;
 }
 
-/* L1 list under a labelled section: indent so each L1 chevron aligns
- * with the section label's text-start (one chevron+gap to the right
- * of the section chevron). The unlabelled-root list keeps padding 0
- * since there's no section header to scope under. */
-.docs-nav-list:not(.docs-nav-list-root) {
-  padding-left: 0.9625rem;
-}
-
-/* Root-level pages (children of the unlabelled root section, or the
- * implicit Overview section) read at the same hierarchy level as
- * labelled section headers — they're peers, not nested children. So
- * their *labels* should sit on the same vertical column as a section
- * header's label. The chevron column shrinks to chevron-width-only
- * (no extra hit area whitespace) and the link drops its left padding,
- * pulling the label leftwards so it lines up with section labels.
- * The chevron itself ends up further left of the label, which is the
- * intended affordance — toplevel pages are the leftmost text column
- * in the nav. */
-.docs-nav-list-root > .docs-nav-item > .docs-nav-row {
-  gap: 0.4rem;
-}
-.docs-nav-list-root > .docs-nav-item > .docs-nav-row > .docs-nav-toggle,
-.docs-nav-list-root > .docs-nav-item > .docs-nav-row > .docs-nav-toggle-placeholder {
-  width: 0.5625rem;
-}
-.docs-nav-list-root > .docs-nav-item > .docs-nav-row > .docs-nav-link,
-.docs-nav-list-root > .docs-nav-item > .docs-nav-row > .docs-nav-group {
-  padding-left: 0;
-}
-/* If a toplevel page has its own children (a folder rendered without
- * a section label), pull its sublist back so child chevrons still
- * align under the parent label rather than indenting from the wider
- * default tree column. */
-.docs-nav-list-root > .docs-nav-item > .docs-nav-sublist {
-  padding-left: 0.9625rem;
-}
-
-/* L2+ sublists: indent so each child chevron aligns with the parent
- * row's text-start (toggle 1.125rem + link padding-left 0.5rem). This
- * makes the chevron column of every level a vertical guide for "what
- * scope am I in" at a glance. */
+/* Indent system.
+ *
+ * Every nav row is the same shape: a chevron toggle column followed
+ * by a label link with consistent internal padding. Indentation is
+ * purely a property of the parent <ul>: the root list (no section
+ * label, or under the implicit Overview) starts flush at the nav's
+ * left edge; every nested list — whether the child list of a
+ * labelled section or a tree group — pushes one chevron-column step
+ * to the right, so each level's chevron sits under the parent
+ * label's start. Section headers, root-level pages, and labelled
+ * tree groups therefore all share the same toggle width and label
+ * padding; "section vs page" is a typographic modifier on the
+ * label, not a different geometry. */
+.docs-nav-list:not(.docs-nav-list-root),
 .docs-nav-sublist {
   padding-left: 1.625rem;
 }
@@ -889,6 +831,31 @@ html[data-mode="light"] .docs-mode-toggle svg {
 .docs-nav-group {
   font-weight: 500;
   color: var(--text-content);
+}
+
+/*
+ * Section-header label modifier.
+ *
+ * Identical row geometry as a tree group, but the label reads as
+ * the section eyebrow — slightly smaller, muted, lighter weight —
+ * so a labelled section still feels distinct from its child pages
+ * without breaking alignment. Hover background is suppressed
+ * because the chevron toggle next to it already carries the click
+ * affordance.
+ */
+.docs-nav-group-section {
+  color: var(--text-content-tertiary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.docs-nav-group-section:hover,
+.docs-nav-group-section:focus-visible {
+  background: transparent;
+  color: var(--text-content-tertiary);
+}
+.docs-nav-group-section.has-active-descendant {
+  color: var(--text-content-secondary);
 }
 
 /* ============================================================
