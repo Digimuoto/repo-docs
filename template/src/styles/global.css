@@ -675,6 +675,35 @@ html[data-mode="light"] .docs-mode-toggle svg {
   padding-left: 0.9625rem;
 }
 
+/* Root-level pages (children of the unlabelled root section, or the
+ * implicit Overview section) read at the same hierarchy level as
+ * labelled section headers — they're peers, not nested children. So
+ * their *labels* should sit on the same vertical column as a section
+ * header's label. The chevron column shrinks to chevron-width-only
+ * (no extra hit area whitespace) and the link drops its left padding,
+ * pulling the label leftwards so it lines up with section labels.
+ * The chevron itself ends up further left of the label, which is the
+ * intended affordance — toplevel pages are the leftmost text column
+ * in the nav. */
+.docs-nav-list-root > .docs-nav-item > .docs-nav-row {
+  gap: 0.4rem;
+}
+.docs-nav-list-root > .docs-nav-item > .docs-nav-row > .docs-nav-toggle,
+.docs-nav-list-root > .docs-nav-item > .docs-nav-row > .docs-nav-toggle-placeholder {
+  width: 0.5625rem;
+}
+.docs-nav-list-root > .docs-nav-item > .docs-nav-row > .docs-nav-link,
+.docs-nav-list-root > .docs-nav-item > .docs-nav-row > .docs-nav-group {
+  padding-left: 0;
+}
+/* If a toplevel page has its own children (a folder rendered without
+ * a section label), pull its sublist back so child chevrons still
+ * align under the parent label rather than indenting from the wider
+ * default tree column. */
+.docs-nav-list-root > .docs-nav-item > .docs-nav-sublist {
+  padding-left: 0.9625rem;
+}
+
 /* L2+ sublists: indent so each child chevron aligns with the parent
  * row's text-start (toggle 1.125rem + link padding-left 0.5rem). This
  * makes the chevron column of every level a vertical guide for "what

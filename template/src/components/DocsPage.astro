@@ -1,4 +1,5 @@
 ---
+import type {MarkdownHeading} from "astro";
 import {getCollection, render} from "astro:content";
 import fs from "node:fs";
 import path from "node:path";
@@ -10,14 +11,47 @@ import {deriveDocKind} from "../lib/doc-kind";
 import {buildSidebar, findReadingSequence, normalizeEntryId} from "../lib/navigation";
 import {siteConfig, withBasePath} from "../lib/site-config";
 
+// Lean theory pages get their headings from the Verso fragment, not
+// from Astro's markdown render — the staged .md file is just a stub.
+// Parse <h2-h4> tags from the fragment HTML so the TOC sidebar still
+// works on dense Lean pages (long files with /-! ## Section -/ breaks
+// benefit from on-page navigation just as much as long markdown).
+const VERSO_HEADING_RE = /<(h[1-6])\b[^>]*\bid="([^"]+)"[^>]*>([\s\S]*?)<\/\1>/g;
+function extractVersoHeadings(html: string | null): MarkdownHeading[] {
+  if (!html) return [];
+  const headings: MarkdownHeading[] = [];
+  let match: RegExpExecArray | null;
+  VERSO_HEADING_RE.lastIndex = 0;
+  while ((match = VERSO_HEADING_RE.exec(html)) !== null) {
+    const tag = match[1].toLowerCase();
+    const slug = match[2];
+    const text = match[3]
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!text) continue;
+    headings.push({depth: parseInt(tag.slice(1), 10), text, slug});
+  }
+  return headings;
+}
+
 const allDocs = await getCollection("docs", ({data}) => !data.draft);
 const navigation = buildSidebar(allDocs);
 const {doc} = Astro.props;
-const {Content, headings} = await render(doc);
+const {Content, headings: markdownHeadings} = await render(doc);
 const versoFragmentPath = doc.data.verso?.fragment
   ? path.resolve(process.cwd(), "src/generated", doc.data.verso.fragment)
   : null;
 const versoFragment = versoFragmentPath ? fs.readFileSync(versoFragmentPath, "utf8") : null;
+const versoHeadings = extractVersoHeadings(versoFragment);
+// Merge: markdown body headings (from the staged stub, usually empty
+// for Lean pages) followed by Verso fragment headings (the substantive
+// ones for Lean). For non-Lean pages versoHeadings is empty so this
+// is a no-op.
+const headings: MarkdownHeading[] = [...markdownHeadings, ...versoHeadings];
 const docBody = doc.body ?? "";
 // Mermaid keywords that can appear at the top of a fenced block. Used
 // for Verso-rendered Lean pages, which inline diagrams as bare
