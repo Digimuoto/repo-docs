@@ -181,6 +181,24 @@ The directory must be a Lake package. repo-docs builds the modules with Verso,
 copies the interactive assets, and appends a generated `Theory` section unless
 your explicit navigation already includes it.
 
+## Haskell Haddock Pages
+
+```nix
+docsSite.sites.docs.haskell.packages.core = {
+  packageDir = "haskell/core";
+  packageName = "my-core";
+  title = "Core API";
+};
+```
+
+`packageDir` is resolved from the parent of `contentDir`, so with
+`contentDir = ./docs`, the example points at `./haskell/core`.
+
+The directory must be a Cabal package. repo-docs builds it with
+`pkgs.haskellPackages.callCabal2nix`, copies the Haddock HTML output, and
+appends a generated `Haskell` section unless your explicit navigation already
+includes it.
+
 ## Typst Manuscripts
 
 ```nix

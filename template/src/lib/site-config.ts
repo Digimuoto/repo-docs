@@ -21,7 +21,19 @@ export interface SiteLean4Config {
   theoryDir: string;
 }
 
+export interface SiteHaskellPackageConfig {
+  description?: string | null;
+  packageDir: string;
+  packageName?: string | null;
+  title?: string | null;
+}
+
+export interface SiteHaskellConfig {
+  packages: Record<string, SiteHaskellPackageConfig>;
+}
+
 export interface SiteConfig {
+  haskell: SiteHaskellConfig | null;
   lean4: SiteLean4Config | null;
   navigation: NavigationSectionConfig[];
   repo?: {
@@ -82,6 +94,7 @@ export const siteConfig = {
   })(),
   themeModes: parseThemeModes((rawConfig as {themeModes?: unknown}).themeModes),
   lean4: parseLean4((rawConfig as {lean4?: unknown}).lean4),
+  haskell: parseHaskell((rawConfig as {haskell?: unknown}).haskell),
 } as SiteConfig;
 
 function parseLean4(raw: unknown): SiteLean4Config | null {
@@ -91,6 +104,15 @@ function parseLean4(raw: unknown): SiteLean4Config | null {
     return null;
   }
   return {theoryDir: candidate.theoryDir.trim()};
+}
+
+function parseHaskell(raw: unknown): SiteHaskellConfig | null {
+  if (!raw || typeof raw !== "object") return null;
+  const candidate = raw as {packages?: unknown};
+  if (!candidate.packages || typeof candidate.packages !== "object" || Array.isArray(candidate.packages)) {
+    return null;
+  }
+  return {packages: candidate.packages as Record<string, SiteHaskellPackageConfig>};
 }
 
 export function kebabToTitle(value: string) {
@@ -104,10 +126,13 @@ export function kebabToTitle(value: string) {
 export function withBasePath(pathname = "") {
   const base = stripTrailingSlash(siteConfig.site.routeBase || "/");
   const normalizedPath = pathname.replace(/^\/+|\/+$/g, "");
+  const isFilePath = /\.[^/]+$/.test(normalizedPath);
 
   if (base === "/") {
-    return normalizedPath === "" ? "/" : `/${normalizedPath}/`;
+    if (normalizedPath === "") return "/";
+    return isFilePath ? `/${normalizedPath}` : `/${normalizedPath}/`;
   }
 
-  return normalizedPath === "" ? `${base}/` : `${base}/${normalizedPath}/`;
+  if (normalizedPath === "") return `${base}/`;
+  return isFilePath ? `${base}/${normalizedPath}` : `${base}/${normalizedPath}/`;
 }

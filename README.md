@@ -21,6 +21,7 @@ Reusable docs site module for `flake-parts` repositories.
 - Syntax-highlighted code blocks for all common languages (Shiki)
 - Tree-sitter–driven highlighting for custom languages, compiled from grammar source at build time
 - Generated Lean 4 Theory section from `lean4.theoryDir`
+- Generated Haskell API section from Cabal packages via Haddock
 - Typst manuscript PDF compilation and generated reader pages from explicit manuscript folders
 - Per-site Nix outputs: `packages.<name>-site`, `apps.<name>-{dev,preview}`, `checks.<name>-site`
 
@@ -159,6 +160,7 @@ nix run .#cortex-preview    # Cortex research site (cortex-light)
 - `templateFiles` — per-site overrides for any file in the shared template
 - `languages` — per-site tree-sitter grammar registry (see below)
 - `lean4.theoryDir` — relative path to a Lean 4 source tree to publish as a generated Theory section
+- `haskell.packages` — Cabal packages to publish as generated Haddock API pages
 - `typst.manuscripts` — explicit Typst manuscript folders to compile and publish as PDF reader pages
 
 **Deep / complex trees** (the cortex-style layout in the example: `publications/paper-*/figures/*.mmd`, `adrs/*.md`, multi-level nested groups) work without extra configuration:
@@ -238,6 +240,20 @@ docsSite.sites.<your-site>.lean4.theoryDir = "theory";
 ```
 
 The generated section includes an index page plus one page per `.lean` file. Verso renders module docs, declaration docs, semantic hovers, declaration links, and tactic proof states; repo-docs supplies the surrounding shell and styling so the page reads as prose interleaved with Lean blocks. The setting is also available to template code as `siteConfig.lean4?.theoryDir`.
+
+## Haskell Haddock Section
+
+Point `haskell.packages.<name>.packageDir` at a Cabal package and repo-docs generates a top-level Haskell section from its Haddock output. The path is resolved from the parent of `contentDir`, so the usual `contentDir = ./docs` shape makes `"haskell/core"` point at `./haskell/core`.
+
+```nix
+docsSite.sites.<your-site>.haskell.packages.core = {
+  packageDir = "haskell/core";
+  packageName = "my-core";
+  title = "Core API";
+};
+```
+
+repo-docs builds the package with `pkgs.haskellPackages.callCabal2nix`, copies the generated Haddock HTML assets, and creates repo-docs wrapper pages for the package index and each module.
 
 ## Typst manuscript PDFs
 

@@ -5,10 +5,11 @@ const MARKDOWN_EXTENSIONS = new Set([".md", ".mdx"]);
 const RESERVED_CONFIG_NAMES = new Set(["config.yaml", "config.yml", "config.json"]);
 const BUILTIN_THEMES = new Set(["cortex-dark", "cortex-light", "cortex-slate"]);
 const GENERATED_THEORY_DIR = "Theory";
+const GENERATED_HASKELL_DIR = "Haskell";
 
 function usage() {
   console.error(
-    "Usage: node stage-docs-site.mjs --content-dir <dir> --config-json <file> --template-files-json <file> --languages-json <file> [--lean4-rendered-dir <dir> --lean4-source-dir <dir>] [--typst-rendered-dir <dir>] --out-dir <dir>",
+    "Usage: node stage-docs-site.mjs --content-dir <dir> --config-json <file> --template-files-json <file> --languages-json <file> [--lean4-rendered-dir <dir> --lean4-source-dir <dir>] [--typst-rendered-dir <dir>] [--haskell-rendered-dir <dir>] --out-dir <dir>",
   );
   process.exit(1);
 }
@@ -102,6 +103,30 @@ function parseLean4Config(config, renderedDir, sourceDir) {
     renderedDir,
     sourceDir,
     theoryDir: config.lean4.theoryDir.trim(),
+  };
+}
+
+function parseHaskellConfig(config, renderedDir) {
+  if (!config.haskell) {
+    return null;
+  }
+  if (typeof config.haskell !== "object") {
+    throw new Error("docsSite.haskell must be an object when set.");
+  }
+  const packages = config.haskell.packages ?? {};
+  if (typeof packages !== "object" || Array.isArray(packages)) {
+    throw new Error("docsSite.haskell.packages must be an attribute set when haskell is set.");
+  }
+  if (Object.keys(packages).length === 0) {
+    return null;
+  }
+  if (!renderedDir) {
+    throw new Error("Internal error: docsSite.haskell.packages is set, but no rendered Haddock output was staged.");
+  }
+
+  return {
+    renderedDir,
+    packages,
   };
 }
 
@@ -586,6 +611,190 @@ async function generateTypstManuscripts(contentRoot, publicRoot, typstRenderedDi
   return generated;
 }
 
+function renderHaskellIndexMarkdown(packages) {
+  const items = packages
+    .map((pkg) => `- [${pkg.title}](${pkg.safeKey}/)`)
+    .join("\n");
+
+  return [
+    "---",
+    `title: ${yamlString("Haskell API")}`,
+    `kind: ${yamlString("haskell-haddock")}`,
+    "sidebar:",
+    `  label: ${yamlString("Packages")}`,
+    "---",
+    "",
+    items,
+    "",
+  ].join("\n");
+}
+
+function renderHaskellHaddockMarkdown({title, description, label, htmlPath, packageName, moduleName}) {
+  const lines = [
+    "---",
+    `title: ${yamlString(title)}`,
+  ];
+  if (description) {
+    lines.push(`description: ${yamlString(description)}`);
+  }
+  lines.push(
+    `kind: ${yamlString("haskell-haddock")}`,
+    "sidebar:",
+    `  label: ${yamlString(label)}`,
+    "haddock:",
+    `  html: ${yamlString(htmlPath)}`,
+    `  package: ${yamlString(packageName)}`,
+  );
+  if (moduleName) {
+    lines.push(`  module: ${yamlString(moduleName)}`);
+  }
+  lines.push("---", "");
+  return lines.join("\n");
+}
+
+function haddockTitle(html, fallback) {
+  const title = extractHtmlTitle(html, fallback)
+    .replace(/\s+\|\s+.*$/g, "")
+    .trim();
+  return title || fallback;
+}
+
+function routeFromHaskellModule(moduleName) {
+  return moduleName
+    .split(".")
+    .map((segment) => assertSafeRelativePath(segment, `Haskell module segment in "${moduleName}"`))
+    .join("/");
+}
+
+function shouldGenerateHaddockModulePage(relativePath) {
+  if (path.extname(relativePath) !== ".html") {
+    return false;
+  }
+  if (relativePath.includes("/")) {
+    return false;
+  }
+  if (relativePath === "index.html" || relativePath.startsWith("doc-index")) {
+    return false;
+  }
+  return true;
+}
+
+async function generateHaskellDocs(contentRoot, publicRoot, haskell) {
+  if (!haskell) {
+    return null;
+  }
+
+  const manifestPath = path.join(haskell.renderedDir, "packages.json");
+  let packages;
+  try {
+    packages = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+  } catch (error) {
+    throw new Error(`Could not read rendered Haskell Haddock manifest: ${error.message}`);
+  }
+  if (!Array.isArray(packages)) {
+    throw new Error("Rendered Haskell Haddock manifest must be a JSON array.");
+  }
+
+  const contentHaskellRoot = path.join(contentRoot, GENERATED_HASKELL_DIR);
+  try {
+    await fs.stat(contentHaskellRoot);
+    throw new Error(
+      `Generated Haskell Haddock docs would overwrite existing docs path "${GENERATED_HASKELL_DIR}".`,
+    );
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  const publicHaskellRoot = path.join(publicRoot, GENERATED_HASKELL_DIR);
+  await removeIfExists(publicHaskellRoot);
+  await fs.mkdir(contentHaskellRoot, {recursive: true});
+
+  const entries = [GENERATED_HASKELL_DIR];
+  const normalizedPackages = [];
+
+  for (const rawPackage of packages) {
+    if (!rawPackage || typeof rawPackage !== "object") {
+      throw new Error("Rendered Haskell Haddock manifest entries must be objects.");
+    }
+
+    const key = assertSafeRelativePath(rawPackage.key, "Haskell package key");
+    const safeKey = assertSafeRelativePath(rawPackage.safeKey, `Haskell package "${key}" safeKey`);
+    const packageName = typeof rawPackage.packageName === "string" && rawPackage.packageName.trim() !== ""
+      ? rawPackage.packageName.trim()
+      : key;
+    const title = typeof rawPackage.title === "string" && rawPackage.title.trim() !== ""
+      ? rawPackage.title.trim()
+      : packageName;
+    const description = typeof rawPackage.description === "string" && rawPackage.description.trim() !== ""
+      ? rawPackage.description.trim()
+      : null;
+
+    const renderedHtmlRoot = path.join(haskell.renderedDir, "packages", safeKey, "html");
+    const publicHtmlRoot = path.join(publicHaskellRoot, safeKey, "haddock");
+    await fs.mkdir(path.dirname(publicHtmlRoot), {recursive: true});
+    await fs.cp(renderedHtmlRoot, publicHtmlRoot, {recursive: true});
+
+    normalizedPackages.push({safeKey, title});
+
+    const packageRoute = `${GENERATED_HASKELL_DIR}/${safeKey}`;
+    const packageHtmlPath = `${packageRoute}/haddock/index.html`;
+    await fs.mkdir(path.join(contentHaskellRoot, safeKey), {recursive: true});
+    await fs.writeFile(
+      path.join(contentHaskellRoot, safeKey, "index.md"),
+      renderHaskellHaddockMarkdown({
+        title,
+        description,
+        label: packageName,
+        htmlPath: packageHtmlPath,
+        packageName,
+        moduleName: null,
+      }),
+      "utf8",
+    );
+    entries.push(packageRoute);
+
+    const htmlFiles = (await listFiles(renderedHtmlRoot))
+      .map((absolutePath) => normalizeSlashes(path.relative(renderedHtmlRoot, absolutePath)))
+      .filter(shouldGenerateHaddockModulePage)
+      .sort(comparePaths);
+
+    for (const relativeHtmlPath of htmlFiles) {
+      const html = await fs.readFile(path.join(renderedHtmlRoot, relativeHtmlPath), "utf8");
+      const fallbackModule = relativeHtmlPath.replace(/\.html$/i, "").replace(/-/g, ".");
+      const moduleName = haddockTitle(html, fallbackModule);
+      const moduleRoute = `${packageRoute}/${routeFromHaskellModule(moduleName)}`;
+      const targetPath = path.join(contentRoot, `${moduleRoute}.md`);
+      await fs.mkdir(path.dirname(targetPath), {recursive: true});
+      await fs.writeFile(
+        targetPath,
+        renderHaskellHaddockMarkdown({
+          title: moduleName,
+          description,
+          label: moduleName,
+          htmlPath: `${packageRoute}/haddock/${relativeHtmlPath}`,
+          packageName,
+          moduleName,
+        }),
+        "utf8",
+      );
+      entries.push(moduleRoute);
+    }
+  }
+
+  await fs.writeFile(
+    path.join(contentHaskellRoot, "index.md"),
+    renderHaskellIndexMarkdown(normalizedPackages),
+    "utf8",
+  );
+
+  return {
+    label: "Haskell",
+    entries,
+  };
+}
+
 function renderLeanMathScript() {
   // Verso emits docstring/module-doc text verbatim — `$x$` and `$$…$$`
   // pass through as raw characters because Verso has no KaTeX pass.
@@ -1043,6 +1252,17 @@ function resolveTopLevelOrder(actualDirectories, requestedOrder) {
   return requested;
 }
 
+function hasGeneratedNavigationSection(navigationSections, generatedDir) {
+  return navigationSections.some(
+    (section) =>
+      (typeof section?.dir === "string" && normalizeSlug(section.dir) === generatedDir) ||
+      (Array.isArray(section?.entries) &&
+        section.entries.some((entry) => normalizeSlug(entry) === generatedDir)) ||
+      (Array.isArray(section?.links) &&
+        section.links.some((link) => normalizeLinkHref(link?.href) === generatedDir)),
+  );
+}
+
 async function removePrivateMarkdown(contentRoot, allowedMarkdown) {
   const allFiles = await listFiles(contentRoot);
   for (const absolutePath of allFiles) {
@@ -1094,6 +1314,7 @@ async function main() {
   const lean4RenderedDir = values.get("--lean4-rendered-dir") ?? null;
   const lean4SourceDir = values.get("--lean4-source-dir") ?? null;
   const typstRenderedDir = values.get("--typst-rendered-dir") ?? null;
+  const haskellRenderedDir = values.get("--haskell-rendered-dir") ?? null;
   const outDir = values.get("--out-dir");
 
   if (!contentDir || !configJson || !templateFilesJson || !outDir) {
@@ -1109,6 +1330,7 @@ async function main() {
     ? JSON.parse(await fs.readFile(languagesJson, "utf8"))
     : {};
   const lean4 = parseLean4Config(config, lean4RenderedDir, lean4SourceDir);
+  const haskell = parseHaskellConfig(config, haskellRenderedDir);
 
   if (!config?.site?.title || !config?.site?.publicBaseUrl) {
     throw new Error("Config must define site.title and site.publicBaseUrl.");
@@ -1152,6 +1374,7 @@ async function main() {
   }
 
   const generatedTheorySection = await generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, config);
+  const generatedHaskellSection = await generateHaskellDocs(contentRoot, publicRoot, haskell);
 
   const navigationSections =
     Array.isArray(config.navigation.sections) && config.navigation.sections.length > 0
@@ -1159,16 +1382,13 @@ async function main() {
       : autoGenerateNavigation(authoredMarkdown, config.navigation);
 
   if (generatedTheorySection) {
-    const hasTheorySection = navigationSections.some(
-      (section) =>
-        (typeof section?.dir === "string" && normalizeSlug(section.dir) === GENERATED_THEORY_DIR) ||
-        (Array.isArray(section?.entries) &&
-          section.entries.some((entry) => normalizeSlug(entry) === GENERATED_THEORY_DIR)) ||
-        (Array.isArray(section?.links) &&
-          section.links.some((link) => normalizeLinkHref(link?.href) === GENERATED_THEORY_DIR)),
-    );
-    if (!hasTheorySection) {
+    if (!hasGeneratedNavigationSection(navigationSections, GENERATED_THEORY_DIR)) {
       navigationSections.push(generatedTheorySection);
+    }
+  }
+  if (generatedHaskellSection) {
+    if (!hasGeneratedNavigationSection(navigationSections, GENERATED_HASKELL_DIR)) {
+      navigationSections.push(generatedHaskellSection);
     }
   }
 
@@ -1329,6 +1549,7 @@ ${lightVars}
     theme,
     themeModes,
     lean4: lean4 ? {theoryDir: lean4.theoryDir} : null,
+    haskell: haskell ? {packages: haskell.packages} : null,
   };
 
   await fs.writeFile(

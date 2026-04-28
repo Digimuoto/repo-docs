@@ -151,12 +151,14 @@ Add integrations only when a site needs them:
 sites.docs = {
   contentDir = ./docs;
   lean4.theoryDir = "theory";
+  haskell.packages.core.packageDir = "haskell/core";
   typst.manuscripts.paper1.dir = "Publications/Paper-1/typst";
   languages.wire.grammarSrc = inputs.tree-sitter-wire;
 };
 ```
 
 - `lean4.theoryDir` publishes a generated Lean Theory section.
+- `haskell.packages` builds Cabal packages and publishes generated Haddock API pages.
 - `typst.manuscripts` compiles explicit Typst manuscript folders to PDF reader pages.
 - `languages` registers tree-sitter grammars for custom fenced-code blocks.
 

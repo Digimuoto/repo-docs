@@ -69,6 +69,7 @@ const hasMermaid =
 const description = doc.data.description ?? siteConfig.site.description;
 const docKind = deriveDocKind(doc);
 const typstPdfHref = doc.data.typst?.pdf ? withBasePath(doc.data.typst.pdf) : null;
+const haddockHtmlHref = doc.data.haddock?.html ? withBasePath(doc.data.haddock.html) : null;
 
 // Reading-sequence prev/next: derived from the materialised nav tree
 // (same order the sidebar shows). Skipped silently for the docs root
@@ -146,6 +147,73 @@ const sequence = findReadingSequence(navigation, currentHref);
 
           const fsButton = document.querySelector("[data-typst-fullscreen]");
           const fsLabel = document.querySelector("[data-typst-fullscreen-label]");
+          function syncLabel() {
+            if (!fsLabel) return;
+            fsLabel.textContent = document.fullscreenElement === wrap ? "Exit" : "Fullscreen";
+          }
+          fsButton?.addEventListener("click", () => {
+            if (document.fullscreenElement === wrap) {
+              document.exitFullscreen?.();
+            } else {
+              wrap.requestFullscreen?.();
+            }
+          });
+          document.addEventListener("fullscreenchange", syncLabel);
+        })();
+      </script>
+    </section>
+  ) : haddockHtmlHref ? (
+    <section class="docs-haddock-embed not-prose" aria-label={`${doc.data.title} — embedded Haddock HTML`}>
+      <div class="docs-haddock-embed-actions" role="toolbar" aria-label="Haddock actions">
+        <a class="docs-haddock-embed-chip" href={haddockHtmlHref} target="_blank" rel="noopener noreferrer" title="Open the Haddock page in a new tab">
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+            <path d="M4 8l4-4M5 4h3v3" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span>Open</span>
+        </a>
+        <button type="button" class="docs-haddock-embed-chip" data-haddock-fullscreen title="Toggle fullscreen reading">
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+            <path d="M2 4.5V2h2.5M7.5 2H10v2.5M10 7.5V10H7.5M4.5 10H2V7.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span data-haddock-fullscreen-label>Fullscreen</span>
+        </button>
+      </div>
+      <div class="docs-haddock-embed-frame-wrap" data-haddock-frame-wrap>
+        <div class="docs-haddock-embed-loader" aria-hidden="true">
+          <span class="docs-haddock-embed-loader-eyebrow">Haddock</span>
+          <span class="docs-haddock-embed-loader-title">Loading API documentation...</span>
+        </div>
+        <iframe
+          class="docs-haddock-embed-frame"
+          src={haddockHtmlHref}
+          title={`${doc.data.title} — Haddock API documentation`}
+          sandbox="allow-same-origin allow-scripts allow-popups"
+          loading="lazy"
+        ></iframe>
+        <div class="docs-haddock-embed-fallback" hidden>
+          <p class="docs-haddock-embed-fallback-text">
+            This page embeds generated Haddock HTML. Your browser can't display it inline. <a href={haddockHtmlHref} target="_blank" rel="noopener noreferrer">Open it in a new tab</a>.
+          </p>
+        </div>
+      </div>
+      <script is:inline>
+        (() => {
+          const wrap = document.querySelector("[data-haddock-frame-wrap]");
+          if (!wrap) return;
+          const iframe = wrap.querySelector(".docs-haddock-embed-frame");
+          const fallback = wrap.querySelector(".docs-haddock-embed-fallback");
+          if (iframe) {
+            iframe.addEventListener("load", () => {
+              wrap.dataset.loaded = "true";
+            });
+            iframe.addEventListener("error", () => {
+              if (fallback) fallback.hidden = false;
+              wrap.dataset.failed = "true";
+            });
+          }
+
+          const fsButton = document.querySelector("[data-haddock-fullscreen]");
+          const fsLabel = document.querySelector("[data-haddock-fullscreen-label]");
           function syncLabel() {
             if (!fsLabel) return;
             fsLabel.textContent = document.fullscreenElement === wrap ? "Exit" : "Fullscreen";

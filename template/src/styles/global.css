@@ -1881,6 +1881,175 @@ video {
 }
 
 /* ==========================================================================
+ * Haddock API embed
+ *
+ * Haddock generates a complete HTML app with its own CSS, quick-jump JS,
+ * source links, and intra-package navigation. Keep that self-contained in an
+ * iframe while repo-docs supplies the surrounding sidebar, title, and route.
+ * ========================================================================== */
+.docs-haddock-embed {
+  margin: 0 0 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  max-width: none;
+}
+
+.docs-haddock-embed-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  align-self: flex-end;
+}
+
+.docs-haddock-embed-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1.875rem;
+  padding: 0 0.625rem;
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  border-radius: 0.375rem;
+  color: var(--text-content-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease;
+}
+
+.docs-haddock-embed-chip:hover,
+.docs-haddock-embed-chip:focus-visible {
+  background: var(--surface-secondary);
+  color: var(--text-content);
+  border-color: var(--border-secondary);
+  outline: none;
+}
+
+.docs-haddock-embed-chip svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
+}
+
+.docs-haddock-embed-frame-wrap {
+  position: relative;
+  width: 100%;
+  min-height: 36rem;
+  height: calc(100dvh - 16rem);
+  max-height: 92vh;
+  background: var(--surface-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.docs-haddock-embed-frame-wrap:fullscreen {
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  border-radius: 0;
+  border: 0;
+}
+
+.docs-haddock-embed-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  font-family: var(--font-sans);
+  z-index: 0;
+  transition: opacity 240ms ease;
+}
+
+.docs-haddock-embed-frame-wrap[data-loaded="true"] .docs-haddock-embed-loader {
+  opacity: 0;
+}
+
+.docs-haddock-embed-loader-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-content-quaternary);
+}
+
+.docs-haddock-embed-loader-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-content-secondary);
+}
+
+.docs-haddock-embed-frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+
+.docs-haddock-embed-frame-wrap[data-loaded="true"] .docs-haddock-embed-frame {
+  opacity: 1;
+}
+
+.docs-haddock-embed-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: var(--surface-primary);
+  z-index: 2;
+  text-align: center;
+}
+
+.docs-haddock-embed-fallback[hidden] {
+  display: none;
+}
+
+.docs-haddock-embed-fallback-text {
+  margin: 0;
+  max-width: 36rem;
+  color: var(--text-content-secondary);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.docs-haddock-embed-fallback-text a {
+  color: var(--brand-primary);
+  text-decoration: none;
+}
+
+.docs-haddock-embed-fallback-text a:hover,
+.docs-haddock-embed-fallback-text a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .docs-haddock-embed-frame-wrap {
+    min-height: 28rem;
+    height: calc(100dvh - 22rem);
+  }
+}
+
+/* ==========================================================================
  * Verso-rendered Lean 4 theory pages.
  *
  * Verso emits semantic token/proof-state markup plus its own JS for

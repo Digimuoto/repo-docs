@@ -70,6 +70,12 @@
               topLevelOrder = ["guides"];
             };
             lean4.theoryDir = "fixtures/lean-theory";
+            haskell.packages.demo = {
+              packageDir = "fixtures/haskell-haddock";
+              packageName = "repo-docs-haddock-demo";
+              title = "Haddock Demo API";
+              description = "Generated Haddock API fixture.";
+            };
             languages.ts-json = {
               grammarSrc = inputs.tree-sitter-json;
               aliases = ["ts-json"];
@@ -138,23 +144,30 @@
               test -f "$site/index.html"
               test -f "$site/guides/getting-started/index.html"
               test -f "$site/guides/rendering-example/index.html"
-                test -f "$site/Theory/index.html"
-                test -f "$site/Theory/Demo/Proof/index.html"
-                test ! -e "$site/private/notes/index.html"
-                grep -q "repo-docs" "$site/index.html"
-                # Module's canonical name lands in <title> and the
-                # page heading regardless of how the in-file
-                # `/-! # ... -/` H1 is worded.
-                grep -q "Demo\.Proof" "$site/Theory/Demo/Proof/index.html"
-                grep -q "docs-sidebar" "$site/Theory/Demo/Proof/index.html"
-                grep -q "repo-docs-lean-page" "$site/Theory/Demo/Proof/index.html"
-                grep -q "repo-docs-proof-state-panel" "$site/Theory/Demo/Proof/index.html"
-                grep -q "add_zero_demo" "$site/Theory/Demo/Proof/index.html"
-                grep -q "tactic-state" "$site/Theory/Demo/Proof/index.html"
-                grep -q "katex" "$site/Theory/Demo/Proof/index.html"
-                if grep -q 'module-tree\|literate.css' "$site/Theory/Demo/Proof/index.html"; then
-                  echo "Lean theory page should use native repo-docs chrome, not standalone Verso chrome"; exit 1
-                fi
+              test -f "$site/Theory/index.html"
+              test -f "$site/Theory/Demo/Proof/index.html"
+              test -f "$site/Haskell/index.html"
+              test -f "$site/Haskell/demo/index.html"
+              test -f "$site/Haskell/demo/Demo/Sample/index.html"
+              test -f "$site/Haskell/demo/haddock/Demo-Sample.html"
+              test ! -e "$site/private/notes/index.html"
+              grep -q "repo-docs" "$site/index.html"
+              # Module's canonical name lands in <title> and the
+              # page heading regardless of how the in-file
+              # `/-! # ... -/` H1 is worded.
+              grep -q "Demo\.Proof" "$site/Theory/Demo/Proof/index.html"
+              grep -q "docs-sidebar" "$site/Theory/Demo/Proof/index.html"
+              grep -q "repo-docs-lean-page" "$site/Theory/Demo/Proof/index.html"
+              grep -q "repo-docs-proof-state-panel" "$site/Theory/Demo/Proof/index.html"
+              grep -q "add_zero_demo" "$site/Theory/Demo/Proof/index.html"
+              grep -q "tactic-state" "$site/Theory/Demo/Proof/index.html"
+              grep -q "katex" "$site/Theory/Demo/Proof/index.html"
+              grep -q "docs-haddock-embed-frame" "$site/Haskell/demo/Demo/Sample/index.html"
+              grep -q "Demo.Sample" "$site/Haskell/demo/Demo/Sample/index.html"
+              grep -q "renderGreeting" "$site/Haskell/demo/haddock/Demo-Sample.html"
+              if grep -q 'module-tree\|literate.css' "$site/Theory/Demo/Proof/index.html"; then
+                echo "Lean theory page should use native repo-docs chrome, not standalone Verso chrome"; exit 1
+              fi
 
               # Rendering example has mermaid diagrams
               grep -q "data-docs-mermaid=\"true\"" "$site/guides/rendering-example/index.html"
@@ -298,6 +311,7 @@
                 grep -q 'data-typst-fullscreen' "$site/Publications/Sample/manuscript/index.html"
                 grep -q 'sandbox=' "$site/Publications/Sample/manuscript/index.html"
                 grep -q 'Publications/Sample/manuscript.pdf' "$site/Publications/Sample/manuscript/index.html"
+                grep -q 'src="/Publications/Sample/manuscript.pdf"' "$site/Publications/Sample/manuscript/index.html"
                 grep -q 'Sample Typst Manuscript' "$site/Publications/Sample/manuscript/index.html"
 
                 # The reading-sequence prev/next chrome is suppressed
@@ -379,6 +393,57 @@
                 fi
                 if grep -q 'Generated Lean 4 module rendered with Verso' "$staged/src/content/docs/Theory/Demo/Proof.md" "$site/Theory/Demo/Proof/index.html"; then
                   echo "Lean theory page should render module prose instead of fallback text"; exit 1
+                fi
+              '';
+            };
+
+          docs-haskell-haddock = let
+            haskellSite = mkDocsSite {
+              name = "docs-haskell-haddock";
+              contentDir = ./docs;
+              config = {
+                site = {
+                  title = "haddock-test";
+                  publicBaseUrl = "https://example.com";
+                };
+                content.excludePaths = ["private"];
+                haskell.packages.demo = {
+                  packageDir = "fixtures/haskell-haddock";
+                  packageName = "repo-docs-haddock-demo";
+                  title = "Haddock Demo API";
+                  description = "Generated Haddock API fixture.";
+                };
+              };
+            };
+          in
+            mkAssertionCheck {
+              name = "docs-haskell-haddock";
+              script = ''
+                site="${haskellSite.package}"
+                staged="${haskellSite.stagedSrc}"
+
+                test -f "$staged/src/content/docs/Haskell/index.md"
+                test -f "$staged/src/content/docs/Haskell/demo/index.md"
+                test -f "$staged/src/content/docs/Haskell/demo/Demo/Sample.md"
+                test -f "$staged/public/Haskell/demo/haddock/index.html"
+                test -f "$staged/public/Haskell/demo/haddock/Demo-Sample.html"
+                grep -q 'kind: "haskell-haddock"' "$staged/src/content/docs/Haskell/demo/Demo/Sample.md"
+                grep -q 'html: "Haskell/demo/haddock/Demo-Sample.html"' "$staged/src/content/docs/Haskell/demo/Demo/Sample.md"
+
+                grep -q '"Haskell/demo/Demo/Sample"' "$staged/src/generated/site-config.json"
+                grep -q '"packageDir": "fixtures/haskell-haddock"' "$staged/src/generated/site-config.json"
+
+                test -f "$site/Haskell/index.html"
+                test -f "$site/Haskell/demo/index.html"
+                test -f "$site/Haskell/demo/Demo/Sample/index.html"
+                test -f "$site/Haskell/demo/haddock/Demo-Sample.html"
+                grep -q 'docs-sidebar' "$site/Haskell/demo/Demo/Sample/index.html"
+                grep -q 'docs-haddock-embed-frame' "$site/Haskell/demo/Demo/Sample/index.html"
+                grep -q 'Haskell/demo/haddock/Demo-Sample.html' "$site/Haskell/demo/Demo/Sample/index.html"
+                grep -q 'src="/Haskell/demo/haddock/Demo-Sample.html"' "$site/Haskell/demo/Demo/Sample/index.html"
+                grep -q 'renderGreeting' "$site/Haskell/demo/haddock/Demo-Sample.html"
+                if grep -q 'docs-sequence' "$site/Haskell/demo/Demo/Sample/index.html"; then
+                  echo "Haddock embed should not render docs-sequence"; exit 1
                 fi
               '';
             };
