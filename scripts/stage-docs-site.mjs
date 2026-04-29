@@ -2394,10 +2394,10 @@ function renderHaddockThemeSyncScript() {
   // .caption title on the left and #page-menu on the right) instead
   // of having it overlay the right-side pills as a fixed-position
   // modal. The search div is created lazily by haddock-bundle.min.js
-  // (Preact render into document.body), so we observe body for
-  // childList changes and reparent on the first frame it appears.
-  // Preact re-renders only update the children of #search, not its
-  // parent attachment, so the move is stable across input changes.
+  // (Preact render into document.body), and our inline script runs
+  // in <head> before <body> exists — so we wait for DOMContentLoaded
+  // before observing body, otherwise observer.observe(document.body,
+  // ...) throws (body is null) and the reparent never runs.
   function reparentSearch() {
     const search = document.getElementById("search");
     const header = document.getElementById("package-header");
@@ -2408,7 +2408,9 @@ function renderHaddockThemeSyncScript() {
     else header.appendChild(search);
     return true;
   }
-  if (!reparentSearch()) {
+  function setupReparent() {
+    if (reparentSearch()) return;
+    if (!document.body) return;
     try {
       const observer = new MutationObserver(() => {
         if (reparentSearch()) observer.disconnect();
@@ -2417,6 +2419,11 @@ function renderHaddockThemeSyncScript() {
     } catch {
       /* MutationObserver unavailable */
     }
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setupReparent);
+  } else {
+    setupReparent();
   }
 })();
 `.trim();
