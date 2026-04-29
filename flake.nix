@@ -153,7 +153,7 @@
               test -f "$site/Haskell/demo/haddock/Demo-Sample.html"
               test -f "$site/Haskell/demo/haddock/src/Demo.Sample.html"
               test -f "$site/Haskell/demo/haddock/repo-docs-haddock.css"
-              test ! -e "$site/Haskell/demo/Demo/Sample/index.html"
+              test -f "$site/Haskell/demo/Demo/Sample/index.html"
               test ! -e "$site/private/notes/index.html"
               grep -q "repo-docs" "$site/index.html"
               # Module's canonical name lands in <title> and the
@@ -436,7 +436,7 @@
 
                 test -f "$staged/src/content/docs/Haskell/index.md"
                 test -f "$staged/src/content/docs/Haskell/demo/index.md"
-                test ! -e "$staged/src/content/docs/Haskell/demo/Demo/Sample.md"
+                test -f "$staged/src/content/docs/Haskell/demo/Demo/Sample/index.md"
                 test -f "$staged/public/Haskell/demo/haddock/index.html"
                 test -f "$staged/public/Haskell/demo/haddock/Demo-Sample.html"
                 test -f "$staged/public/Haskell/demo/haddock/src/Demo.Sample.html"
@@ -449,28 +449,34 @@
                 fi
                 grep -q 'kind: "haskell-haddock"' "$staged/src/content/docs/Haskell/demo/index.md"
                 grep -q 'html: "Haskell/demo/haddock/index.html"' "$staged/src/content/docs/Haskell/demo/index.md"
+                grep -q 'kind: "haskell-haddock"' "$staged/src/content/docs/Haskell/demo/Demo/Sample/index.md"
+                grep -q 'html: "Haskell/demo/haddock/Demo-Sample.html"' "$staged/src/content/docs/Haskell/demo/Demo/Sample/index.md"
+                grep -q 'label: "Demo.Sample"' "$staged/src/content/docs/Haskell/demo/Demo/Sample/index.md"
 
                 grep -q '"Haskell/demo"' "$staged/src/generated/site-config.json"
+                grep -q '"Haskell/demo/Demo/Sample"' "$staged/src/generated/site-config.json"
                 grep -q '"lib:repo-docs-haddock-demo"' "$staged/src/generated/site-config.json"
                 grep -q '"Demo"' "$staged/src/generated/site-config.json"
-                if grep -q '"Haskell/demo/Demo/Sample"' "$staged/src/generated/site-config.json"; then
-                  echo "Haddock modules should stay inside the embedded Haddock app"; exit 1
+                if grep -q '"Haskell/demo/Logos' "$staged/src/generated/site-config.json"; then
+                  echo "filtered Haddock module Logos should not appear in navigation"; exit 1
                 fi
                 grep -q '"packageDir": "fixtures/haskell-haddock"' "$staged/src/generated/site-config.json"
 
                 test -f "$site/Haskell/index.html"
                 test -f "$site/Haskell/demo/index.html"
+                test -f "$site/Haskell/demo/Demo/Sample/index.html"
                 test -f "$site/Haskell/demo/haddock/Demo-Sample.html"
                 test -f "$site/Haskell/demo/haddock/src/Demo.Sample.html"
                 test -f "$site/Haskell/demo/haddock/repo-docs-haddock.css"
                 test ! -e "$site/Haskell/demo/haddock/logos/Logos-Sample.html"
                 test ! -e "$site/Haskell/demo/haddock/logos/index.html"
-                test ! -e "$site/Haskell/demo/Demo/Sample/index.html"
                 grep -q 'docs-sidebar' "$site/Haskell/demo/index.html"
                 grep -q 'docs-haddock-embed-frame' "$site/Haskell/demo/index.html"
                 grep -q 'Haskell/demo/haddock/index.html' "$site/Haskell/demo/index.html"
                 grep -q 'src="/Haskell/demo/haddock/index.html"' "$site/Haskell/demo/index.html"
+                grep -q 'src="/Haskell/demo/haddock/Demo-Sample.html"' "$site/Haskell/demo/Demo/Sample/index.html"
                 grep -q 'data-doc-kind="haskell-haddock"' "$site/Haskell/demo/index.html"
+                grep -q 'data-doc-kind="haskell-haddock"' "$site/Haskell/demo/Demo/Sample/index.html"
                 if grep -q 'docs-title\|docs-haddock-embed-actions\|data-haddock-fullscreen' "$site/Haskell/demo/index.html"; then
                   echo "Haddock package page should be an undecorated embedded app surface"; exit 1
                 fi

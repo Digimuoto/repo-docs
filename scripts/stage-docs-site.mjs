@@ -2558,6 +2558,79 @@ async function injectHaddockStyles(htmlRoot) {
   }
 }
 
+// Walk the staged Haddock HTML root for per-module pages and write a
+// minimal markdown stub for each, so every Haddock module surfaces in
+// the parent shell's sidebar with its own URL. We mirror the dotted
+// module name as a slash-delimited slug under the package
+// (Cortex.Algebra.Graph.Core → Cortex/Algebra/Graph/Core/index.md), so
+// shared dot-prefixes group lexically when sorted in the sidebar — flat
+// listing, but the sort gives it a tree-like read.
+//
+// Runs after filterHaddockModules has deleted excluded HTML files, so
+// modulePrefixes filtering is honoured implicitly: only kept modules
+// have HTML files left to walk.
+//
+// Source listings (haddock/src/<Module>.html) are skipped — they don't
+// have their own module identity, they're the source-view sibling of an
+// already-stubbed module page.
+async function stageHaddockModulePages({
+  publicHtmlRoot,
+  contentPackageRoot,
+  packageRoute,
+  packageName,
+}) {
+  const files = (await listFiles(publicHtmlRoot))
+    .map((absolutePath) => normalizeSlashes(path.relative(publicHtmlRoot, absolutePath)))
+    .filter((relativePath) => path.extname(relativePath) === ".html");
+
+  const moduleEntries = [];
+  for (const relativePath of files) {
+    if (normalizeSlashes(relativePath).split("/").includes("src")) continue;
+    const moduleName = moduleNameFromHaddockHtmlPath(relativePath);
+    if (!moduleName) continue;
+    const slugPath = moduleName.split(".").join("/");
+    moduleEntries.push({moduleName, slugPath, relativePath});
+  }
+
+  // Alphabetical by full dotted module name. With a flat sidebar that
+  // makes Cortex.Algebra.Graph.Core sit immediately under
+  // Cortex.Algebra.Graph, mirroring the source-tree shape without
+  // needing nested chevron groups.
+  moduleEntries.sort((a, b) => a.moduleName.localeCompare(b.moduleName));
+
+  const moduleRoutes = [];
+  for (const {moduleName, slugPath, relativePath} of moduleEntries) {
+    const targetDir = path.join(contentPackageRoot, slugPath);
+    const targetFile = path.join(targetDir, "index.md");
+
+    let alreadyExists = false;
+    try {
+      const stat = await fs.stat(targetFile);
+      alreadyExists = stat.isFile();
+    } catch (err) {
+      if (err?.code !== "ENOENT") throw err;
+    }
+
+    if (!alreadyExists) {
+      await fs.mkdir(targetDir, {recursive: true});
+      await fs.writeFile(
+        targetFile,
+        renderHaskellHaddockMarkdown({
+          title: moduleName,
+          description: null,
+          label: moduleName,
+          htmlPath: `${packageRoute}/haddock/${relativePath}`,
+          packageName,
+        }),
+        "utf8",
+      );
+    }
+    moduleRoutes.push(`${packageRoute}/${slugPath}`);
+  }
+
+  return moduleRoutes;
+}
+
 async function generateHaskellDocs(contentRoot, publicRoot, haskell) {
   if (!haskell) {
     return null;
@@ -2623,9 +2696,10 @@ async function generateHaskellDocs(contentRoot, publicRoot, haskell) {
 
     const packageRoute = `${GENERATED_HASKELL_DIR}/${safeKey}`;
     const packageHtmlPath = `${packageRoute}/haddock/index.html`;
-    await fs.mkdir(path.join(contentHaskellRoot, safeKey), {recursive: true});
+    const contentPackageRoot = path.join(contentHaskellRoot, safeKey);
+    await fs.mkdir(contentPackageRoot, {recursive: true});
     await fs.writeFile(
-      path.join(contentHaskellRoot, safeKey, "index.md"),
+      path.join(contentPackageRoot, "index.md"),
       renderHaskellHaddockMarkdown({
         title,
         description,
@@ -2636,6 +2710,14 @@ async function generateHaskellDocs(contentRoot, publicRoot, haskell) {
       "utf8",
     );
     entries.push(packageRoute);
+
+    const moduleRoutes = await stageHaddockModulePages({
+      publicHtmlRoot,
+      contentPackageRoot,
+      packageRoute,
+      packageName,
+    });
+    entries.push(...moduleRoutes);
   }
 
   await fs.writeFile(
