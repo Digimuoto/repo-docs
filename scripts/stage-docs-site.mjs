@@ -2130,7 +2130,16 @@ html[data-theme="cortex-light"] #search input {
   box-shadow: none !important;
 }
 
-#search-results:empty {
+/* Haddock's React always renders SOMETHING inside #search-results —
+ * either the matched-module list (when there's a query) or an
+ * empty-state panel with a keyboard-shortcuts table. So ':empty' alone
+ * never matches and the dropdown shows by default. Anchor the hide to
+ * the input's :placeholder-shown state instead: when the input is
+ * empty its placeholder is visible, and we hide the panel; the moment
+ * the user types one character, :placeholder-shown stops matching and
+ * the dropdown appears. */
+#search-results:empty,
+#search:has(input:placeholder-shown) #search-results {
   display: none !important;
 }
 
