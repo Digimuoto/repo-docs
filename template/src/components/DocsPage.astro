@@ -189,9 +189,23 @@ const sequence = findReadingSequence(navigation, currentHref);
           if (!wrap) return;
           const iframe = wrap.querySelector(".docs-haddock-embed-frame");
           const fallback = wrap.querySelector(".docs-haddock-embed-fallback");
+
+          // Mirror the parent's active theme + mode into the iframe so
+          // the injected repo-docs-haddock.css picks the right palette.
+          // The iframe is same-origin (sandbox `allow-same-origin`), so
+          // we can poke its <html> dataset directly.
+          function syncTheme() {
+            const doc = iframe?.contentDocument;
+            if (!doc?.documentElement) return;
+            const root = document.documentElement;
+            doc.documentElement.dataset.theme = root.dataset.theme ?? "";
+            doc.documentElement.dataset.mode = root.dataset.mode ?? "";
+          }
+
           if (iframe) {
             iframe.addEventListener("load", () => {
               wrap.dataset.loaded = "true";
+              syncTheme();
             });
             iframe.addEventListener("error", () => {
               if (fallback) fallback.hidden = false;
@@ -199,6 +213,8 @@ const sequence = findReadingSequence(navigation, currentHref);
             });
           }
 
+          // Re-sync whenever the reader toggles the theme button.
+          document.addEventListener("repodocs:mode-change", syncTheme);
         })();
       </script>
     </section>
