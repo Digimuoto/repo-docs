@@ -1625,56 +1625,60 @@ blockquote {
 }
 
 /* Frontmatter table inside #module-header (Copyright, License,
- * Maintainer, Stability, Safe Haskell, Language). Linuwial floats it
- * right and gives it its own card border; strip the chrome since it
- * now lives inside the module-header card, then reflow the rows into
- * 2 columns when the iframe is wide enough (>= 720px). On narrower
- * screens the column-count drops to 1 so the rows stack as a single
- * label/value ladder. */
+ * Maintainer, Stability, Safe Haskell, Language). A small bordered
+ * card sized to its own content. Linuwial floats it right and gives
+ * it a chunky white card; we re-anchor the chrome to the theme tokens
+ * and lay rows out as a CSS grid so each column auto-fits its widest
+ * cell — values sit right next to their labels rather than floating
+ * across an enforced 50/50 split. width: max-content keeps the whole
+ * box just as wide as the longest pair-row demands, falling back to
+ * the parent card's content width when an unusually long value would
+ * overflow. */
 table.info,
 #module-header table.info {
   float: none;
   position: static;
   top: auto;
   margin: 0;
-  padding: 0;
-  width: 100%;
-  max-width: none;
+  padding: 0.5rem 0.875rem;
+  width: max-content;
+  max-width: 100%;
   background: transparent;
-  border: 0;
-  border-radius: 0;
+  border: 1px solid var(--rd-border-primary);
+  border-radius: 0.5rem;
   border-spacing: 0 !important;
   border-collapse: collapse !important;
   color: var(--rd-text-content-secondary);
   font-size: 0.8125rem;
 }
 
-/* Flatten the table semantics for column-flow. tbody becomes the
- * column container; each tr is a flex row that can't be split across
- * columns. Scoped to #module-header so any future stray .info table
- * elsewhere on the page keeps its row-stack layout. */
-#module-header table.info,
-#module-header table.info > tbody {
+/* Flatten the table semantics so the th/td cells flow directly into a
+ * grid on tbody. 'display: contents' on tr makes the row vanish from
+ * the box tree, leaving its children as direct grid children. With
+ * 'grid-template-columns: max-content max-content' the box renders as
+ * a single label/value ladder; above 720px iframe width, the grid
+ * doubles to 4 content-sized columns so two L/V pairs share a row. */
+#module-header table.info {
   display: block;
 }
 
 #module-header table.info > tbody {
-  column-gap: 2.5rem;
+  display: grid;
+  grid-auto-flow: row;
+  grid-template-columns: max-content max-content;
+  column-gap: 1.25rem;
+  row-gap: 0.125rem;
+  align-items: baseline;
 }
 
 @media (min-width: 720px) {
   #module-header table.info > tbody {
-    column-count: 2;
+    grid-template-columns: max-content max-content max-content max-content;
   }
 }
 
 #module-header table.info tr {
-  display: flex;
-  align-items: baseline;
-  gap: 0.875rem;
-  break-inside: avoid;
-  page-break-inside: avoid;
-  padding: 0.2rem 0;
+  display: contents;
 }
 
 table.info tr,
@@ -1688,7 +1692,7 @@ table.info th,
 table.info td,
 .info th,
 .info td {
-  padding: 0 !important;
+  padding: 0.2rem 0 !important;
   border: 0 !important;
   background: transparent !important;
   vertical-align: baseline;
@@ -1703,7 +1707,6 @@ table.info th,
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
-  flex: 0 0 auto;
 }
 
 table.info td,
@@ -1711,8 +1714,6 @@ table.info td,
   color: var(--rd-text-content);
   font-family: var(--rd-font-mono);
   font-size: 0.8125rem;
-  flex: 1 1 auto;
-  min-width: 0;
 }
 
 /* Top-of-page header bar. Linuwial paints #package-header with a
