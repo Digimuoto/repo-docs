@@ -4,7 +4,9 @@
   "type": "module",
   "version": "0.1.0",
   "scripts": {
+    "predev": "node scripts/highlight-haddock.mjs",
     "dev": "astro dev",
+    "prebuild": "node scripts/highlight-haddock.mjs",
     "build": "astro build",
     "preview": "astro preview"
   },

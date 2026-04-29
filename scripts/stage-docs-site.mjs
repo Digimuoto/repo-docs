@@ -1435,6 +1435,69 @@ table.source-code td {
 .hs-pragma { color: var(--rd-tok-comment); font-style: italic; }
 .hs-cpp { color: var(--rd-tok-function); }
 
+/* Tree-sitter tokenised Haskell blocks. The Haddock pre-build pass at
+ * template/scripts/highlight-haddock.mjs walks per-module HTML, finds
+ * <pre> blocks emitted from @…@ verbatim and >>> doctest examples,
+ * and rewrites them into <pre class="tree-sitter-pre"> wrapping spans
+ * with the same .tok-* class vocabulary the rehype plugin uses for
+ * markdown fences. The rules below paint those spans inside the
+ * iframe; the parent shell's global.css carries equivalent rules for
+ * markdown-rendered code blocks elsewhere on the site. */
+pre.tree-sitter-pre > code.tree-sitter-code {
+  display: block;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  border-radius: 0;
+}
+
+.tree-sitter-code { color: var(--rd-text-content); }
+
+.tree-sitter-code .tok-keyword,
+.tree-sitter-code .tok-keyword-operator,
+.tree-sitter-code .tok-keyword-control,
+.tree-sitter-code .tok-keyword-import,
+.tree-sitter-code .tok-keyword-modifier { color: var(--rd-tok-keyword); font-weight: 500; }
+
+.tree-sitter-code .tok-function,
+.tree-sitter-code .tok-function-call,
+.tree-sitter-code .tok-function-method,
+.tree-sitter-code .tok-method { color: var(--rd-tok-function); }
+
+.tree-sitter-code .tok-constructor,
+.tree-sitter-code .tok-type,
+.tree-sitter-code .tok-type-builtin,
+.tree-sitter-code .tok-type-definition { color: var(--rd-tok-type); }
+
+.tree-sitter-code .tok-constant,
+.tree-sitter-code .tok-constant-builtin,
+.tree-sitter-code .tok-number,
+.tree-sitter-code .tok-boolean { color: var(--rd-tok-number); }
+
+.tree-sitter-code .tok-string,
+.tree-sitter-code .tok-string-special,
+.tree-sitter-code .tok-string-special-key,
+.tree-sitter-code .tok-character,
+.tree-sitter-code .tok-character-special,
+.tree-sitter-code .tok-escape { color: var(--rd-tok-string); }
+
+.tree-sitter-code .tok-comment,
+.tree-sitter-code .tok-comment-documentation {
+  color: var(--rd-tok-comment);
+  font-style: italic;
+}
+
+.tree-sitter-code .tok-operator,
+.tree-sitter-code .tok-punctuation-special { color: var(--rd-tok-operator); }
+
+.tree-sitter-code .tok-variable,
+.tree-sitter-code .tok-variable-member,
+.tree-sitter-code .tok-variable-parameter,
+.tree-sitter-code .tok-parameter,
+.tree-sitter-code .tok-property { color: var(--rd-text-content); }
+
 /* Source view annotation tooltips (span.annot carries a hidden
  * span.annottext shown on hover). Linuwial's defaults are
  * cream-yellow on bright orange, with a #ff0 flash on the trigger.
