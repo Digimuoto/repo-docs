@@ -616,9 +616,29 @@ async function generateTypstManuscripts(contentRoot, publicRoot, typstRenderedDi
 }
 
 function renderHaskellIndexMarkdown(packages) {
-  const items = packages
-    .map((pkg) => `- [${pkg.title}](${pkg.safeKey}/)`)
+  const cards = packages
+    .map((pkg) => {
+      const desc = pkg.description
+        ? `\n    <span class="docs-haskell-package-card-desc">${escapeHtml(pkg.description)}</span>`
+        : "";
+      return [
+        `  <a class="docs-haskell-package-card" href="${escapeHtml(pkg.safeKey)}/">`,
+        `    <span class="docs-haskell-package-card-eyebrow">Package</span>`,
+        `    <span class="docs-haskell-package-card-title">${escapeHtml(pkg.title)}</span>${desc}`,
+        `    <span class="docs-haskell-package-card-cta">`,
+        `      <span>Browse Haddock</span>`,
+        `      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">`,
+        `        <path d="M3.5 6h5M6 3.5L8.5 6 6 8.5" stroke-linecap="round" stroke-linejoin="round" />`,
+        `      </svg>`,
+        `    </span>`,
+        `  </a>`,
+      ].join("\n");
+    })
     .join("\n");
+
+  const body = packages.length === 0
+    ? "_No Haskell packages registered._"
+    : `<div class="docs-haskell-index not-prose">\n${cards}\n</div>`;
 
   return [
     "---",
@@ -628,7 +648,7 @@ function renderHaskellIndexMarkdown(packages) {
     `  label: ${yamlString("Packages")}`,
     "---",
     "",
-    items,
+    body,
     "",
   ].join("\n");
 }
@@ -2692,7 +2712,7 @@ async function generateHaskellDocs(contentRoot, publicRoot, haskell) {
     await filterHaddockModules(publicHtmlRoot, modulePrefixes, key);
     await injectHaddockStyles(publicHtmlRoot);
 
-    normalizedPackages.push({safeKey, title});
+    normalizedPackages.push({safeKey, title, description});
 
     const packageRoute = `${GENERATED_HASKELL_DIR}/${safeKey}`;
     const packageHtmlPath = `${packageRoute}/haddock/index.html`;

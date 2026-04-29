@@ -1903,21 +1903,27 @@ video {
  * no card chrome. Surfaces all use --bg-primary so the iframe boundary
  * is invisible whether the iframe content is loaded or still painting.
  * ========================================================================== */
-.docs-main:has(.docs-prose-haskell-haddock),
-.docs-main-inner:has(.docs-prose-haskell-haddock) {
+/* Full-bleed, chrome-free layout — only when a real Haddock iframe is
+ * mounted on the page. Scoping by .docs-haddock-embed (instead of by
+ * the doc-kind class) keeps the rule from stripping padding on the
+ * markdown-rendered Haskell/index.md "Packages" landing, which shares
+ * `kind: haskell-haddock` but renders prose package cards rather than
+ * an iframe. */
+.docs-main:has(.docs-haddock-embed),
+.docs-main-inner:has(.docs-haddock-embed) {
   max-width: none;
   min-height: 100vh;
   padding: 0;
   background: var(--bg-primary);
 }
 
-.docs-prose-haskell-haddock {
+.docs-prose-haskell-haddock:has(.docs-haddock-embed) {
   min-height: 100vh;
   margin: 0;
   padding: 0;
 }
 
-.docs-prose.docs-prose-haskell-haddock > * {
+.docs-prose.docs-prose-haskell-haddock:has(.docs-haddock-embed) > * {
   max-width: none;
 }
 
@@ -2041,6 +2047,95 @@ video {
   .docs-haddock-embed-frame-wrap {
     min-height: 100vh;
   }
+}
+
+/* Haskell/index.md "Packages" landing — rich card grid in lieu of the
+ * old bare bullet list. The cards are anchors so the whole tile is a
+ * click target; spans (rather than block elements) inside dodge any
+ * stray .prose p / .prose ul margins that would otherwise sneak in,
+ * plus the wrapping .not-prose lifts the prose-column max-width cap. */
+.docs-haskell-index {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: 1.25rem;
+  margin: 0.25rem 0 1.5rem;
+  max-width: 56rem;
+}
+
+/* a.docs-haskell-package-card (rather than .docs-haskell-package-card)
+ * to outweigh the .prose a rule in global.css — same class+type
+ * specificity, but ours appears later in source order, so it wins. */
+a.docs-haskell-package-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border-primary);
+  border-radius: 0.75rem;
+  background: var(--surface-primary);
+  color: var(--text-content);
+  text-decoration: none;
+  transition: border-color 200ms ease, transform 200ms ease, background 200ms ease;
+}
+
+a.docs-haskell-package-card:hover,
+a.docs-haskell-package-card:focus-visible {
+  border-color: var(--brand-primary);
+  background: var(--surface-secondary);
+  color: var(--text-content);
+  text-decoration: none;
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.docs-haskell-package-card-eyebrow {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-content-tertiary);
+}
+
+.docs-haskell-package-card-title {
+  display: block;
+  margin-top: 0.125rem;
+  font-family: var(--font-mono);
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--text-content);
+}
+
+.docs-haskell-package-card-desc {
+  display: block;
+  margin-top: 0.375rem;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--text-content-secondary);
+}
+
+.docs-haskell-package-card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  color: var(--brand-primary);
+}
+
+.docs-haskell-package-card-cta svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  transition: transform 200ms ease;
+}
+
+.docs-haskell-package-card:hover .docs-haskell-package-card-cta svg,
+.docs-haskell-package-card:focus-visible .docs-haskell-package-card-cta svg {
+  transform: translateX(3px);
 }
 
 /* ==========================================================================
