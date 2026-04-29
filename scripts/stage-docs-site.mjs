@@ -2220,7 +2220,7 @@ html[data-theme="cortex-light"] #search input {
 }
 
 /* Keyboard-shortcut help table inside the empty-state quick-jump
- * results panel. Linuwial paints `.key` with a pale-blue cap; tint to
+ * results panel. Linuwial paints '.key' with a pale-blue cap; tint to
  * the surface palette. */
 .keyboard-shortcuts {
   margin: 0.5rem 0.875rem !important;
