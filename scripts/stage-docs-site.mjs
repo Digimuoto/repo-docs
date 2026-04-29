@@ -1649,29 +1649,41 @@ table.info td,
   color: var(--rd-text-content-tertiary);
 }
 
-/* Contents-list (rendered on the index/contents pages). Linuwial
- * paints #contents-list { background: #f4f4f4 }. Match the
- * surface-primary card style. */
-#contents-list,
+/* Per-module #table-of-contents card. The parent shell's TOC drawer
+ * hoists the same anchor list at runtime (DocsPage.astro reads
+ * '#contents-list ul li a' from the iframe on load and populates
+ * '[data-haddock-toc]'). Hide the in-iframe card outright — and from
+ * the first paint, since a JS hide-step would otherwise leave a
+ * single-frame flash of Haddock's old-style Contents block. The list is
+ * still in the DOM, just 'display: none' so the parent can read it.
+ * (#contents-list only appears as a child of this element, so hiding
+ * the parent is sufficient — no separate rule needed.) */
 #table-of-contents {
-  background: var(--rd-surface-primary);
-  border: 1px solid var(--rd-border-primary);
-  border-radius: 0.5rem;
-  padding: 1rem 1.25rem;
+  display: none !important;
 }
 
-/* Sub-block borders. Linuwial draws .subs and .subs > .doc with a
- * border-left: 1px solid gainsboro — gainsboro reads as a near-white
- * stripe in dark mode. Keep the border for nested constructor / method
- * subs (where the rail visually anchors the sub-list against the parent
- * card), but use --rd-border-primary so it tracks themes. .top > .doc
- * is intentionally excluded: the function declaration's own end-to-end
- * divider (see below) is enough scaffolding for the doc beneath it, and
- * a second left-rail just adds chrome without earning its keep. */
-.subs,
-.subs > .doc {
+/* .subs (constructors / methods / instances container) keeps a left
+ * rail — there it acts as a real sub-list indent indicator. Retint
+ * Linuwial's gainsboro stroke (which reads as a near-white stripe in
+ * dark mode) to the theme token. */
+.subs {
   border-left: 1px solid var(--rd-border-primary);
   padding-left: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Doc-text containers inside a .top or .subs do NOT keep the rail.
+ * Linuwial groups them with the same gainsboro left stroke as .subs,
+ * which around prose reads as a redundant quotation marker — the
+ * wrapping .top card and the .subs rail already chrome the boundary,
+ * and the function declaration's own end-to-end divider scaffolds the
+ * doc beneath the signature. Override at the same multi-selector
+ * specificity Linuwial uses, with !important to defeat any later
+ * Linuwial fallback rule that re-applies the stroke. */
+.top > .doc,
+.subs > .doc {
+  border-left: 0 !important;
+  padding-left: 0 !important;
   margin-bottom: 0.75rem;
 }
 
