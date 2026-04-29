@@ -1535,38 +1535,83 @@ blockquote {
 
 /* Module-header divider. Linuwial draws a 1px solid #ddd under the
  * Demo.Sample heading; use --rd-border-primary so it tracks themes. */
-#module-header .caption {
-  border-bottom: 1px solid var(--rd-border-primary);
-  color: var(--rd-text-content);
+/* Module-header card. Haddock emits the info table BEFORE the title
+ * in source order, so flip the flow with flex-direction: column-reverse
+ * — the title visually leads (with its own full-bleed bottom stroke)
+ * even though it's the last DOM node inside #module-header. */
+#module-header {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.875rem;
 }
 
-/* Info table (the <table class="info"> floated in #module-header
- * with rows like Safe Haskell / Language). Linuwial floats it right,
- * pins it with position: relative; top: -0.78em, and gives it a
- * white card with grey 1px border + grey body text — none of which
- * survives dark mode. Stop the float so it sits below the title
- * cleanly, drop the background fill (the page surface shows through),
- * and use border-collapse: separate so border-radius actually rounds
- * the stroke (with collapse, browsers drop the radius on the table
- * border and any cell border at the corners renders as a square
- * stroke underneath the rounded background, which was the visible
- * bleed). */
+#module-header .caption {
+  /* Pull the bottom stroke flush with the card's inner edges (negative
+   * horizontal margins matching #module-header's 1.25rem padding-x).
+   * Padding-bottom holds the stroke a controlled distance below the
+   * title baseline so the rule doesn't bite the descenders. */
+  margin: 0 -1.25rem 0;
+  padding: 0 1.25rem 0.875rem;
+  border-bottom: 1px solid var(--rd-border-primary);
+  color: var(--rd-text-content);
+  font-family: var(--rd-font-sans);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1.2;
+}
+
+/* Frontmatter table inside #module-header (Copyright, License,
+ * Maintainer, Stability, Safe Haskell, Language). Linuwial floats it
+ * right and gives it its own card border; strip the chrome since it
+ * now lives inside the module-header card, then reflow the rows into
+ * 2 columns when the iframe is wide enough (>= 720px). On narrower
+ * screens the column-count drops to 1 so the rows stack as a single
+ * label/value ladder. */
 table.info,
 #module-header table.info {
   float: none;
   position: static;
   top: auto;
-  margin: 1rem 0 0;
+  margin: 0;
   padding: 0;
-  width: auto;
+  width: 100%;
   max-width: none;
   background: transparent;
-  border: 1px solid var(--rd-border-primary);
-  border-radius: 0.5rem;
+  border: 0;
+  border-radius: 0;
   border-spacing: 0 !important;
-  border-collapse: separate !important;
+  border-collapse: collapse !important;
   color: var(--rd-text-content-secondary);
   font-size: 0.8125rem;
+}
+
+/* Flatten the table semantics for column-flow. tbody becomes the
+ * column container; each tr is a flex row that can't be split across
+ * columns. Scoped to #module-header so any future stray .info table
+ * elsewhere on the page keeps its row-stack layout. */
+#module-header table.info,
+#module-header table.info > tbody {
+  display: block;
+}
+
+#module-header table.info > tbody {
+  column-gap: 2.5rem;
+}
+
+@media (min-width: 720px) {
+  #module-header table.info > tbody {
+    column-count: 2;
+  }
+}
+
+#module-header table.info tr {
+  display: flex;
+  align-items: baseline;
+  gap: 0.875rem;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  padding: 0.2rem 0;
 }
 
 table.info tr,
@@ -1580,18 +1625,11 @@ table.info th,
 table.info td,
 .info th,
 .info td {
-  padding: 0.375rem 0.875rem !important;
+  padding: 0 !important;
   border: 0 !important;
   background: transparent !important;
-  vertical-align: middle;
+  vertical-align: baseline;
   text-align: left;
-}
-
-table.info tr + tr th,
-table.info tr + tr td,
-.info tr + tr th,
-.info tr + tr td {
-  border-top: 1px solid var(--rd-border-primary) !important;
 }
 
 table.info th,
@@ -1599,10 +1637,10 @@ table.info th,
   color: var(--rd-text-content-tertiary);
   font-weight: 500;
   font-size: 0.6875rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
-  padding-right: 1rem !important;
+  flex: 0 0 auto;
 }
 
 table.info td,
@@ -1610,6 +1648,8 @@ table.info td,
   color: var(--rd-text-content);
   font-family: var(--rd-font-mono);
   font-size: 0.8125rem;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* Top-of-page header bar. Linuwial paints #package-header with a
