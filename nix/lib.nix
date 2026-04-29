@@ -137,6 +137,96 @@
       '';
     };
 
+  mkHaskellHaddockDocs = {
+    name,
+    contentDir,
+    haskellPackages,
+  }: let
+    packageEntries = lib.mapAttrsToList (key: cfg: let
+      packageName =
+        if cfg ? packageName && cfg.packageName != null && cfg.packageName != ""
+        then cfg.packageName
+        else key;
+      sourceDir = builtins.dirOf contentDir + "/${cfg.packageDir}";
+      package = pkgs.haskell.lib.dontCheck (
+        pkgs.haskell.lib.doHaddock (
+          pkgs.haskellPackages.callCabal2nix packageName sourceDir {}
+        )
+      );
+    in {
+      inherit key packageName;
+      title =
+        if cfg ? title && cfg.title != null && cfg.title != ""
+        then cfg.title
+        else packageName;
+      description =
+        if cfg ? description && cfg.description != null
+        then cfg.description
+        else "";
+      doc = "${package.doc}";
+    }) haskellPackages;
+    packagesFile = pkgs.writeText "${name}-haskell-haddock-packages.json" (builtins.toJSON packageEntries);
+  in
+    pkgs.stdenv.mkDerivation {
+      pname = "${name}-haskell-haddock";
+      version = "0.1.0";
+
+      nativeBuildInputs = [pkgs.jq];
+
+      dontUnpack = true;
+      dontConfigure = true;
+
+      buildPhase = ''
+        runHook preBuild
+
+        mkdir -p "$out/packages"
+        items="$TMPDIR/haskell-haddock-packages.jsonl"
+        : > "$items"
+
+        while IFS= read -r key; do
+          package_name=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .packageName' ${packagesFile})
+          title=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .title' ${packagesFile})
+          description=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .description' ${packagesFile})
+          doc=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .doc' ${packagesFile})
+          safe_key=$(printf '%s' "$key" | tr -c 'A-Za-z0-9_.-' '-')
+
+          if [ -z "$safe_key" ]; then
+            echo "docsSite.haskell.packages key must contain at least one URL-safe character" >&2
+            exit 1
+          fi
+
+          html_dirs=("$doc"/share/doc/*/html)
+          if [ ! -d "''${html_dirs[0]}" ]; then
+            echo "Haddock output for '$key' did not contain share/doc/*/html" >&2
+            exit 1
+          fi
+
+          target="$out/packages/$safe_key/html"
+          mkdir -p "$target"
+          cp -R "''${html_dirs[0]}"/. "$target"
+          chmod -R u+w "$target"
+
+          jq -n \
+            --arg key "$key" \
+            --arg safeKey "$safe_key" \
+            --arg packageName "$package_name" \
+            --arg title "$title" \
+            --arg description "$description" \
+            '{key: $key, safeKey: $safeKey, packageName: $packageName, title: $title, description: $description}' \
+            >> "$items"
+        done < <(jq -r '.[].key' ${packagesFile})
+
+        jq -s '.' "$items" > "$out/packages.json"
+
+        runHook postBuild
+      '';
+
+      installPhase = ''
+        runHook preInstall
+        runHook postInstall
+      '';
+    };
+
   mkLean4VersoHtml = {
     name,
     lean4SourceDir,
@@ -244,6 +334,7 @@
     lean4SourceDir,
     lean4RenderedDir,
     typstRenderedDir,
+    haskellRenderedDir,
     templateFiles,
     languages,
     mode,
@@ -284,6 +375,8 @@ ${lib.optionalString (lean4RenderedDir != null) ''
           --lean4-source-dir ${lean4SourceDir}
 ''}${lib.optionalString (typstRenderedDir != null) ''
           --typst-rendered-dir ${typstRenderedDir}
+''}${lib.optionalString (haskellRenderedDir != null) ''
+          --haskell-rendered-dir ${haskellRenderedDir}
 ''}          --out-dir "$workdir"
         )
         node ${stageScript} "''${stageArgs[@]}"
@@ -317,6 +410,10 @@ in
       if config ? typst && config.typst ? manuscripts
       then config.typst.manuscripts
       else {};
+    haskellPackages =
+      if config ? haskell && config.haskell ? packages
+      then config.haskell.packages
+      else {};
     lean4RenderedDir =
       if lean4SourceDir == null
       then null
@@ -325,6 +422,10 @@ in
       if typstManuscripts == {}
       then null
       else mkTypstManuscripts {inherit name contentDir typstManuscripts;};
+    haskellRenderedDir =
+      if haskellPackages == {}
+      then null
+      else mkHaskellHaddockDocs {inherit name contentDir haskellPackages;};
     stagedSrc = pkgs.runCommand "${name}-src" {
       nativeBuildInputs = [
         pkgs.nodejs_22
@@ -345,6 +446,8 @@ ${lib.optionalString (lean4SourceDir != null) ''
         --lean4-source-dir ${lean4SourceDir}
 ''}${lib.optionalString (typstRenderedDir != null) ''
         --typst-rendered-dir ${typstRenderedDir}
+''}${lib.optionalString (haskellRenderedDir != null) ''
+        --haskell-rendered-dir ${haskellRenderedDir}
 ''}        --out-dir "$out"
       )
       node ${stageScript} "''${stageArgs[@]}"
@@ -379,14 +482,14 @@ ${lib.optionalString (lean4SourceDir != null) ''
 
     devApp = mkApp {
       name = "${name}-dev";
-      inherit contentDir config lean4SourceDir lean4RenderedDir typstRenderedDir templateFiles languages;
+      inherit contentDir config lean4SourceDir lean4RenderedDir typstRenderedDir haskellRenderedDir templateFiles languages;
       mode = "dev";
       port = 4321;
     };
 
     previewApp = mkApp {
       name = "${name}-preview";
-      inherit contentDir config lean4SourceDir lean4RenderedDir typstRenderedDir templateFiles languages;
+      inherit contentDir config lean4SourceDir lean4RenderedDir typstRenderedDir haskellRenderedDir templateFiles languages;
       mode = "preview";
       port = 4322;
     };

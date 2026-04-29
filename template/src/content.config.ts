@@ -62,6 +62,15 @@ const docs = defineCollection({
         pdf: z.string(),
       })
       .optional(),
+
+    // Generated Haskell API pages point at copied Haddock HTML under
+    // public/. Authored pages should omit this.
+    haddock: z
+      .object({
+        html: z.string(),
+        package: z.string(),
+      })
+      .optional(),
   }),
 });
 

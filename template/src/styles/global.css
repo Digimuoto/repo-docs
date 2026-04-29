@@ -1351,13 +1351,22 @@ html[data-toc="collapsed"] .docs-toc-rail {
   margin-left: calc(var(--docs-sidebar-width) + var(--docs-toc-width));
   transition: margin-left 220ms var(--docs-shell-ease);
 }
+/* When the page exposes no TOC headings, the layout never renders the
+ * `.docs-toc` aside — but `--docs-toc-width` still inflates the main
+ * margin and shows the body background as a vertical strip between the
+ * sidebar and the content. Drop that strip when the body marks the TOC
+ * as disabled so the content butts up against the sidebar cleanly. */
+body[data-toc-enabled="false"] .docs-main {
+  margin-left: var(--docs-sidebar-width);
+}
 @media (max-width: 1279.98px) {
   .docs-main {
     margin-left: var(--docs-sidebar-width);
   }
 }
 @media (max-width: 1023.98px) {
-  .docs-main {
+  .docs-main,
+  body[data-toc-enabled="false"] .docs-main {
     margin-left: 0;
   }
 }
@@ -1877,6 +1886,160 @@ video {
   .docs-typst-embed-frame-wrap {
     min-height: 24rem;
     height: calc(100dvh - 22rem);
+  }
+}
+
+/* ==========================================================================
+ * Haddock API embed
+ *
+ * Haddock generates a complete HTML app with its own CSS, quick-jump JS,
+ * source links, and intra-package navigation. Keep that self-contained in an
+ * iframe while repo-docs supplies the surrounding shell/sidebar — and
+ * styles the iframe's contents (via repo-docs-haddock.css injected at
+ * build time) so the embedded page reads as part of the docs surface,
+ * not a foreign artefact.
+ *
+ * The embed claims the full main column: no max-width cap, no padding,
+ * no card chrome. Surfaces all use --bg-primary so the iframe boundary
+ * is invisible whether the iframe content is loaded or still painting.
+ * ========================================================================== */
+.docs-main:has(.docs-prose-haskell-haddock),
+.docs-main-inner:has(.docs-prose-haskell-haddock) {
+  max-width: none;
+  min-height: 100vh;
+  padding: 0;
+  background: var(--bg-primary);
+}
+
+.docs-prose-haskell-haddock {
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+.docs-prose.docs-prose-haskell-haddock > * {
+  max-width: none;
+}
+
+.docs-haddock-embed {
+  margin: 0;
+  height: 100vh;
+  max-width: none;
+  background: var(--bg-primary);
+}
+
+.docs-haddock-embed-frame-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  background: var(--bg-primary);
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.docs-haddock-embed-frame-wrap:fullscreen {
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  border-radius: 0;
+  border: 0;
+}
+
+.docs-haddock-embed-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  font-family: var(--font-sans);
+  z-index: 0;
+  transition: opacity 240ms ease;
+  background: var(--bg-primary);
+}
+
+.docs-haddock-embed-frame-wrap[data-loaded="true"] .docs-haddock-embed-loader {
+  opacity: 0;
+}
+
+.docs-haddock-embed-loader-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-content-quaternary);
+}
+
+.docs-haddock-embed-loader-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-content-secondary);
+}
+
+.docs-haddock-embed-frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  /* Match the parent body so the seam between the iframe edge and the
+   * shell is invisible. The iframe's own document paints the same
+   * --bg-primary on top via repo-docs-haddock.css. */
+  background: var(--bg-primary);
+  color-scheme: inherit;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+
+.docs-haddock-embed-frame-wrap[data-loaded="true"] .docs-haddock-embed-frame {
+  opacity: 1;
+}
+
+.docs-haddock-embed-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: var(--surface-primary);
+  z-index: 2;
+  text-align: center;
+}
+
+.docs-haddock-embed-fallback[hidden] {
+  display: none;
+}
+
+.docs-haddock-embed-fallback-text {
+  margin: 0;
+  max-width: 36rem;
+  color: var(--text-content-secondary);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.docs-haddock-embed-fallback-text a {
+  color: var(--brand-primary);
+  text-decoration: none;
+}
+
+.docs-haddock-embed-fallback-text a:hover,
+.docs-haddock-embed-fallback-text a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .docs-haddock-embed-frame-wrap {
+    min-height: 100vh;
   }
 }
 

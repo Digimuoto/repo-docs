@@ -1,0 +1,13 @@
+cabal-version: 3.0
+name: repo-docs-haddock-demo
+version: 0.1.0.0
+synopsis: Haskell Haddock fixture for repo-docs
+description: Small library used to verify generated Haddock integration.
+license: MIT
+build-type: Simple
+
+library
+  exposed-modules: Demo.Sample
+  hs-source-dirs: src
+  build-depends: base >= 4.14 && < 5
+  default-language: Haskell2010

@@ -167,6 +167,15 @@ repo-docs also normalizes Verso's current CommonMark/GFM gaps for Lean prose,
 so ordered lists, unordered lists, and pipe tables render as real HTML list and
 table elements in generated Theory pages.
 
+### Haskell Haddock
+
+`haskell.packages.<name>.packageDir` points at a Cabal package. repo-docs builds
+the package with nixpkgs' Haskell infrastructure, publishes the generated
+Haddock HTML assets, injects repo-docs-compatible Haddock styling, and adds a
+generated `Haskell` section with one full API view per package. Haddock keeps
+ownership of module navigation, source links, and symbol search inside the
+embedded content window.
+
 ### Typst Manuscripts
 
 `typst.manuscripts.<name>.dir` points at a manuscript folder under `contentDir`.

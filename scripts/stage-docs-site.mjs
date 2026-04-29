@@ -5,10 +5,11 @@ const MARKDOWN_EXTENSIONS = new Set([".md", ".mdx"]);
 const RESERVED_CONFIG_NAMES = new Set(["config.yaml", "config.yml", "config.json"]);
 const BUILTIN_THEMES = new Set(["cortex-dark", "cortex-light", "cortex-slate"]);
 const GENERATED_THEORY_DIR = "Theory";
+const GENERATED_HASKELL_DIR = "Haskell";
 
 function usage() {
   console.error(
-    "Usage: node stage-docs-site.mjs --content-dir <dir> --config-json <file> --template-files-json <file> --languages-json <file> [--lean4-rendered-dir <dir> --lean4-source-dir <dir>] [--typst-rendered-dir <dir>] --out-dir <dir>",
+    "Usage: node stage-docs-site.mjs --content-dir <dir> --config-json <file> --template-files-json <file> --languages-json <file> [--lean4-rendered-dir <dir> --lean4-source-dir <dir>] [--typst-rendered-dir <dir>] [--haskell-rendered-dir <dir>] --out-dir <dir>",
   );
   process.exit(1);
 }
@@ -102,6 +103,30 @@ function parseLean4Config(config, renderedDir, sourceDir) {
     renderedDir,
     sourceDir,
     theoryDir: config.lean4.theoryDir.trim(),
+  };
+}
+
+function parseHaskellConfig(config, renderedDir) {
+  if (!config.haskell) {
+    return null;
+  }
+  if (typeof config.haskell !== "object") {
+    throw new Error("docsSite.haskell must be an object when set.");
+  }
+  const packages = config.haskell.packages ?? {};
+  if (typeof packages !== "object" || Array.isArray(packages)) {
+    throw new Error("docsSite.haskell.packages must be an attribute set when haskell is set.");
+  }
+  if (Object.keys(packages).length === 0) {
+    return null;
+  }
+  if (!renderedDir) {
+    throw new Error("Internal error: docsSite.haskell.packages is set, but no rendered Haddock output was staged.");
+  }
+
+  return {
+    renderedDir,
+    packages,
   };
 }
 
@@ -586,6 +611,1444 @@ async function generateTypstManuscripts(contentRoot, publicRoot, typstRenderedDi
   return generated;
 }
 
+function renderHaskellIndexMarkdown(packages) {
+  const items = packages
+    .map((pkg) => `- [${pkg.title}](${pkg.safeKey}/)`)
+    .join("\n");
+
+  return [
+    "---",
+    `title: ${yamlString("Haskell API")}`,
+    `kind: ${yamlString("haskell-haddock")}`,
+    "sidebar:",
+    `  label: ${yamlString("Packages")}`,
+    "---",
+    "",
+    items,
+    "",
+  ].join("\n");
+}
+
+function renderHaskellHaddockMarkdown({title, description, label, htmlPath, packageName}) {
+  const lines = [
+    "---",
+    `title: ${yamlString(title)}`,
+  ];
+  if (description) {
+    lines.push(`description: ${yamlString(description)}`);
+  }
+  lines.push(
+    `kind: ${yamlString("haskell-haddock")}`,
+    "sidebar:",
+    `  label: ${yamlString(label)}`,
+    "haddock:",
+    `  html: ${yamlString(htmlPath)}`,
+    `  package: ${yamlString(packageName)}`,
+  );
+  lines.push("---", "");
+  return lines.join("\n");
+}
+
+function renderHaddockOverrideCss() {
+  // Every palette block below mirrors the corresponding repo-docs theme
+  // file (template/src/styles/themes/<theme>.css) so the iframe's
+  // surfaces, text, links, and code colors match the parent shell
+  // exactly. The DocsPage iframe-load handler mirrors the parent's
+  // `data-theme` / `data-mode` attributes onto the iframe's <html>, so
+  // these scoped blocks activate without any build-time injection.
+  return `
+:root {
+  color-scheme: light dark;
+
+  /* cortex-dark baseline (also the SSR fallback before the theme-sync
+   * script runs). */
+  --rd-font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --rd-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --rd-bg-primary: #0e1116;
+  --rd-bg-secondary: #161b22;
+  --rd-surface-primary: #161b22;
+  --rd-surface-secondary: #1c222a;
+  --rd-surface-tertiary: #262d36;
+  --rd-surface-hover: #30363d;
+  --rd-text-content: #e6edf3;
+  --rd-text-content-secondary: #b8c1cc;
+  --rd-text-content-tertiary: #8b949e;
+  --rd-text-content-quaternary: #6e7681;
+  --rd-border-primary: rgba(240, 246, 252, 0.10);
+  --rd-border-secondary: rgba(240, 246, 252, 0.18);
+  --rd-brand-primary: #f0883e;
+  --rd-brand-secondary: #d97706;
+  --rd-tok-keyword: #ff7b72;
+  --rd-tok-type: #ffa657;
+  --rd-tok-string: #a5d6ff;
+  --rd-tok-comment: #8b949e;
+  --rd-tok-number: #79c0ff;
+  --rd-tok-operator: #ff7b72;
+  --rd-tok-function: #d2a8ff;
+  --rd-status-deprecated: #ff7b72;
+  --rd-target-tint: color-mix(in srgb, var(--rd-brand-primary) 22%, transparent);
+}
+
+html[data-theme="cortex-dark"] {
+  --rd-bg-primary: #0e1116;
+  --rd-bg-secondary: #161b22;
+  --rd-surface-primary: #161b22;
+  --rd-surface-secondary: #1c222a;
+  --rd-surface-tertiary: #262d36;
+  --rd-surface-hover: #30363d;
+  --rd-text-content: #e6edf3;
+  --rd-text-content-secondary: #b8c1cc;
+  --rd-text-content-tertiary: #8b949e;
+  --rd-text-content-quaternary: #6e7681;
+  --rd-border-primary: rgba(240, 246, 252, 0.10);
+  --rd-border-secondary: rgba(240, 246, 252, 0.18);
+  --rd-brand-primary: #f0883e;
+  --rd-brand-secondary: #d97706;
+  --rd-tok-keyword: #ff7b72;
+  --rd-tok-type: #ffa657;
+  --rd-tok-string: #a5d6ff;
+  --rd-tok-comment: #8b949e;
+  --rd-tok-number: #79c0ff;
+  --rd-tok-operator: #ff7b72;
+  --rd-tok-function: #d2a8ff;
+  --rd-status-deprecated: #ff7b72;
+}
+
+html[data-theme="cortex-light"] {
+  --rd-bg-primary: #ffffff;
+  --rd-bg-secondary: #f6f8fa;
+  --rd-surface-primary: #f6f8fa;
+  --rd-surface-secondary: #eaeef2;
+  --rd-surface-tertiary: #d0d7de;
+  --rd-surface-hover: #afb8c1;
+  --rd-text-content: #1f2328;
+  --rd-text-content-secondary: #424a53;
+  --rd-text-content-tertiary: #656d76;
+  --rd-text-content-quaternary: #8c959f;
+  --rd-border-primary: #d1d9e0;
+  --rd-border-secondary: #afb8c1;
+  --rd-brand-primary: #0969da;
+  --rd-brand-secondary: #0550ae;
+  --rd-tok-keyword: #cf222e;
+  --rd-tok-type: #953800;
+  --rd-tok-string: #0a3069;
+  --rd-tok-comment: #6e7781;
+  --rd-tok-number: #0550ae;
+  --rd-tok-operator: #cf222e;
+  --rd-tok-function: #8250df;
+  --rd-status-deprecated: #cf222e;
+}
+
+html[data-theme="cortex-slate"] {
+  --rd-bg-primary: #22272e;
+  --rd-bg-secondary: #2d333b;
+  --rd-surface-primary: #2d333b;
+  --rd-surface-secondary: #373e47;
+  --rd-surface-tertiary: #444c56;
+  --rd-surface-hover: #545d68;
+  --rd-text-content: #cdd9e5;
+  --rd-text-content-secondary: #adbac7;
+  --rd-text-content-tertiary: #768390;
+  --rd-text-content-quaternary: #545d68;
+  --rd-border-primary: rgba(205, 217, 229, 0.08);
+  --rd-border-secondary: rgba(205, 217, 229, 0.16);
+  --rd-brand-primary: #6e7bd6;
+  --rd-brand-secondary: #5159b3;
+  --rd-tok-keyword: #f47067;
+  --rd-tok-type: #f69d50;
+  --rd-tok-string: #96d0ff;
+  --rd-tok-comment: #768390;
+  --rd-tok-number: #6cb6ff;
+  --rd-tok-operator: #f47067;
+  --rd-tok-function: #dcbdfb;
+  --rd-status-deprecated: #f47067;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--rd-bg-primary);
+  color: var(--rd-text-content);
+  font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Sticky-footer pattern: body fills the viewport vertically and
+ * reserves a strip at the bottom for the absolutely-positioned footer.
+ * Keeps the rest of the layout (package header, #content centering)
+ * untouched, which a flex/grid container would otherwise disrupt. */
+body {
+  position: relative;
+  min-height: 100vh;
+  padding-bottom: 4rem;
+  letter-spacing: 0;
+}
+
+/* Linuwial pins #content to a 63vw column at >=1280px and lets a
+ * fixed-position synopsis float at the right edge. We drop both the
+ * cap and the floated synopsis so the embed reads as a normal docs
+ * page that fills the available width. */
+#content {
+  width: auto !important;
+  max-width: 88rem !important;
+  margin: 0 auto !important;
+  padding: 1.75rem clamp(1rem, 3vw, 2.25rem) 4rem !important;
+}
+
+@media (max-width: 1024px) {
+  #content {
+    padding: 1.25rem 1rem 3rem !important;
+  }
+}
+
+/* Linuwial scopes its link colours via a[href]:link/:visited (one
+ * attribute selector ahead of our a:link), so we mirror that
+ * specificity to win the cascade without leaning on !important. */
+a,
+a:link,
+a[href]:link,
+a[href]:visited {
+  color: var(--rd-brand-primary);
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+
+a:hover,
+a:focus-visible,
+a[href]:hover,
+a[href]:focus-visible {
+  color: var(--rd-brand-secondary);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 0.07em;
+}
+
+a[href].def:link,
+a[href].def:visited {
+  color: var(--rd-text-content);
+  font-weight: 600;
+}
+a[href].def:hover {
+  color: var(--rd-brand-primary);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--rd-brand-primary) 35%, transparent);
+  color: var(--rd-text-content);
+}
+
+/* Sticky package header — matches the repo-docs sidebar/topbar surface
+ * convention: tinted, blurred, hairline-bordered. */
+#package-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3rem;
+  padding: 0.625rem clamp(1rem, 3vw, 2.25rem);
+  background: color-mix(in srgb, var(--rd-bg-primary) 88%, transparent);
+  backdrop-filter: saturate(160%) blur(12px);
+  -webkit-backdrop-filter: saturate(160%) blur(12px);
+  border-bottom: 1px solid var(--rd-border-primary);
+}
+
+#package-header .caption,
+#package-header > .caption {
+  margin: 0 !important;
+  color: var(--rd-text-content) !important;
+  font-family: var(--rd-font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+/* Reset linuwial's heading-as-purple-titles convention: headings inherit
+ * the page's content color, weight from the type system. */
+.caption,
+h1, h2, h3, h4, h5, h6,
+summary {
+  color: var(--rd-text-content) !important;
+  font-family: var(--rd-font-sans);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h1 { font-size: 1.625rem; line-height: 1.2; margin: 0 0 0.75rem; }
+h2 { font-size: 1.25rem;  line-height: 1.25; margin: 1.75rem 0 0.625rem; }
+h3 { font-size: 1.0625rem; line-height: 1.3;  margin: 1.25rem 0 0.5rem; }
+h4 { font-size: 0.9375rem; line-height: 1.35; margin: 1rem 0 0.4rem; }
+h5, h6 { font-size: 0.875rem; line-height: 1.4; margin: 0.75rem 0 0.3rem; }
+
+p {
+  margin: 0.7rem 0;
+  color: var(--rd-text-content);
+}
+
+/* Top-level menu (Source / Contents / Index). Pill chips matching the
+ * repo-docs sidebar nav item language. */
+#page-menu,
+ul.links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#page-menu a,
+#package-header #page-menu a:link,
+#package-header #page-menu a:visited,
+ul.links a,
+ul.links a:link,
+ul.links a:visited {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.875rem;
+  padding: 0 0.75rem;
+  font-family: var(--rd-font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid var(--rd-border-primary);
+  border-radius: 0.5rem;
+  background: var(--rd-surface-primary);
+  color: var(--rd-text-content-secondary);
+  text-decoration: none;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+#page-menu a:hover,
+#page-menu a:focus-visible,
+ul.links a:hover,
+ul.links a:focus-visible {
+  background: var(--rd-surface-secondary);
+  border-color: var(--rd-border-secondary);
+  color: var(--rd-text-content);
+  text-decoration: none;
+}
+
+/* Cards: module header, description, synopsis, interface, index. The
+ * radius / border / surface match the repo-docs code-card and
+ * mermaid-card chrome — same family of surfaces, same rhythm. */
+#module-header,
+#description,
+#synopsis,
+#interface,
+#index,
+#table-of-contents,
+.top,
+.subs {
+  background: var(--rd-surface-primary);
+  border: 1px solid var(--rd-border-primary);
+  border-radius: 0.625rem;
+  margin: 0 0 1rem;
+  padding: 1.125rem 1.25rem;
+}
+
+#interface,
+#description,
+#synopsis,
+#table-of-contents {
+  padding: 1.25rem 1.5rem;
+}
+
+/* Nested cards (declaration .top, sub-blocks .subs) inside #interface.
+ * Earlier iterations painted these with bg-primary (recessed/sunken
+ * in dark mode) or with a white-tinted overlay (read as too bright
+ * with a slight cool cast in dark mode). Settle on transparent
+ * backgrounds: the parent #interface surface shows through and the
+ * 1px border alone defines the boundary. Same effect in both themes,
+ * no hue shift, no contrast jump. */
+#interface .top,
+#interface .subs {
+  margin: 0.875rem 0 0;
+  padding: 1.125rem 1.25rem;
+  background: transparent;
+  border-color: var(--rd-border-primary);
+}
+
+#interface .top:first-of-type {
+  margin-top: 0.5rem;
+}
+
+#interface .top .subs {
+  margin-top: 0.875rem;
+  background: transparent;
+}
+
+#interface > h1 {
+  font-size: 1.375rem;
+  margin: 0 0 0.875rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--rd-border-primary);
+}
+
+#description .caption,
+#synopsis summary,
+#interface .caption,
+.subs > .caption {
+  display: inline-block !important;
+  float: none !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 0 0.5rem !important;
+  padding: 0.125rem 0.625rem !important;
+  font-size: 0.6875rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rd-text-content-tertiary) !important;
+  background: var(--rd-bg-primary) !important;
+  border: 1px solid var(--rd-border-primary) !important;
+  border-radius: 999px !important;
+}
+
+#synopsis {
+  display: block !important;
+  position: static !important;
+  float: none !important;
+  width: auto !important;
+  max-width: none !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  overflow: visible !important;
+  z-index: auto !important;
+}
+
+#synopsis details {
+  border: 0;
+  background: transparent;
+}
+
+#synopsis summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+#synopsis summary::-webkit-details-marker {
+  display: none;
+}
+
+#synopsis ul {
+  margin: 0.625rem 0 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+#synopsis ul li {
+  padding: 0.25rem 0;
+  border-bottom: 1px dashed var(--rd-border-primary);
+}
+
+#synopsis ul li:last-child {
+  border-bottom: 0;
+}
+
+#synopsis ul li.src {
+  font-family: var(--rd-font-mono);
+  font-size: 0.8125rem;
+}
+
+.doc {
+  color: var(--rd-text-content-secondary);
+}
+
+.doc p {
+  color: var(--rd-text-content-secondary);
+}
+
+/* Code surfaces: source signatures, inline code, pre blocks. All share
+ * the JetBrains Mono family with the rest of the repo-docs site. */
+code,
+kbd,
+samp,
+tt,
+.src,
+.src code,
+.src .keyword,
+pre {
+  font-family: var(--rd-font-mono);
+  font-feature-settings: "calt" 1, "liga" 0;
+}
+
+code,
+kbd,
+samp,
+tt {
+  font-size: 0.875em;
+  padding: 0.05em 0.35em;
+  border-radius: 0.3em;
+  background: var(--rd-bg-primary);
+  color: var(--rd-text-content);
+  border: 1px solid var(--rd-border-primary);
+}
+
+a code,
+a > code {
+  background: transparent;
+  border-color: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+/* .src is Haddock's marker for "this run is source code" — it's
+ * applied to <p>, <td>, <li>, <span>, <code>, etc. across the page. We
+ * intentionally DON'T paint it as a bordered/rounded card: doing so
+ * inherits onto every <p class="src"> declaration line and every
+ * <td class="src"> instance row, creating a card-in-card sandwich
+ * inside the .top / .subs containers (and gluing identifiers to
+ * the inner box edge). Keep .src as a typographic marker only —
+ * cards are applied on the outer .top / .subs / #interface containers
+ * already. */
+.src {
+  font-family: var(--rd-font-mono);
+  color: var(--rd-text-content);
+}
+
+p.src {
+  margin: 0.5rem 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.src .keyword {
+  color: var(--rd-tok-keyword);
+  font-weight: 500;
+}
+
+.src a[href].def,
+.src .def {
+  color: var(--rd-text-content);
+  font-weight: 600;
+}
+
+a[href].link,
+a.link {
+  color: var(--rd-text-content-tertiary);
+  font-size: 0.75rem;
+  font-family: var(--rd-font-sans);
+  margin-left: 0.4em;
+  padding: 0 0.4em;
+  border-radius: 0.3em;
+  border: 1px solid var(--rd-border-primary);
+  background: var(--rd-surface-primary);
+}
+
+a[href].link:hover {
+  color: var(--rd-text-content);
+  background: var(--rd-surface-secondary);
+  text-decoration: none;
+}
+
+a.selflink {
+  color: var(--rd-text-content-quaternary);
+  font-size: 0.75rem;
+  margin-left: 0.4em;
+  opacity: 0.6;
+  transition: opacity 120ms ease, color 120ms ease;
+}
+
+a.selflink:hover {
+  color: var(--rd-brand-primary);
+  opacity: 1;
+  text-decoration: none;
+}
+
+pre {
+  display: block;
+  padding: 0.875rem 1rem;
+  background: var(--rd-bg-primary);
+  border: 1px solid var(--rd-border-primary);
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--rd-text-content);
+}
+
+/* Generic table baseline. We don't add a border + radius here —
+ * Haddock nests tables inside .subs cards (constructors, instances,
+ * methods), and a bordered table would render as a second box inside
+ * the already-bordered card, doubling the chrome. Cards live on the
+ * outer .subs / #interface / #index containers; tables stay flat. */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  font-size: 0.875rem;
+  background: transparent;
+}
+
+table.info {
+  width: auto;
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+}
+
+/* Default cell padding/alignment. Per-cell border-bottoms are NOT applied
+ * here as a default — Haddock instance tables use one td.src per
+ * declaration plus an empty td.doc.empty as a right-column spacer, so a
+ * blanket border-bottom: 1px on every cell creates split-bar artefacts
+ * that overshoot card edges. Borders are added back only on doc-index
+ * and prose tables further below. */
+th,
+td {
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+  text-align: left;
+  background: transparent;
+}
+
+thead th {
+  background: var(--rd-surface-secondary);
+  color: var(--rd-text-content);
+  font-weight: 600;
+  border-bottom: 1px solid var(--rd-border-primary);
+}
+
+td.src,
+td.src.clearfix {
+  font-family: var(--rd-font-mono);
+  background: transparent;
+  padding: 0.5rem 0.75rem;
+}
+
+td.doc.empty {
+  color: var(--rd-text-content-quaternary);
+}
+
+/* Doc-index table (Greeting → Demo.Sample). Each row is its own
+ * logical record: borders + alternating tint help scan a long index.
+ * Scope these here so they don't leak into the instance / synopsis
+ * tables. */
+#index table,
+#alphabet + table {
+  border: 1px solid var(--rd-border-primary);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+
+#index table tr,
+#index table td,
+#alphabet + table tr,
+#alphabet + table td {
+  border-bottom: 1px solid var(--rd-border-primary);
+}
+
+#index table tr:last-child td,
+#alphabet + table tr:last-child td {
+  border-bottom: 0;
+}
+
+#index table tr:nth-child(even) td,
+#alphabet + table tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--rd-surface-secondary) 35%, transparent);
+}
+
+/* Instance / synopsis / interface tables. Linuwial pins
+ * #interface td { padding-left: 0.5em } at higher specificity than our
+ * generic td rule, leaving instance rows hard against the card edge.
+ * Override at the same specificity so the chevron + identifier sit a
+ * comfortable distance from the card border. Also hard-collapse the
+ * border model to neutralise linuwial's border-spacing: 2px, which
+ * otherwise sneaks 2px past a width: 100% table on the right side. */
+#interface table,
+.subs table,
+#synopsis table {
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+  table-layout: auto;
+}
+
+#interface td,
+#interface th,
+.subs td,
+.subs th {
+  padding: 0.4rem 0.75rem;
+  vertical-align: top;
+}
+
+/* The instance disclosure marker (▷ / ▽) sits in a leading <span>
+ * inside td.src.clearfix. Pull the padding-left a little tighter so the
+ * marker hugs the card edge in a controlled way (rather than the random
+ * 0.5em linuwial leftover). */
+#interface td.src,
+#interface td.src.clearfix,
+.subs td.src,
+.subs td.src.clearfix {
+  padding: 0.5rem 0.875rem;
+}
+
+/* Subs tables (constructors, methods, fields). The wrapping
+ * .subs.constructors / .subs.methods card already has 1.125rem of
+ * horizontal padding, so the inner table doesn't need its own
+ * indent — flatten any leftover linuwial indent. */
+.subs > table,
+.subs > details > table {
+  margin: 0;
+}
+
+.subs > table td,
+.subs > details > table td {
+  padding-left: 0;
+}
+
+/* Disclosure widgets (Synopsis, Instances, Methods). Quietly themed
+ * so the chevron lives inside the card chrome, not on top of it. */
+details {
+  border: 0;
+  background: transparent;
+}
+
+details summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+details > summary.hide-when-js-enabled {
+  display: none;
+}
+
+/* Module list on the package landing page. Each entry behaves like a
+ * compact docs link card. */
+#module-list {
+  background: var(--rd-surface-primary);
+  border: 1px solid var(--rd-border-primary);
+  border-radius: 0.625rem;
+  padding: 1rem 1.25rem;
+}
+
+#module-list > #module-list {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+#module-list .caption {
+  display: block;
+  font-size: 0.6875rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rd-text-content-tertiary) !important;
+  margin: 0.25rem 0 0.5rem !important;
+}
+
+#module-list ul {
+  margin: 0.25rem 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+#module-list ul li {
+  padding: 0.25rem 0;
+}
+
+#module-list .module {
+  font-family: var(--rd-font-mono);
+  font-size: 0.875rem;
+  color: var(--rd-text-content);
+}
+
+/* Source view (src/<Module>.html). Haddock emits a single big <pre>
+ * with .hs-* token spans — and ships its own style.css that hardcodes
+ * a Solarized-Light palette plus a yellow hover highlight. Override
+ * those leaks so the source listing reads in the same colour family
+ * as the rest of the embed in every theme. */
+body > pre,
+body > pre.haskell {
+  margin: 0;
+  padding: 1.25rem clamp(1rem, 3vw, 2.25rem);
+  background: var(--rd-bg-primary);
+  color: var(--rd-text-content);
+  font-family: var(--rd-font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  border: 0;
+  border-radius: 0;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+table.source-code th {
+  background: var(--rd-surface-secondary);
+  color: var(--rd-text-content-tertiary);
+  font-family: var(--rd-font-mono);
+  font-weight: 400;
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  text-align: right;
+  user-select: none;
+}
+
+table.source-code td {
+  padding: 0.125rem 0.75rem;
+  font-family: var(--rd-font-mono);
+  font-size: 0.8125rem;
+}
+
+/* Haddock's source-view token classes (Cabal/Haddock highlighter, NOT
+ * Highlighting-Kate — different class names). The full set used by the
+ * generator is .hs-identifier (plus .hs-var, .hs-type), .hs-keyword,
+ * .hs-string, .hs-char, .hs-number, .hs-operator, .hs-glyph,
+ * .hs-special, .hs-comment, .hs-pragma, .hs-cpp. */
+.hs-identifier,
+.hs-identifier.hs-var { color: var(--rd-text-content); }
+.hs-identifier.hs-type,
+.hs-conid,
+.hs-typ { color: var(--rd-tok-type); }
+.hs-keyword,
+.hs-keyglyph { color: var(--rd-tok-keyword); font-weight: 500; }
+.hs-string,
+.hs-str,
+.hs-char,
+.hs-chr { color: var(--rd-tok-string); }
+.hs-number { color: var(--rd-tok-number); }
+.hs-operator { color: var(--rd-tok-operator); }
+.hs-glyph,
+.hs-special { color: var(--rd-tok-keyword); }
+.hs-comment,
+.hs-comment-block { color: var(--rd-tok-comment); font-style: italic; }
+.hs-pragma { color: var(--rd-tok-comment); font-style: italic; }
+.hs-cpp { color: var(--rd-tok-function); }
+
+/* Source view annotation tooltips (span.annot carries a hidden
+ * span.annottext shown on hover). Linuwial's defaults are
+ * cream-yellow on bright orange, with a #ff0 flash on the trigger.
+ * Repaint to a quiet popover. */
+body > pre span.annot {
+  position: relative;
+  color: inherit;
+  text-decoration: none;
+}
+
+body > pre span.annot:hover {
+  background: color-mix(in srgb, var(--rd-brand-primary) 16%, transparent);
+}
+
+body > pre span.annot span.annottext {
+  display: none;
+  position: absolute;
+  left: 1em;
+  top: 1.6em;
+  z-index: 99;
+  padding: 0.5rem 0.75rem;
+  background: var(--rd-surface-primary);
+  color: var(--rd-text-content);
+  border: 1px solid var(--rd-border-secondary);
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-family: var(--rd-font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  max-width: min(40rem, 80vw);
+}
+
+body > pre span.annot:hover span.annottext {
+  display: block;
+}
+
+/* Source view links (every identifier that resolves to a definition).
+ * Linuwial draws a Solarized-cream underline and flashes the cell on
+ * hover; mute the underline and use the surface-secondary token for
+ * hover so it sits inside the page palette. */
+body > pre a:link,
+body > pre a:visited,
+body > pre a[href]:link,
+body > pre a[href]:visited {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--rd-border-secondary);
+}
+
+body > pre a:hover,
+body > pre a.hover-highlight,
+body > pre a[href]:hover {
+  background: var(--rd-surface-secondary);
+  color: var(--rd-brand-primary);
+  text-decoration: none;
+  border-bottom-color: var(--rd-brand-primary);
+}
+
+/* ===== Linuwial leaks (rendered Haddock pages) =====
+ *
+ * Everything below patches a hardcoded colour, surface, or layout in
+ * linuwial.css that survived the override above. Grouped by the
+ * Haddock feature they target so adding new ones stays orderly. */
+
+/* Block code in module docstrings. Linuwial paints pre with
+ * #f7f7f7 / #ddd; reuse the page's bg-primary surface and the
+ * --rd-border-primary token. */
+#interface pre,
+#description pre,
+.doc pre,
+.subs pre {
+  background: var(--rd-bg-primary);
+  border: 1px solid var(--rd-border-primary);
+  color: var(--rd-text-content);
+}
+
+/* Inline .src (used both in module HTML and in some doc sections).
+ * Linuwial paints .src { background: #f2f2f2 }. Override only when
+ * .src is inline (otherwise our card-style .src block above wins). */
+p > .src,
+li > .src,
+span.src {
+  background: transparent;
+  color: var(--rd-text-content);
+}
+
+/* Block-quote prose. Linuwial paints a lavender frame; tint with the
+ * brand colour instead so it sits in the same palette family. */
+blockquote {
+  border-left: 3px solid var(--rd-brand-primary);
+  background: color-mix(in srgb, var(--rd-brand-primary) 8%, transparent);
+  color: var(--rd-text-content-secondary);
+  margin: 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+
+/* Module-header divider. Linuwial draws a 1px solid #ddd under the
+ * Demo.Sample heading; use --rd-border-primary so it tracks themes. */
+#module-header .caption {
+  border-bottom: 1px solid var(--rd-border-primary);
+  color: var(--rd-text-content);
+}
+
+/* Info table (the <table class="info"> floated in #module-header
+ * with rows like Safe Haskell / Language). Linuwial floats it right,
+ * pins it with position: relative; top: -0.78em, and gives it a
+ * white card with grey 1px border + grey body text — none of which
+ * survives dark mode. Stop the float so it sits below the title
+ * cleanly, drop the background fill (the page surface shows through),
+ * and use border-collapse: separate so border-radius actually rounds
+ * the stroke (with collapse, browsers drop the radius on the table
+ * border and any cell border at the corners renders as a square
+ * stroke underneath the rounded background, which was the visible
+ * bleed). */
+table.info,
+#module-header table.info {
+  float: none;
+  position: static;
+  top: auto;
+  margin: 1rem 0 0;
+  padding: 0;
+  width: auto;
+  max-width: none;
+  background: transparent;
+  border: 1px solid var(--rd-border-primary);
+  border-radius: 0.5rem;
+  border-spacing: 0 !important;
+  border-collapse: separate !important;
+  color: var(--rd-text-content-secondary);
+  font-size: 0.8125rem;
+}
+
+table.info tr,
+.info tr,
+table.info tr:nth-child(even),
+.info tr:nth-child(even) {
+  background: transparent !important;
+}
+
+table.info th,
+table.info td,
+.info th,
+.info td {
+  padding: 0.375rem 0.875rem !important;
+  border: 0 !important;
+  background: transparent !important;
+  vertical-align: middle;
+  text-align: left;
+}
+
+table.info tr + tr th,
+table.info tr + tr td,
+.info tr + tr th,
+.info tr + tr td {
+  border-top: 1px solid var(--rd-border-primary) !important;
+}
+
+table.info th,
+.info th {
+  color: var(--rd-text-content-tertiary);
+  font-weight: 500;
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding-right: 1rem !important;
+}
+
+table.info td,
+.info td {
+  color: var(--rd-text-content);
+  font-family: var(--rd-font-mono);
+  font-size: 0.8125rem;
+}
+
+/* Top-of-page header bar. Linuwial paints #package-header with a
+ * solid #5E5184 purple, a translucent purple bottom-border, and
+ * color: #ddd on the body plus color: white on the menu links —
+ * all overrides our themed surface. Re-anchor every property here so
+ * nothing leaks. */
+#package-header {
+  background: color-mix(in srgb, var(--rd-bg-primary) 88%, transparent) !important;
+  border-bottom: 1px solid var(--rd-border-primary) !important;
+  color: var(--rd-text-content) !important;
+  font-size: 0.875rem !important;
+}
+
+#package-header .caption,
+#package-header > .caption {
+  color: var(--rd-text-content) !important;
+}
+
+#package-header #page-menu a,
+#package-header #page-menu a:link,
+#package-header #page-menu a:visited {
+  color: var(--rd-text-content-secondary);
+}
+
+#package-header #page-menu a:hover,
+#package-header #page-menu a:focus-visible {
+  color: var(--rd-text-content);
+}
+
+/* Disclosure arrows on submodule expanders / nested instance lists.
+ * Linuwial paints these #9C5791 — a magenta that doesn't belong in
+ * any cortex theme. Use the muted-text token. */
+.collapser:before,
+.expander:before,
+.noexpander:before {
+  color: var(--rd-text-content-tertiary);
+}
+
+/* Contents-list (rendered on the index/contents pages). Linuwial
+ * paints #contents-list { background: #f4f4f4 }. Match the
+ * surface-primary card style. */
+#contents-list,
+#table-of-contents {
+  background: var(--rd-surface-primary);
+  border: 1px solid var(--rd-border-primary);
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+}
+
+/* Sub-block borders. .subs, .top > .doc, .subs > .doc use a
+ * border-left: 1px solid gainsboro — gainsboro reads as a near-white
+ * stripe in dark mode, the user's 'pure white strokes' note. Use the
+ * border-primary token instead, and back the indent to a comfortable
+ * 0.875rem so the rule sits a hair off the text. */
+.subs,
+.top > .doc,
+.subs > .doc {
+  border-left: 1px solid var(--rd-border-primary);
+  padding-left: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Top-of-section divider on .top p.src. Linuwial draws a 3px-thick
+ * #e5e5e5 underline beneath every declaration's source line, which
+ * reads as a chunky white bar in dark mode. Replace with a 1px hairline
+ * in --rd-border-primary. */
+.top p.src,
+#interface .top > p.src {
+  border-bottom: 1px solid var(--rd-border-primary);
+  line-height: 1.7rem;
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0;
+  background: transparent !important;
+}
+
+/* .subs .subs p.src is painted with #f8f8f8. Reset to transparent. */
+.subs .subs p.src {
+  background: transparent !important;
+}
+
+/* Doc tables (markdown-rendered tables inside docstrings). Linuwial
+ * paints them with #ddd borders and #f0f0f0 header bg — both leak
+ * in dark mode. Re-skin to match the table style we set above. */
+.doc table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.doc th,
+.doc td {
+  padding: 0.5rem 0.75rem !important;
+  border: 1px solid var(--rd-border-primary) !important;
+  background: transparent !important;
+  color: var(--rd-text-content);
+}
+
+.doc th {
+  background: var(--rd-surface-secondary) !important;
+  color: var(--rd-text-content);
+  font-weight: 600;
+}
+
+/* Selflinks / source links inside declaration source lines (\#\ and
+ * "Source"). Linuwial floats them right at line-height 30px and gives
+ * them color: #888. Our chip-style above already styles them, but
+ * we need to neutralise the line-height: 30px so they sit on the
+ * baseline of the declaration. */
+#interface .src .selflink,
+#interface .src .link,
+.src .selflink,
+.src .link {
+  float: none;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.4;
+  color: var(--rd-text-content-tertiary);
+}
+
+/* Fixity / right-edge spans inside declarations. Linuwial gives them
+ * #919191 borders/colour. Quiet down to the muted token. */
+#interface span.fixity,
+#interface span.rightedge,
+span.fixity,
+span.rightedge {
+  color: var(--rd-text-content-tertiary);
+  border-left-color: var(--rd-border-primary);
+}
+
+/* Anchor-target highlight. Linuwial flashes a yellow #fbf36d gradient
+ * when the URL hash matches an element id. Replace with a brand-tinted
+ * ribbon that reads in any palette. */
+:target,
+:target:hover {
+  background: var(--rd-target-tint) !important;
+  border-radius: 0.25rem;
+}
+
+/* Warning text. Linuwial uses color: red. Use the deprecated-status
+ * token so it tracks the rest of the palette. */
+.warning {
+  color: var(--rd-status-deprecated);
+}
+
+/* Footer. Linuwial paints #footer with a hardcoded #ededed canvas and
+ * #222 text — neither survives a dark theme. Pin to the bottom of the
+ * body via absolute positioning (the body reserves padding-bottom for
+ * us), repaint the surface to match the page, and centre the credit. */
+#footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: auto;
+  margin: 0;
+  padding: 1rem clamp(1rem, 3vw, 2.25rem);
+  background: var(--rd-bg-primary);
+  border-top: 1px solid var(--rd-border-primary);
+  color: var(--rd-text-content-tertiary);
+  text-align: center;
+  font-size: 0.8125rem;
+}
+
+#footer p,
+#footer a {
+  color: var(--rd-text-content-tertiary);
+}
+
+#footer a[href]:link,
+#footer a[href]:visited {
+  color: var(--rd-brand-primary);
+}
+
+#footer p {
+  margin: 0;
+  color: inherit;
+}
+
+/* Quick-jump panel (the modal Haddock renders for the "/" hotkey).
+ * Repaint its surfaces / borders only — Haddock owns layout/JS. */
+#search,
+#search-form,
+#search-results,
+.search-result {
+  font-family: var(--rd-font-sans);
+}
+
+#search {
+  background: color-mix(in srgb, var(--rd-bg-primary) 92%, transparent) !important;
+}
+
+#search > div,
+#search-form,
+#search-results,
+.search-result {
+  background: var(--rd-surface-primary) !important;
+  color: var(--rd-text-content) !important;
+  border-color: var(--rd-border-primary) !important;
+}
+
+#search-results .search-result.selected {
+  background: var(--rd-surface-secondary) !important;
+}
+
+#search input {
+  background: var(--rd-bg-primary) !important;
+  color: var(--rd-text-content) !important;
+  border: 1px solid var(--rd-border-primary) !important;
+  border-radius: 0.5rem !important;
+}
+
+/* Smooth scrollbars in the dark themes. Webkit-specific; harmless on
+ * other engines. */
+* {
+  scrollbar-color: var(--rd-surface-tertiary) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--rd-surface-tertiary);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--rd-surface-hover);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+`.trim();
+}
+
+function renderHaddockThemeSyncScript() {
+  // Mirror the parent shell's data-theme/data-mode onto the iframe's
+  // <html> so the palette blocks in repo-docs-haddock.css activate. The
+  // iframe is loaded with sandbox `allow-same-origin allow-scripts`, so
+  // window.parent is reachable; the try/catch is defensive against the
+  // direct-open case (where window.parent === window).
+  return `
+(() => {
+  function readParent() {
+    try {
+      const parent = window.parent;
+      if (!parent || parent === window) return null;
+      return parent.document?.documentElement ?? null;
+    } catch {
+      return null;
+    }
+  }
+  function apply() {
+    const parent = readParent();
+    const root = document.documentElement;
+    if (!parent) {
+      // Standalone open: respect the OS-level preference.
+      const prefersLight =
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: light)").matches;
+      root.dataset.theme = prefersLight ? "cortex-light" : "cortex-dark";
+      root.dataset.mode = prefersLight ? "light" : "dark";
+      return;
+    }
+    if (parent.dataset.theme) root.dataset.theme = parent.dataset.theme;
+    if (parent.dataset.mode) root.dataset.mode = parent.dataset.mode;
+  }
+  apply();
+  const parent = readParent();
+  if (parent) {
+    try {
+      new MutationObserver(apply).observe(parent, {
+        attributes: true,
+        attributeFilter: ["data-theme", "data-mode"],
+      });
+    } catch {
+      /* MutationObserver unavailable */
+    }
+  }
+})();
+`.trim();
+}
+
+// Haddock leaves `${pkgroot}/...../<store-hash>-ghc-<v>-doc/share/doc/ghc/html/libraries/<pkg>-<ver>-<hash>/<file>`
+// as a literal string in cross-package links (e.g. references to base's
+// `String`, `Show`, `Int`). The placeholder is meant to be substituted
+// at install time; in our Nix-built output it never is, so the browser
+// resolves the relative URL up to the site root and produces a 404 on
+// the Nix store hash. Rewrite these to absolute Hackage URLs so the
+// links land on canonical docs that are actually reachable.
+//
+// Pattern breakdown:
+//   ${pkgroot}/(../)+ <store-hash>-ghc-<ghc-ver>-doc /share/doc/ghc/html/libraries/ <pkg>-<ver>-<hash> / <file>
+// We extract <pkg> and <ver> (greedy non-capturing for the trailing
+// hash) and route to https://hackage.haskell.org/package/<pkg>-<ver>/docs/<file>.
+const PKGROOT_LINK_RE =
+  /\$\{pkgroot\}\/(?:\.\.\/)+[^/]+-ghc-[^/]+-doc\/share\/doc\/ghc\/html\/libraries\/([A-Za-z][A-Za-z0-9-]*?)-([0-9][0-9.]*)-[0-9a-f]+\/([^"'\s]+)/g;
+
+function rewriteHaddockExternalLinks(html) {
+  return html.replace(
+    PKGROOT_LINK_RE,
+    (_match, pkg, version, file) =>
+      `https://hackage.haskell.org/package/${pkg}-${version}/docs/${file}`,
+  );
+}
+
+function injectHaddockStyle(html, stylesheetHref) {
+  const fontHref =
+    "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap";
+  const fontLinks = [
+    `<link rel="preconnect" href="https://fonts.googleapis.com" />`,
+    `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />`,
+    `<link rel="stylesheet" href="${escapeHtml(fontHref)}" />`,
+  ].join("");
+  const themeLink = `<link rel="stylesheet" type="text/css" href="${escapeHtml(stylesheetHref)}" />`;
+  const themeSync = `<script>${renderHaddockThemeSyncScript()}</script>`;
+  const inject = `${fontLinks}${themeLink}${themeSync}`;
+  const rewritten = rewriteHaddockExternalLinks(html);
+  const withoutGoogleFont = rewritten.replace(
+    /<link rel="stylesheet" type="text\/css" href="https:\/\/fonts\.googleapis\.com\/css\?family=PT\+Sans:400,400i,700" \/>/g,
+    "",
+  );
+  if (/<\/head>/i.test(withoutGoogleFont)) {
+    return withoutGoogleFont.replace(/<\/head>/i, `${inject}</head>`);
+  }
+  return `${inject}\n${withoutGoogleFont}`;
+}
+
+async function injectHaddockStyles(htmlRoot) {
+  const stylesheetPath = path.join(htmlRoot, "repo-docs-haddock.css");
+  await fs.writeFile(stylesheetPath, `${renderHaddockOverrideCss()}\n`, "utf8");
+
+  const htmlFiles = (await listFiles(htmlRoot))
+    .map((absolutePath) => normalizeSlashes(path.relative(htmlRoot, absolutePath)))
+    .filter((relativePath) => path.extname(relativePath) === ".html");
+
+  for (const relativePath of htmlFiles) {
+    const htmlPath = path.join(htmlRoot, relativePath);
+    const stylesheetHref = normalizeSlashes(
+      path.relative(path.dirname(htmlPath), stylesheetPath),
+    ) || "repo-docs-haddock.css";
+    const html = await fs.readFile(htmlPath, "utf8");
+    await fs.writeFile(htmlPath, injectHaddockStyle(html, stylesheetHref), "utf8");
+  }
+}
+
+async function generateHaskellDocs(contentRoot, publicRoot, haskell) {
+  if (!haskell) {
+    return null;
+  }
+
+  const manifestPath = path.join(haskell.renderedDir, "packages.json");
+  let packages;
+  try {
+    packages = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+  } catch (error) {
+    throw new Error(`Could not read rendered Haskell Haddock manifest: ${error.message}`);
+  }
+  if (!Array.isArray(packages)) {
+    throw new Error("Rendered Haskell Haddock manifest must be a JSON array.");
+  }
+
+  const contentHaskellRoot = path.join(contentRoot, GENERATED_HASKELL_DIR);
+  try {
+    await fs.stat(contentHaskellRoot);
+    throw new Error(
+      `Generated Haskell Haddock docs would overwrite existing docs path "${GENERATED_HASKELL_DIR}".`,
+    );
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  const publicHaskellRoot = path.join(publicRoot, GENERATED_HASKELL_DIR);
+  await removeIfExists(publicHaskellRoot);
+  await fs.mkdir(contentHaskellRoot, {recursive: true});
+
+  const entries = [GENERATED_HASKELL_DIR];
+  const normalizedPackages = [];
+
+  for (const rawPackage of packages) {
+    if (!rawPackage || typeof rawPackage !== "object") {
+      throw new Error("Rendered Haskell Haddock manifest entries must be objects.");
+    }
+
+    const key = assertSafeRelativePath(rawPackage.key, "Haskell package key");
+    const safeKey = assertSafeRelativePath(rawPackage.safeKey, `Haskell package "${key}" safeKey`);
+    const packageName = typeof rawPackage.packageName === "string" && rawPackage.packageName.trim() !== ""
+      ? rawPackage.packageName.trim()
+      : key;
+    const title = typeof rawPackage.title === "string" && rawPackage.title.trim() !== ""
+      ? rawPackage.title.trim()
+      : packageName;
+    const description = typeof rawPackage.description === "string" && rawPackage.description.trim() !== ""
+      ? rawPackage.description.trim()
+      : null;
+
+    const renderedHtmlRoot = path.join(haskell.renderedDir, "packages", safeKey, "html");
+    const publicHtmlRoot = path.join(publicHaskellRoot, safeKey, "haddock");
+    await fs.mkdir(path.dirname(publicHtmlRoot), {recursive: true});
+    await fs.cp(renderedHtmlRoot, publicHtmlRoot, {recursive: true});
+    await makeWritableRecursive(publicHtmlRoot);
+    await injectHaddockStyles(publicHtmlRoot);
+
+    normalizedPackages.push({safeKey, title});
+
+    const packageRoute = `${GENERATED_HASKELL_DIR}/${safeKey}`;
+    const packageHtmlPath = `${packageRoute}/haddock/index.html`;
+    await fs.mkdir(path.join(contentHaskellRoot, safeKey), {recursive: true});
+    await fs.writeFile(
+      path.join(contentHaskellRoot, safeKey, "index.md"),
+      renderHaskellHaddockMarkdown({
+        title,
+        description,
+        label: packageName,
+        htmlPath: packageHtmlPath,
+        packageName,
+      }),
+      "utf8",
+    );
+    entries.push(packageRoute);
+  }
+
+  await fs.writeFile(
+    path.join(contentHaskellRoot, "index.md"),
+    renderHaskellIndexMarkdown(normalizedPackages),
+    "utf8",
+  );
+
+  return {
+    label: "Haskell",
+    entries,
+  };
+}
+
 function renderLeanMathScript() {
   // Verso emits docstring/module-doc text verbatim — `$x$` and `$$…$$`
   // pass through as raw characters because Verso has no KaTeX pass.
@@ -1043,6 +2506,17 @@ function resolveTopLevelOrder(actualDirectories, requestedOrder) {
   return requested;
 }
 
+function hasGeneratedNavigationSection(navigationSections, generatedDir) {
+  return navigationSections.some(
+    (section) =>
+      (typeof section?.dir === "string" && normalizeSlug(section.dir) === generatedDir) ||
+      (Array.isArray(section?.entries) &&
+        section.entries.some((entry) => normalizeSlug(entry) === generatedDir)) ||
+      (Array.isArray(section?.links) &&
+        section.links.some((link) => normalizeLinkHref(link?.href) === generatedDir)),
+  );
+}
+
 async function removePrivateMarkdown(contentRoot, allowedMarkdown) {
   const allFiles = await listFiles(contentRoot);
   for (const absolutePath of allFiles) {
@@ -1094,6 +2568,7 @@ async function main() {
   const lean4RenderedDir = values.get("--lean4-rendered-dir") ?? null;
   const lean4SourceDir = values.get("--lean4-source-dir") ?? null;
   const typstRenderedDir = values.get("--typst-rendered-dir") ?? null;
+  const haskellRenderedDir = values.get("--haskell-rendered-dir") ?? null;
   const outDir = values.get("--out-dir");
 
   if (!contentDir || !configJson || !templateFilesJson || !outDir) {
@@ -1109,6 +2584,7 @@ async function main() {
     ? JSON.parse(await fs.readFile(languagesJson, "utf8"))
     : {};
   const lean4 = parseLean4Config(config, lean4RenderedDir, lean4SourceDir);
+  const haskell = parseHaskellConfig(config, haskellRenderedDir);
 
   if (!config?.site?.title || !config?.site?.publicBaseUrl) {
     throw new Error("Config must define site.title and site.publicBaseUrl.");
@@ -1152,6 +2628,7 @@ async function main() {
   }
 
   const generatedTheorySection = await generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, config);
+  const generatedHaskellSection = await generateHaskellDocs(contentRoot, publicRoot, haskell);
 
   const navigationSections =
     Array.isArray(config.navigation.sections) && config.navigation.sections.length > 0
@@ -1159,16 +2636,13 @@ async function main() {
       : autoGenerateNavigation(authoredMarkdown, config.navigation);
 
   if (generatedTheorySection) {
-    const hasTheorySection = navigationSections.some(
-      (section) =>
-        (typeof section?.dir === "string" && normalizeSlug(section.dir) === GENERATED_THEORY_DIR) ||
-        (Array.isArray(section?.entries) &&
-          section.entries.some((entry) => normalizeSlug(entry) === GENERATED_THEORY_DIR)) ||
-        (Array.isArray(section?.links) &&
-          section.links.some((link) => normalizeLinkHref(link?.href) === GENERATED_THEORY_DIR)),
-    );
-    if (!hasTheorySection) {
+    if (!hasGeneratedNavigationSection(navigationSections, GENERATED_THEORY_DIR)) {
       navigationSections.push(generatedTheorySection);
+    }
+  }
+  if (generatedHaskellSection) {
+    if (!hasGeneratedNavigationSection(navigationSections, GENERATED_HASKELL_DIR)) {
+      navigationSections.push(generatedHaskellSection);
     }
   }
 
@@ -1329,6 +2803,7 @@ ${lightVars}
     theme,
     themeModes,
     lean4: lean4 ? {theoryDir: lean4.theoryDir} : null,
+    haskell: haskell ? {packages: haskell.packages} : null,
   };
 
   await fs.writeFile(

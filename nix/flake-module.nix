@@ -216,6 +216,66 @@
         description = "Typst manuscript rendering configuration for this site.";
       };
 
+      haskell = lib.mkOption {
+        type = lib.types.submodule {
+          options = {
+            packages = lib.mkOption {
+              type = lib.types.attrsOf (lib.types.submodule {
+                options = {
+                  packageDir = lib.mkOption {
+                    type = lib.types.str;
+                    example = "src/haskell/my-library";
+                    description = ''
+                      Relative path to a Cabal package. The path is
+                      resolved from the parent of `contentDir`, so the
+                      usual `contentDir = ./docs` shape makes this
+                      repo-root relative. repo-docs builds the package
+                      with nixpkgs' `haskellPackages.callCabal2nix`,
+                      publishes its Haddock HTML assets, and generates a
+                      Haskell API section in the docs shell.
+                    '';
+                  };
+
+                  packageName = lib.mkOption {
+                    type = lib.types.nullOr lib.types.str;
+                    default = null;
+                    example = "my-library";
+                    description = ''
+                      Cabal package name to pass to `callCabal2nix`.
+                      Defaults to the attribute name under
+                      `haskell.packages`.
+                    '';
+                  };
+
+                  title = lib.mkOption {
+                    type = lib.types.nullOr lib.types.str;
+                    default = null;
+                    description = "Title for the generated package API page.";
+                  };
+
+                  description = lib.mkOption {
+                    type = lib.types.nullOr lib.types.str;
+                    default = null;
+                    description = "Optional description for generated Haddock pages.";
+                  };
+                };
+              });
+              default = {};
+              description = ''
+                Cabal packages whose Haddock HTML should be published as
+                generated Haskell API pages.
+              '';
+            };
+          };
+        };
+        default = {};
+        example = {
+          packages.core.packageDir = "haskell/core";
+          packages.core.packageName = "my-core";
+        };
+        description = "Haskell / Haddock integration configuration for this site.";
+      };
+
       navigation = lib.mkOption {
         type = lib.types.submodule {
           options = {
@@ -417,6 +477,7 @@
           themeModes = siteCfg.themeModes;
           lean4 = siteCfg.lean4;
           typst = siteCfg.typst;
+          haskell = siteCfg.haskell;
         };
         inherit lean4SourceDir;
         templateFiles = siteCfg.templateFiles;
