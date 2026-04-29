@@ -1999,8 +1999,68 @@ function hasRelativePrefix(relativePath, prefix) {
   return relativePath === prefix || relativePath.startsWith(`${prefix}/`);
 }
 
-function removeHaddockLinksToExcludedFiles(html, excludedHrefs) {
+function findEnclosingListItem(html, offset) {
+  const tokenPattern = /<\/?li\b[^>]*>/gi;
+  const stack = [];
+  let token;
+  while ((token = tokenPattern.exec(html)) && token.index < offset) {
+    if (token[0].startsWith("</")) {
+      stack.pop();
+    } else {
+      stack.push(token.index);
+    }
+  }
+  const start = stack.at(-1);
+  if (start == null) {
+    return null;
+  }
+
+  tokenPattern.lastIndex = start;
+  let depth = 0;
+  while ((token = tokenPattern.exec(html))) {
+    if (token[0].startsWith("</")) {
+      depth -= 1;
+      if (depth === 0) {
+        return {start, end: tokenPattern.lastIndex};
+      }
+    } else {
+      depth += 1;
+    }
+  }
+
+  return null;
+}
+
+function removeHaddockModuleListItemsForExcludedLinks(html, excludedHrefs) {
   let rewritten = html;
+  for (const href of excludedHrefs) {
+    const hrefPattern = escapeRegExp(href);
+    const anchorPattern = new RegExp(
+      `<a\\b[^>]*href=["']${hrefPattern}(?:#[^"']*)?["'][^>]*>[\\s\\S]*?<\\/a>`,
+      "i",
+    );
+
+    let anchorMatch;
+    while ((anchorMatch = anchorPattern.exec(rewritten))) {
+      const item = findEnclosingListItem(rewritten, anchorMatch.index);
+      if (item == null) {
+        break;
+      }
+
+      const listItem = rewritten.slice(item.start, item.end);
+      if (!/<span\b[^>]*class=["'][^"']*\bmodule\b[^"']*["'][^>]*>/i.test(listItem)) {
+        break;
+      }
+
+      rewritten = `${rewritten.slice(0, item.start)}${rewritten.slice(item.end)}`;
+    }
+  }
+
+  return rewritten;
+}
+
+function removeHaddockLinksToExcludedFiles(html, excludedHrefs) {
+  let rewritten = removeHaddockModuleListItemsForExcludedLinks(html, excludedHrefs);
   for (const href of excludedHrefs) {
     const hrefPattern = escapeRegExp(href);
     const hrefAttribute = `href=["']${hrefPattern}(?:#[^"']*)?["']`;

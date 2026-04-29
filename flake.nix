@@ -442,6 +442,10 @@
                 test -f "$staged/public/Haskell/demo/haddock/src/Demo.Sample.html"
                 test -f "$staged/public/Haskell/demo/haddock/repo-docs-haddock.css"
                 test ! -e "$staged/public/Haskell/demo/haddock/logos/Logos-Sample.html"
+                if grep -R 'Logos\|extraGreeting' "$staged/public/Haskell/demo/haddock"; then
+                  echo "filtered Haddock staging still contains excluded Logos module content" >&2
+                  exit 1
+                fi
                 grep -q 'kind: "haskell-haddock"' "$staged/src/content/docs/Haskell/demo/index.md"
                 grep -q 'html: "Haskell/demo/haddock/index.html"' "$staged/src/content/docs/Haskell/demo/index.md"
 
@@ -470,7 +474,7 @@
                   echo "Haddock package page should be an undecorated embedded app surface"; exit 1
                 fi
                 grep -q 'renderGreeting' "$site/Haskell/demo/haddock/Demo-Sample.html"
-                if grep -R 'Logos.Sample\|extraGreeting' "$site/Haskell/demo/haddock"; then
+                if grep -R 'Logos\|extraGreeting' "$site/Haskell/demo/haddock"; then
                   echo "Haddock module-prefix filter should exclude unselected public sublibraries"; exit 1
                 fi
                 grep -q 'repo-docs-haddock.css' "$site/Haskell/demo/haddock/index.html"
