@@ -253,7 +253,7 @@ docsSite.sites.<your-site>.haskell.packages.core = {
 };
 ```
 
-repo-docs builds the package with `pkgs.haskellPackages.callCabal2nix`, copies the generated Haddock HTML assets, and creates repo-docs wrapper pages for the package index and each module.
+repo-docs builds the package with `pkgs.haskellPackages.callCabal2nix`, copies the generated Haddock HTML assets, injects repo-docs-compatible Haddock styling, and creates one repo-docs wrapper page per package. Haddock's own contents, module index, source links, and quick-jump navigation stay inside that embedded API view.
 
 ## Typst manuscript PDFs
 

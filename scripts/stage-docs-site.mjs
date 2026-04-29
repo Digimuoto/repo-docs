@@ -629,7 +629,7 @@ function renderHaskellIndexMarkdown(packages) {
   ].join("\n");
 }
 
-function renderHaskellHaddockMarkdown({title, description, label, htmlPath, packageName, moduleName}) {
+function renderHaskellHaddockMarkdown({title, description, label, htmlPath, packageName}) {
   const lines = [
     "---",
     `title: ${yamlString(title)}`,
@@ -645,38 +645,223 @@ function renderHaskellHaddockMarkdown({title, description, label, htmlPath, pack
     `  html: ${yamlString(htmlPath)}`,
     `  package: ${yamlString(packageName)}`,
   );
-  if (moduleName) {
-    lines.push(`  module: ${yamlString(moduleName)}`);
-  }
   lines.push("---", "");
   return lines.join("\n");
 }
 
-function haddockTitle(html, fallback) {
-  const title = extractHtmlTitle(html, fallback)
-    .replace(/\s+\|\s+.*$/g, "")
-    .trim();
-  return title || fallback;
+function renderHaddockOverrideCss() {
+  return `
+:root {
+  color-scheme: light dark;
+  --haddock-bg: #f8f4ec;
+  --haddock-surface: #fffaf2;
+  --haddock-surface-muted: #f1eadf;
+  --haddock-border: #d8cfc0;
+  --haddock-text: #202124;
+  --haddock-text-muted: #5f6368;
+  --haddock-accent: #315c8c;
+  --haddock-code: #7c3aed;
 }
 
-function routeFromHaskellModule(moduleName) {
-  return moduleName
-    .split(".")
-    .map((segment) => assertSafeRelativePath(segment, `Haskell module segment in "${moduleName}"`))
-    .join("/");
+@media (prefers-color-scheme: dark) {
+  :root {
+    --haddock-bg: #101820;
+    --haddock-surface: #162331;
+    --haddock-surface-muted: #1d2b3b;
+    --haddock-border: #334155;
+    --haddock-text: #e5edf6;
+    --haddock-text-muted: #9fb0c3;
+    --haddock-accent: #8ab4f8;
+    --haddock-code: #c4b5fd;
+  }
 }
 
-function shouldGenerateHaddockModulePage(relativePath) {
-  if (path.extname(relativePath) !== ".html") {
-    return false;
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--haddock-bg);
+  color: var(--haddock-text);
+  font-family: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+a {
+  color: var(--haddock-accent);
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+a:hover,
+a:focus-visible {
+  text-decoration: underline;
+}
+
+#package-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3rem;
+  padding: 0.625rem 1rem;
+  background: color-mix(in srgb, var(--haddock-surface) 92%, transparent);
+  border-bottom: 1px solid var(--haddock-border);
+  backdrop-filter: blur(16px);
+}
+
+#package-header .caption,
+.caption {
+  color: var(--haddock-text);
+  font-weight: 600;
+}
+
+#page-menu,
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#page-menu a,
+.links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: 0 0.625rem;
+  border: 1px solid var(--haddock-border);
+  border-radius: 0.375rem;
+  color: var(--haddock-text-muted);
+  text-decoration: none;
+}
+
+#page-menu a:hover,
+#page-menu a:focus-visible,
+.links a:hover,
+.links a:focus-visible {
+  background: var(--haddock-surface-muted);
+  color: var(--haddock-text);
+}
+
+#content {
+  max-width: 92rem;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+#module-header,
+#description,
+#synopsis,
+#interface,
+#index,
+.top,
+.subs {
+  background: var(--haddock-surface);
+  border: 1px solid var(--haddock-border);
+  border-radius: 0.625rem;
+  margin: 0 0 1rem;
+  padding: 1rem;
+}
+
+#interface > h1,
+#content h1,
+#content h2,
+#content h3,
+#content h4 {
+  color: var(--haddock-text);
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+#table-of-contents,
+#description .doc,
+.doc {
+  color: var(--haddock-text-muted);
+}
+
+code,
+pre,
+.src,
+.src code {
+  color: var(--haddock-code);
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+pre,
+.src {
+  overflow-x: auto;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  border-color: var(--haddock-border) !important;
+  padding: 0.45rem 0.625rem;
+  vertical-align: top;
+}
+
+tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--haddock-surface-muted) 45%, transparent);
+}
+
+details {
+  border-color: var(--haddock-border);
+}
+
+summary {
+  cursor: pointer;
+  color: var(--haddock-text);
+}
+
+#footer {
+  margin: 2rem auto 0;
+  max-width: 92rem;
+  padding: 1rem 1.25rem 2rem;
+  color: var(--haddock-text-muted);
+}
+`.trim();
+}
+
+function injectHaddockStyle(html, stylesheetHref) {
+  const link = `<link rel="stylesheet" type="text/css" href="${escapeHtml(stylesheetHref)}" />`;
+  const withoutGoogleFont = html.replace(
+    /<link rel="stylesheet" type="text\/css" href="https:\/\/fonts\.googleapis\.com\/css\?family=PT\+Sans:400,400i,700" \/>/g,
+    "",
+  );
+  if (/<\/head>/i.test(withoutGoogleFont)) {
+    return withoutGoogleFont.replace(/<\/head>/i, `${link}</head>`);
   }
-  if (relativePath.includes("/")) {
-    return false;
+  return `${link}\n${withoutGoogleFont}`;
+}
+
+async function injectHaddockStyles(htmlRoot) {
+  const stylesheetPath = path.join(htmlRoot, "repo-docs-haddock.css");
+  await fs.writeFile(stylesheetPath, `${renderHaddockOverrideCss()}\n`, "utf8");
+
+  const htmlFiles = (await listFiles(htmlRoot))
+    .map((absolutePath) => normalizeSlashes(path.relative(htmlRoot, absolutePath)))
+    .filter((relativePath) => path.extname(relativePath) === ".html");
+
+  for (const relativePath of htmlFiles) {
+    const htmlPath = path.join(htmlRoot, relativePath);
+    const stylesheetHref = normalizeSlashes(
+      path.relative(path.dirname(htmlPath), stylesheetPath),
+    ) || "repo-docs-haddock.css";
+    const html = await fs.readFile(htmlPath, "utf8");
+    await fs.writeFile(htmlPath, injectHaddockStyle(html, stylesheetHref), "utf8");
   }
-  if (relativePath === "index.html" || relativePath.startsWith("doc-index")) {
-    return false;
-  }
-  return true;
 }
 
 async function generateHaskellDocs(contentRoot, publicRoot, haskell) {
@@ -735,6 +920,8 @@ async function generateHaskellDocs(contentRoot, publicRoot, haskell) {
     const publicHtmlRoot = path.join(publicHaskellRoot, safeKey, "haddock");
     await fs.mkdir(path.dirname(publicHtmlRoot), {recursive: true});
     await fs.cp(renderedHtmlRoot, publicHtmlRoot, {recursive: true});
+    await makeWritableRecursive(publicHtmlRoot);
+    await injectHaddockStyles(publicHtmlRoot);
 
     normalizedPackages.push({safeKey, title});
 
@@ -749,38 +936,10 @@ async function generateHaskellDocs(contentRoot, publicRoot, haskell) {
         label: packageName,
         htmlPath: packageHtmlPath,
         packageName,
-        moduleName: null,
       }),
       "utf8",
     );
     entries.push(packageRoute);
-
-    const htmlFiles = (await listFiles(renderedHtmlRoot))
-      .map((absolutePath) => normalizeSlashes(path.relative(renderedHtmlRoot, absolutePath)))
-      .filter(shouldGenerateHaddockModulePage)
-      .sort(comparePaths);
-
-    for (const relativeHtmlPath of htmlFiles) {
-      const html = await fs.readFile(path.join(renderedHtmlRoot, relativeHtmlPath), "utf8");
-      const fallbackModule = relativeHtmlPath.replace(/\.html$/i, "").replace(/-/g, ".");
-      const moduleName = haddockTitle(html, fallbackModule);
-      const moduleRoute = `${packageRoute}/${routeFromHaskellModule(moduleName)}`;
-      const targetPath = path.join(contentRoot, `${moduleRoute}.md`);
-      await fs.mkdir(path.dirname(targetPath), {recursive: true});
-      await fs.writeFile(
-        targetPath,
-        renderHaskellHaddockMarkdown({
-          title: moduleName,
-          description,
-          label: moduleName,
-          htmlPath: `${packageRoute}/haddock/${relativeHtmlPath}`,
-          packageName,
-          moduleName,
-        }),
-        "utf8",
-      );
-      entries.push(moduleRoute);
-    }
   }
 
   await fs.writeFile(

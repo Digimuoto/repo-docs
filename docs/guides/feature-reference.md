@@ -171,8 +171,10 @@ table elements in generated Theory pages.
 
 `haskell.packages.<name>.packageDir` points at a Cabal package. repo-docs builds
 the package with nixpkgs' Haskell infrastructure, publishes the generated
-Haddock HTML assets, and adds a generated `Haskell` section with package and
-module pages embedded in the repo-docs shell.
+Haddock HTML assets, injects repo-docs-compatible Haddock styling, and adds a
+generated `Haskell` section with one full API view per package. Haddock keeps
+ownership of module navigation, source links, and symbol search inside the
+embedded content window.
 
 ### Typst Manuscripts
 

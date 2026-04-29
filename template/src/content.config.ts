@@ -69,7 +69,6 @@ const docs = defineCollection({
       .object({
         html: z.string(),
         package: z.string(),
-        module: z.string().optional(),
       })
       .optional(),
   }),

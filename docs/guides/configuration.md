@@ -195,9 +195,11 @@ docsSite.sites.docs.haskell.packages.core = {
 `contentDir = ./docs`, the example points at `./haskell/core`.
 
 The directory must be a Cabal package. repo-docs builds it with
-`pkgs.haskellPackages.callCabal2nix`, copies the Haddock HTML output, and
-appends a generated `Haskell` section unless your explicit navigation already
-includes it.
+`pkgs.haskellPackages.callCabal2nix`, copies and lightly restyles the Haddock
+HTML output, and appends a generated `Haskell` section unless your explicit
+navigation already includes it. repo-docs adds one wrapper page per package;
+Haddock's own module tree, source links, and quick-jump navigation remain inside
+the embedded API view.
 
 ## Typst Manuscripts
 
