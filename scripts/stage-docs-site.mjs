@@ -1999,6 +1999,26 @@ function hasRelativePrefix(relativePath, prefix) {
   return relativePath === prefix || relativePath.startsWith(`${prefix}/`);
 }
 
+function findHtmlElementRange(html, tagName, start) {
+  const tagPattern = new RegExp(`</?${escapeRegExp(tagName)}\\b[^>]*>`, "gi");
+  tagPattern.lastIndex = start;
+
+  let depth = 0;
+  let token;
+  while ((token = tagPattern.exec(html))) {
+    if (token[0].startsWith("</")) {
+      depth -= 1;
+      if (depth === 0) {
+        return {start, end: tagPattern.lastIndex};
+      }
+    } else if (!/\/\s*>$/.test(token[0])) {
+      depth += 1;
+    }
+  }
+
+  return null;
+}
+
 function findEnclosingListItem(html, offset) {
   const tokenPattern = /<\/?li\b[^>]*>/gi;
   const stack = [];
@@ -2029,6 +2049,113 @@ function findEnclosingListItem(html, offset) {
   }
 
   return null;
+}
+
+function findHaddockModuleListRange(html) {
+  const moduleList = /<div\b[^>]*\bid=["']module-list["'][^>]*>/i.exec(html);
+  if (!moduleList) {
+    return null;
+  }
+  return findHtmlElementRange(html, "div", moduleList.index);
+}
+
+function haddockModuleListPackageCaption(html, range) {
+  const fragment = html.slice(range.start, range.end);
+  const captions = [...fragment.matchAll(
+    /<p\b[^>]*class=["'][^"']*\bcaption\b[^"']*["'][^>]*>([\s\S]*?)<\/p>/gi,
+  )];
+  return captions[1]?.[1] ?? captions[0]?.[1] ?? "Modules";
+}
+
+function buildHaddockModuleTree(moduleEntries) {
+  const root = {children: new Map()};
+  for (const entry of moduleEntries) {
+    const segments = entry.moduleName.split(".");
+    let node = root;
+    let fullName = "";
+    for (const segment of segments) {
+      fullName = fullName ? `${fullName}.${segment}` : segment;
+      if (!node.children.has(segment)) {
+        node.children.set(segment, {
+          children: new Map(),
+          fullName,
+          href: null,
+        });
+      }
+      node = node.children.get(segment);
+    }
+    node.href = entry.href;
+  }
+  return root;
+}
+
+function renderHaddockModuleTree(moduleEntries) {
+  const root = buildHaddockModuleTree(moduleEntries);
+  let nextId = 1;
+
+  function sortedChildren(node) {
+    return [...node.children.values()].sort((lhs, rhs) =>
+      lhs.fullName.localeCompare(rhs.fullName),
+    );
+  }
+
+  function renderModuleReference(node) {
+    const label = escapeHtml(node.fullName);
+    if (!node.href) {
+      return label;
+    }
+    return `<a href="${escapeHtml(node.href)}">${label}</a>`;
+  }
+
+  function renderNode(node) {
+    const children = sortedChildren(node);
+    const moduleReference = renderModuleReference(node);
+    if (children.length === 0) {
+      return [
+        "<li>",
+        '<span class="module">',
+        '<span class="noexpander">&nbsp;</span>',
+        moduleReference,
+        "</span>",
+        "</li>",
+      ].join("");
+    }
+
+    const detailsId = `repo-docs-module-list-${nextId++}`;
+    return [
+      "<li>",
+      '<span class="module">',
+      `<span class="details-toggle-control details-toggle" data-details-id="${detailsId}">&nbsp;</span>`,
+      moduleReference,
+      "</span>",
+      `<details id="${detailsId}" open="open"><summary class="hide-when-js-enabled">Submodules</summary>`,
+      `<ul>${children.map(renderNode).join("")}</ul>`,
+      "</details>",
+      "</li>",
+    ].join("");
+  }
+
+  const children = sortedChildren(root);
+  if (children.length === 0) {
+    return "";
+  }
+  return `<ul>${children.map(renderNode).join("")}</ul>`;
+}
+
+function replaceHaddockIndexModuleList(html, moduleEntries) {
+  const range = findHaddockModuleListRange(html);
+  if (!range) {
+    return html;
+  }
+  const packageCaption = haddockModuleListPackageCaption(html, range);
+  const moduleTree = renderHaddockModuleTree(moduleEntries);
+  const replacement = [
+    '<div id="module-list"><p class="caption">Modules</p>',
+    `<div id="module-list"><p class="caption">${packageCaption}</p>`,
+    moduleTree,
+    "</div></div>",
+  ].join("");
+  return `${html.slice(0, range.start)}${replacement}${html.slice(range.end)}`;
 }
 
 function removeHaddockModuleListItemsForExcludedLinks(html, excludedHrefs) {
@@ -2087,6 +2214,27 @@ function removeHaddockLinksToExcludedFiles(html, excludedHrefs) {
     .replace(/<details\b[^>]*>\s*<summary\b[^>]*>[\s\S]*?<\/summary>\s*<\/details>/gi, "")
     .replace(/<li>\s*<span class=(["'])module\b[^"']*\1[^>]*>[^<]*<\/span>\s*<\/li>/gi, "")
     .replace(/<tr>\s*<td class=(["'])src\1>[^<]*<\/td>\s*<td>&nbsp;<\/td>\s*<\/tr>\s*(?=<tr>\s*<td class=(["'])src\2>|<\/table>)/gi, "");
+}
+
+async function rewriteHaddockIndexModuleLists(htmlRoot, keptModulePages) {
+  const indexFiles = (await listFiles(htmlRoot))
+    .map((absolutePath) => normalizeSlashes(path.relative(htmlRoot, absolutePath)))
+    .filter((relativePath) => path.posix.basename(relativePath) === "index.html")
+    .sort();
+
+  for (const relativePath of indexFiles) {
+    const dir = path.posix.dirname(relativePath);
+    const moduleEntries = keptModulePages.map((entry) => {
+      const href = path.posix.relative(dir === "." ? "" : dir, entry.relativePath);
+      return {
+        href: href === "" ? path.posix.basename(entry.relativePath) : href,
+        moduleName: entry.moduleName,
+      };
+    });
+    const absolutePath = path.join(htmlRoot, relativePath);
+    const html = await fs.readFile(absolutePath, "utf8");
+    await fs.writeFile(absolutePath, replaceHaddockIndexModuleList(html, moduleEntries), "utf8");
+  }
 }
 
 async function filterHaddockModules(htmlRoot, modulePrefixes, packageKey) {
@@ -2202,6 +2350,8 @@ async function filterHaddockModules(htmlRoot, modulePrefixes, packageKey) {
     const html = await fs.readFile(absolutePath, "utf8");
     await fs.writeFile(absolutePath, removeHaddockLinksToExcludedFiles(html, excludedHrefs), "utf8");
   }
+
+  await rewriteHaddockIndexModuleLists(htmlRoot, keptModulePages);
 }
 
 async function injectHaddockStyles(htmlRoot) {
