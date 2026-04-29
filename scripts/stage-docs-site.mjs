@@ -2047,32 +2047,38 @@ ul.links li > a:not([href]) {
   display: none !important;
 }
 
-/* ===== Quick-jump search: re-skinned as an always-visible inline
- *       field anchored in the package-header strip =====
+/* ===== Quick-jump search: always-visible inline field, JS-reparented
+ *       into #package-header =====
  *
- * Haddock's quick-jump.css fixes #search at top: 3.2em with a 44em
- * width, a box-shadow glow, and a hidden-by-default modal class — only
- * shown when the trigger fires. We always show it, anchor it inside
- * the sticky #package-header (top: 0.625rem aligns with header
- * padding), strip the shadow and the light-blue chrome down to a
- * token-driven pill input, and float the results in a styled dropdown
- * directly beneath. The element stays in the DOM where Haddock's
- * React tree mounts it — no JS reparenting — so re-renders don't
- * fight us. */
+ * The theme-sync script moves Haddock's #search div from document.body
+ * into #package-header on first appearance (it's created lazily by
+ * haddock-bundle.min.js). With #search now a child of the header, the
+ * existing flex layout (caption / page-menu, justify-content:
+ * space-between) gives us a third item in the middle for free. Strip
+ * the modal chrome — fixed positioning, glow shadow, big width — down
+ * to a token-driven pill input. We force display: block so '.hidden'
+ * stops mattering; React's state.isVisible toggles class but our CSS
+ * always shows it. The dropdown #search-results sits beneath via
+ * position: absolute relative to #search. */
 #search,
 #search.hidden {
-  position: fixed !important;
-  top: 0.625rem !important;
-  left: 50% !important;
-  transform: translateX(-50%);
-  width: min(28rem, 60vw) !important;
-  max-height: none !important;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
   bottom: auto !important;
-  overflow: visible !important;
+  transform: none !important;
+  flex: 0 1 28rem;
+  min-width: 0;
+  max-width: 28rem;
+  width: 100%;
+  margin: 0 0.75rem;
   background: transparent !important;
-  z-index: 21 !important;
   display: block !important;
   font-family: var(--rd-font-sans);
+  overflow: visible !important;
+  max-height: none !important;
+  z-index: auto !important;
 }
 
 #search-form {
@@ -2114,10 +2120,15 @@ html[data-theme="cortex-light"] #search input {
   border-color: var(--rd-brand-primary) !important;
 }
 
-/* Dropdown results panel beneath the input. Hidden when empty so the
- * input sits alone before the user types. */
+/* Dropdown results panel beneath the input. Anchored absolutely so it
+ * doesn't push the rest of the header down. Hidden when input is
+ * empty (see :placeholder-shown rule above). */
 #search-results {
-  margin-top: 0.375rem !important;
+  position: absolute !important;
+  top: calc(100% + 0.375rem) !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin: 0 !important;
   padding: 0 !important;
   background: var(--rd-surface-primary) !important;
   color: var(--rd-text-content) !important;
@@ -2125,7 +2136,8 @@ html[data-theme="cortex-light"] #search input {
   border-radius: 0.5rem !important;
   max-height: min(28rem, 70vh) !important;
   overflow: auto !important;
-  box-shadow: none !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+  z-index: 21;
 }
 
 /* Haddock's React always renders SOMETHING inside #search-results —
@@ -2372,6 +2384,36 @@ function renderHaddockThemeSyncScript() {
         attributes: true,
         attributeFilter: ["data-theme", "data-mode"],
       });
+    } catch {
+      /* MutationObserver unavailable */
+    }
+  }
+
+  // Reparent Haddock's #search div into #package-header so the
+  // package-header's flex layout positions it inline (between the
+  // .caption title on the left and #page-menu on the right) instead
+  // of having it overlay the right-side pills as a fixed-position
+  // modal. The search div is created lazily by haddock-bundle.min.js
+  // (Preact render into document.body), so we observe body for
+  // childList changes and reparent on the first frame it appears.
+  // Preact re-renders only update the children of #search, not its
+  // parent attachment, so the move is stable across input changes.
+  function reparentSearch() {
+    const search = document.getElementById("search");
+    const header = document.getElementById("package-header");
+    if (!search || !header) return false;
+    if (search.parentElement === header) return true;
+    const pageMenu = header.querySelector("#page-menu");
+    if (pageMenu) header.insertBefore(search, pageMenu);
+    else header.appendChild(search);
+    return true;
+  }
+  if (!reparentSearch()) {
+    try {
+      const observer = new MutationObserver(() => {
+        if (reparentSearch()) observer.disconnect();
+      });
+      observer.observe(document.body, {childList: true, subtree: true});
     } catch {
       /* MutationObserver unavailable */
     }
