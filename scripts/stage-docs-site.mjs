@@ -1660,30 +1660,100 @@ table.info td,
   padding: 1rem 1.25rem;
 }
 
-/* Sub-block borders. .subs, .top > .doc, .subs > .doc use a
+/* Sub-block borders. Linuwial draws .subs and .subs > .doc with a
  * border-left: 1px solid gainsboro — gainsboro reads as a near-white
- * stripe in dark mode, the user's 'pure white strokes' note. Use the
- * border-primary token instead, and back the indent to a comfortable
- * 0.875rem so the rule sits a hair off the text. */
+ * stripe in dark mode. Keep the border for nested constructor / method
+ * subs (where the rail visually anchors the sub-list against the parent
+ * card), but use --rd-border-primary so it tracks themes. .top > .doc
+ * is intentionally excluded: the function declaration's own end-to-end
+ * divider (see below) is enough scaffolding for the doc beneath it, and
+ * a second left-rail just adds chrome without earning its keep. */
 .subs,
-.top > .doc,
 .subs > .doc {
   border-left: 1px solid var(--rd-border-primary);
   padding-left: 0.875rem;
   margin-bottom: 0.75rem;
 }
 
-/* Top-of-section divider on .top p.src. Linuwial draws a 3px-thick
- * #e5e5e5 underline beneath every declaration's source line, which
- * reads as a chunky white bar in dark mode. Replace with a 1px hairline
- * in --rd-border-primary. */
+/* Top-of-section divider on .top p.src. The .top card has 1.25rem of
+ * horizontal padding, so we pull p.src out by -1.25rem on each side and
+ * re-apply the padding inline — that puts the border-bottom flush
+ * against the card's inner edges (full-bleed), a single hairline
+ * separating the signature from the docstring rather than a stub line
+ * that floats inside the padding box. Linuwial's default is a 3px-thick
+ * #e5e5e5 underline scoped just to the text run; the override here is
+ * what produces the "stroke goes end-to-end inside the box" rhythm. */
 .top p.src,
 #interface .top > p.src {
   border-bottom: 1px solid var(--rd-border-primary);
   line-height: 1.7rem;
-  margin: 0 0 0.75rem;
-  padding: 0.5rem 0;
+  margin: 0 -1.25rem 0.875rem;
+  padding: 0 1.25rem 0.625rem;
   background: transparent !important;
+}
+
+/* Section dividers inside #interface. Haddock wraps each section
+ * heading as <a id="g:N"><h1>Title</h1></a>, sibling to the .top cards.
+ * The default h1 typography (1.625rem, no top margin) makes section
+ * breaks butt against the preceding card. Treat the anchor as a thin
+ * rail with a hairline above and a quiet uppercase eyebrow heading —
+ * the parent-shell TOC drawer carries the loud jump-list, so the
+ * in-page label can recede. */
+#interface > a[id^="g:"] {
+  display: block;
+  margin: 1.75rem 0 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rd-border-primary);
+  text-decoration: none;
+}
+
+#interface > a[id^="g:"]:first-of-type {
+  margin-top: 0.25rem;
+  padding-top: 0;
+  border-top: 0;
+}
+
+#interface > a[id^="g:"] > h1,
+#interface > a[id^="g:"] > h2 {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rd-text-content-tertiary) !important;
+}
+
+/* Docstring subheadings (h2/h3/h4 inside .doc — markdown-rendered
+ * sections in module/function descriptions). Linuwial gives them a
+ * generic margin-top that's fine when they follow text, but doesn't
+ * earn any extra breathing room when they follow a pre/blockquote/list
+ * block — they crowd the box above. Pin a floor on margin-top so a
+ * subheading never butts against a code block or callout. */
+.doc h2,
+.doc h3,
+.doc h4 {
+  margin-top: 1.5rem;
+}
+
+.doc > h2:first-child,
+.doc > h3:first-child,
+.doc > h4:first-child {
+  margin-top: 0.25rem;
+}
+
+.doc pre + h2,
+.doc pre + h3,
+.doc pre + h4,
+.doc blockquote + h2,
+.doc blockquote + h3,
+.doc blockquote + h4,
+.doc ul + h2,
+.doc ul + h3,
+.doc ul + h4,
+.doc ol + h2,
+.doc ol + h3,
+.doc ol + h4 {
+  margin-top: 1.75rem;
 }
 
 /* .subs .subs p.src is painted with #f8f8f8. Reset to transparent. */
