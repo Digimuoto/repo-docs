@@ -215,10 +215,34 @@ const sequence = findReadingSequence(navigation, currentHref);
             if (!list) return;
 
             const tocEl = docFrame.getElementById("table-of-contents");
-            const links = tocEl
+            let links = tocEl
               ? Array.from(tocEl.querySelectorAll("#contents-list ul li a"))
               : [];
             if (tocEl) tocEl.style.display = "none";
+
+            // Fallback for modules that don't declare named sections
+            // ('-- * Section' headings in haddock comments): pull each
+            // top-level declaration's anchor (a.def under #interface
+            // .top > p.src) and use those as TOC entries. Strips the
+            // 't:' / 'v:' / 'c:' Haddock id-prefix from the visible
+            // label so the TOC reads as a clean list of identifiers.
+            if (links.length === 0) {
+              const declAnchors = Array.from(
+                docFrame.querySelectorAll('#interface .top > p.src a.def[id], #interface .top > p.src a[id].def'),
+              );
+              const seen = new Set();
+              const synthetic = [];
+              for (const anchor of declAnchors) {
+                const id = anchor.getAttribute("id") || "";
+                if (!id || seen.has(id)) continue;
+                seen.add(id);
+                const fakeLink = docFrame.createElement("a");
+                fakeLink.setAttribute("href", "#" + id);
+                fakeLink.textContent = (anchor.textContent || "").trim();
+                synthetic.push(fakeLink);
+              }
+              if (synthetic.length > 0) links = synthetic;
+            }
 
             list.replaceChildren();
             scrollSpyDispose?.();

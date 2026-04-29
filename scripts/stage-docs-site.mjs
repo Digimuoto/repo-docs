@@ -925,13 +925,16 @@ p {
 }
 
 /* Top-level menu (Source / Contents / Index). Pill chips matching the
- * repo-docs sidebar nav item language. */
+ * repo-docs sidebar nav item language. The 0.5rem gap reads more
+ * confidently with the chip vocabulary than the earlier 0.375rem; the
+ * extra 4px between adjacent pills + their own padding makes the
+ * grouping read as a deliberate row rather than a packed strip. */
 #page-menu,
 ul.links {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.5rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2070,11 +2073,6 @@ ul.links li > a:not([href]) {
   z-index: 21 !important;
   display: block !important;
   font-family: var(--rd-font-sans);
-  pointer-events: none;
-}
-
-#search > * {
-  pointer-events: auto;
 }
 
 #search-form {
