@@ -143,18 +143,36 @@
     haskellPackages,
   }: let
     packageEntries = lib.mapAttrsToList (key: cfg: let
+      singleComponent =
+        if cfg ? component && cfg.component != null && cfg.component != ""
+        then [cfg.component]
+        else [];
+      components = lib.unique (
+        singleComponent
+        ++ (
+          if cfg ? components && cfg.components != null
+          then cfg.components
+          else []
+        )
+      );
       packageName =
         if cfg ? packageName && cfg.packageName != null && cfg.packageName != ""
         then cfg.packageName
         else key;
       sourceDir = builtins.dirOf contentDir + "/${cfg.packageDir}";
+      basePackage = pkgs.haskellPackages.callCabal2nix packageName sourceDir {};
+      targetedPackage =
+        if components == []
+        then basePackage
+        else
+          pkgs.haskell.lib.overrideCabal basePackage (drv: {
+            haddockFlags = (drv.haddockFlags or []) ++ components;
+          });
       package = pkgs.haskell.lib.dontCheck (
-        pkgs.haskell.lib.doHaddock (
-          pkgs.haskellPackages.callCabal2nix packageName sourceDir {}
-        )
+        pkgs.haskell.lib.doHaddock targetedPackage
       );
     in {
-      inherit key packageName;
+      inherit key packageName components;
       title =
         if cfg ? title && cfg.title != null && cfg.title != ""
         then cfg.title
@@ -187,6 +205,7 @@
           package_name=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .packageName' ${packagesFile})
           title=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .title' ${packagesFile})
           description=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .description' ${packagesFile})
+          components=$(jq -c --arg key "$key" '.[] | select(.key == $key) | .components' ${packagesFile})
           doc=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .doc' ${packagesFile})
           safe_key=$(printf '%s' "$key" | tr -c 'A-Za-z0-9_.-' '-')
 
@@ -212,7 +231,8 @@
             --arg packageName "$package_name" \
             --arg title "$title" \
             --arg description "$description" \
-            '{key: $key, safeKey: $safeKey, packageName: $packageName, title: $title, description: $description}' \
+            --argjson components "$components" \
+            '{key: $key, safeKey: $safeKey, packageName: $packageName, title: $title, description: $description, components: $components}' \
             >> "$items"
         done < <(jq -r '.[].key' ${packagesFile})
 

@@ -249,11 +249,17 @@ Point `haskell.packages.<name>.packageDir` at a Cabal package and repo-docs gene
 docsSite.sites.<your-site>.haskell.packages.core = {
   packageDir = "haskell/core";
   packageName = "my-core";
+  components = ["lib:my-core"];
   title = "Core API";
 };
 ```
 
 repo-docs builds the package with `pkgs.haskellPackages.callCabal2nix`, copies the generated Haddock HTML assets, injects repo-docs-compatible Haddock styling, and creates one repo-docs wrapper page per package. Haddock's own contents, module index, source links, and quick-jump navigation stay inside that embedded API view.
+
+By default, Haddock runs for the package's public library components. If the
+Cabal package exposes multiple public libraries, set `component =
+"lib:my-core"` for one target or `components = ["lib:my-core"]` for a list so
+repo-docs publishes only those component docs.
 
 ## Typst manuscript PDFs
 

@@ -73,6 +73,7 @@
             haskell.packages.demo = {
               packageDir = "fixtures/haskell-haddock";
               packageName = "repo-docs-haddock-demo";
+              components = ["lib:repo-docs-haddock-demo"];
               title = "Haddock Demo API";
               description = "Generated Haddock API fixture.";
             };
@@ -418,6 +419,7 @@
                 haskell.packages.demo = {
                   packageDir = "fixtures/haskell-haddock";
                   packageName = "repo-docs-haddock-demo";
+                  component = "lib:repo-docs-haddock-demo";
                   title = "Haddock Demo API";
                   description = "Generated Haddock API fixture.";
                 };
@@ -437,10 +439,12 @@
                 test -f "$staged/public/Haskell/demo/haddock/Demo-Sample.html"
                 test -f "$staged/public/Haskell/demo/haddock/src/Demo.Sample.html"
                 test -f "$staged/public/Haskell/demo/haddock/repo-docs-haddock.css"
+                test ! -e "$staged/public/Haskell/demo/haddock/Demo-Extra.html"
                 grep -q 'kind: "haskell-haddock"' "$staged/src/content/docs/Haskell/demo/index.md"
                 grep -q 'html: "Haskell/demo/haddock/index.html"' "$staged/src/content/docs/Haskell/demo/index.md"
 
                 grep -q '"Haskell/demo"' "$staged/src/generated/site-config.json"
+                grep -q '"lib:repo-docs-haddock-demo"' "$staged/src/generated/site-config.json"
                 if grep -q '"Haskell/demo/Demo/Sample"' "$staged/src/generated/site-config.json"; then
                   echo "Haddock modules should stay inside the embedded Haddock app"; exit 1
                 fi
@@ -451,6 +455,7 @@
                 test -f "$site/Haskell/demo/haddock/Demo-Sample.html"
                 test -f "$site/Haskell/demo/haddock/src/Demo.Sample.html"
                 test -f "$site/Haskell/demo/haddock/repo-docs-haddock.css"
+                test ! -e "$site/Haskell/demo/haddock/Demo-Extra.html"
                 test ! -e "$site/Haskell/demo/Demo/Sample/index.html"
                 grep -q 'docs-sidebar' "$site/Haskell/demo/index.html"
                 grep -q 'docs-haddock-embed-frame' "$site/Haskell/demo/index.html"
@@ -461,6 +466,9 @@
                   echo "Haddock package page should be an undecorated embedded app surface"; exit 1
                 fi
                 grep -q 'renderGreeting' "$site/Haskell/demo/haddock/Demo-Sample.html"
+                if grep -q 'Demo.Extra\|extraGreeting' "$site/Haskell/demo/haddock/index.html"; then
+                  echo "Haddock component filter should exclude unselected public sublibraries"; exit 1
+                fi
                 grep -q 'repo-docs-haddock.css' "$site/Haskell/demo/haddock/index.html"
                 grep -q '../repo-docs-haddock.css' "$site/Haskell/demo/haddock/src/Demo.Sample.html"
                 grep -q 'font-family: "IBM Plex Sans"' "$site/Haskell/demo/haddock/repo-docs-haddock.css"

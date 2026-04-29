@@ -247,6 +247,32 @@
                     '';
                   };
 
+                  component = lib.mkOption {
+                    type = lib.types.nullOr lib.types.str;
+                    default = null;
+                    example = "lib:my-library";
+                    description = ''
+                      Optional single Cabal component target to document.
+                      Use this when a Cabal package has multiple public
+                      libraries but the generated repo-docs page should expose
+                      only one of them. The value is passed to Cabal's Haddock
+                      command, for example `lib:my-library` for the main
+                      library or `lib:my-sublib` for a named public library.
+                    '';
+                  };
+
+                  components = lib.mkOption {
+                    type = lib.types.listOf lib.types.str;
+                    default = [];
+                    example = ["lib:my-library"];
+                    description = ''
+                      Optional Cabal component targets to document. When set,
+                      repo-docs runs Haddock only for these targets, keeping
+                      other public libraries from the same Cabal package out of
+                      the published Haddock tree.
+                    '';
+                  };
+
                   title = lib.mkOption {
                     type = lib.types.nullOr lib.types.str;
                     default = null;

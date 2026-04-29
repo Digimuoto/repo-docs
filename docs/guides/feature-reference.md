@@ -176,6 +176,9 @@ generated `Haskell` section with one full API view per package. Haddock keeps
 ownership of module navigation, source links, and symbol search inside the
 embedded content window.
 
+Packages with multiple public libraries can limit the generated output with
+`component = "lib:package-name"` or `components = ["lib:package-name"]`.
+
 ### Typst Manuscripts
 
 `typst.manuscripts.<name>.dir` points at a manuscript folder under `contentDir`.
