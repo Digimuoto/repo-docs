@@ -166,6 +166,10 @@
               grep -q "katex" "$site/Theory/Demo/Proof/index.html"
               grep -q "docs-haddock-embed-frame" "$site/Haskell/demo/index.html"
               grep -q 'src="/repo-docs/Haskell/demo/haddock/index.html"' "$site/Haskell/demo/index.html"
+              grep -q 'data-doc-kind="haskell-haddock"' "$site/Haskell/demo/index.html"
+              if grep -q 'docs-title\|docs-haddock-embed-actions\|data-haddock-fullscreen' "$site/Haskell/demo/index.html"; then
+                echo "Haddock package page should be an undecorated embedded app surface"; exit 1
+              fi
               grep -q "renderGreeting" "$site/Haskell/demo/haddock/Demo-Sample.html"
               grep -q "repo-docs-haddock.css" "$site/Haskell/demo/haddock/Demo-Sample.html"
               grep -q "repo-docs-haddock.css" "$site/Haskell/demo/haddock/src/Demo.Sample.html"
@@ -452,6 +456,10 @@
                 grep -q 'docs-haddock-embed-frame' "$site/Haskell/demo/index.html"
                 grep -q 'Haskell/demo/haddock/index.html' "$site/Haskell/demo/index.html"
                 grep -q 'src="/Haskell/demo/haddock/index.html"' "$site/Haskell/demo/index.html"
+                grep -q 'data-doc-kind="haskell-haddock"' "$site/Haskell/demo/index.html"
+                if grep -q 'docs-title\|docs-haddock-embed-actions\|data-haddock-fullscreen' "$site/Haskell/demo/index.html"; then
+                  echo "Haddock package page should be an undecorated embedded app surface"; exit 1
+                fi
                 grep -q 'renderGreeting' "$site/Haskell/demo/haddock/Demo-Sample.html"
                 grep -q 'repo-docs-haddock.css' "$site/Haskell/demo/haddock/index.html"
                 grep -q '../repo-docs-haddock.css' "$site/Haskell/demo/haddock/src/Demo.Sample.html"

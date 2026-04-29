@@ -1885,67 +1885,36 @@ video {
  *
  * Haddock generates a complete HTML app with its own CSS, quick-jump JS,
  * source links, and intra-package navigation. Keep that self-contained in an
- * iframe while repo-docs supplies the surrounding sidebar, title, and route.
+ * iframe while repo-docs supplies only the surrounding shell/sidebar.
  * ========================================================================== */
-.docs-haddock-embed {
-  margin: 0 0 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
+.docs-main-inner:has(.docs-prose-haskell-haddock) {
+  max-width: none;
+  min-height: 100vh;
+  padding: 0;
+}
+
+.docs-prose-haskell-haddock {
+  min-height: 100vh;
+}
+
+.docs-prose.docs-prose-haskell-haddock > * {
   max-width: none;
 }
 
-.docs-haddock-embed-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  align-self: flex-end;
-}
-
-.docs-haddock-embed-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  height: 1.875rem;
-  padding: 0 0.625rem;
-  background: transparent;
-  border: 1px solid var(--border-primary);
-  border-radius: 0.375rem;
-  color: var(--text-content-secondary);
-  font-family: var(--font-sans);
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background-color 150ms ease,
-    color 150ms ease,
-    border-color 150ms ease;
-}
-
-.docs-haddock-embed-chip:hover,
-.docs-haddock-embed-chip:focus-visible {
-  background: var(--surface-secondary);
-  color: var(--text-content);
-  border-color: var(--border-secondary);
-  outline: none;
-}
-
-.docs-haddock-embed-chip svg {
-  width: 0.75rem;
-  height: 0.75rem;
-  flex-shrink: 0;
+.docs-haddock-embed {
+  margin: 0;
+  height: 100vh;
+  max-width: none;
 }
 
 .docs-haddock-embed-frame-wrap {
   position: relative;
   width: 100%;
-  min-height: 36rem;
-  height: calc(100dvh - 16rem);
-  max-height: 92vh;
+  height: 100%;
+  min-height: 100vh;
   background: var(--surface-primary);
-  border: 1px solid var(--border-primary);
-  border-radius: 0.5rem;
+  border: 0;
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -2044,8 +2013,7 @@ video {
 
 @media (max-width: 640px) {
   .docs-haddock-embed-frame-wrap {
-    min-height: 28rem;
-    height: calc(100dvh - 22rem);
+    min-height: 100vh;
   }
 }
 
