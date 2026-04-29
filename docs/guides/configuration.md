@@ -187,7 +187,7 @@ your explicit navigation already includes it.
 docsSite.sites.docs.haskell.packages.core = {
   packageDir = "haskell/core";
   packageName = "my-core";
-  components = ["lib:my-core"];
+  modulePrefixes = ["MyCore"];
   title = "Core API";
 };
 ```
@@ -202,10 +202,10 @@ navigation already includes it. repo-docs adds one wrapper page per package;
 Haddock's own module tree, source links, and quick-jump navigation remain inside
 the embedded API view.
 
-If the Cabal package exposes multiple public libraries, constrain the generated
-API to one component with `component = "lib:my-core"` or to several components
-with `components = ["lib:my-core" "lib:my-extra"]`. Without either option,
-repo-docs keeps Cabal's package-level Haddock output.
+If the Cabal package exposes multiple public libraries, constrain the published
+API with `modulePrefixes = ["MyCore"]`. repo-docs still builds package-level
+Haddock output so in-package public-library dependencies work, then filters the
+published module pages, source pages, index rows, and quick-jump entries.
 
 ## Typst Manuscripts
 

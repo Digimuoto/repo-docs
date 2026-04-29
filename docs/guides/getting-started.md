@@ -153,7 +153,7 @@ sites.docs = {
   lean4.theoryDir = "theory";
   haskell.packages.core = {
     packageDir = "haskell/core";
-    components = ["lib:my-core"];
+    modulePrefixes = ["MyCore"];
   };
   typst.manuscripts.paper1.dir = "Publications/Paper-1/typst";
   languages.wire.grammarSrc = inputs.tree-sitter-wire;
@@ -161,7 +161,7 @@ sites.docs = {
 ```
 
 - `lean4.theoryDir` publishes a generated Lean Theory section.
-- `haskell.packages` builds Cabal packages and publishes generated Haddock API pages. Use `component` or `components` to limit docs to selected public libraries.
+- `haskell.packages` builds Cabal packages and publishes generated Haddock API pages. Use `modulePrefixes` to limit published modules for packages with multiple public libraries.
 - `typst.manuscripts` compiles explicit Typst manuscript folders to PDF reader pages.
 - `languages` registers tree-sitter grammars for custom fenced-code blocks.
 

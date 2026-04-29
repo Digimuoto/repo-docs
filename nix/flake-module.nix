@@ -252,12 +252,10 @@
                     default = null;
                     example = "lib:my-library";
                     description = ''
-                      Optional single Cabal component target to document.
-                      Use this when a Cabal package has multiple public
-                      libraries but the generated repo-docs page should expose
-                      only one of them. The value is passed to Cabal's Haddock
-                      command, for example `lib:my-library` for the main
-                      library or `lib:my-sublib` for a named public library.
+                      Optional Cabal component label for generated metadata.
+                      This does not constrain Cabal's Haddock command; use
+                      `modulePrefixes` to constrain the published Haddock
+                      pages.
                     '';
                   };
 
@@ -266,10 +264,24 @@
                     default = [];
                     example = ["lib:my-library"];
                     description = ''
-                      Optional Cabal component targets to document. When set,
-                      repo-docs runs Haddock only for these targets, keeping
-                      other public libraries from the same Cabal package out of
-                      the published Haddock tree.
+                      Optional Cabal component labels for generated metadata.
+                      These do not constrain Cabal's Haddock command; use
+                      `modulePrefixes` to constrain the published Haddock
+                      pages.
+                    '';
+                  };
+
+                  modulePrefixes = lib.mkOption {
+                    type = lib.types.listOf lib.types.str;
+                    default = [];
+                    example = ["MyProject" "MyProject.Platform"];
+                    description = ''
+                      Optional Haskell module prefixes to publish from the
+                      generated Haddock tree. repo-docs still builds
+                      package-level Haddock output, then removes module pages,
+                      source pages, index rows, and quick-jump entries whose
+                      module names do not match one of these prefixes. A prefix
+                      matches the exact module and its submodules.
                     '';
                   };
 

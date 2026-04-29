@@ -176,8 +176,10 @@ generated `Haskell` section with one full API view per package. Haddock keeps
 ownership of module navigation, source links, and symbol search inside the
 embedded content window.
 
-Packages with multiple public libraries can limit the generated output with
-`component = "lib:package-name"` or `components = ["lib:package-name"]`.
+Packages with multiple public libraries can limit the published output with
+`modulePrefixes = ["MyProject"]`. This filters the generated Haddock tree after
+the normal package-level build, so Cabal can still resolve in-package public
+library dependencies.
 
 ### Typst Manuscripts
 

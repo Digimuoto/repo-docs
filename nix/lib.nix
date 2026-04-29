@@ -155,24 +155,22 @@
           else []
         )
       );
+      modulePrefixes =
+        if cfg ? modulePrefixes && cfg.modulePrefixes != null
+        then cfg.modulePrefixes
+        else [];
       packageName =
         if cfg ? packageName && cfg.packageName != null && cfg.packageName != ""
         then cfg.packageName
         else key;
       sourceDir = builtins.dirOf contentDir + "/${cfg.packageDir}";
-      basePackage = pkgs.haskellPackages.callCabal2nix packageName sourceDir {};
-      targetedPackage =
-        if components == []
-        then basePackage
-        else
-          pkgs.haskell.lib.overrideCabal basePackage (drv: {
-            haddockFlags = (drv.haddockFlags or []) ++ components;
-          });
       package = pkgs.haskell.lib.dontCheck (
-        pkgs.haskell.lib.doHaddock targetedPackage
+        pkgs.haskell.lib.doHaddock (
+          pkgs.haskellPackages.callCabal2nix packageName sourceDir {}
+        )
       );
     in {
-      inherit key packageName components;
+      inherit key packageName components modulePrefixes;
       title =
         if cfg ? title && cfg.title != null && cfg.title != ""
         then cfg.title
@@ -206,6 +204,7 @@
           title=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .title' ${packagesFile})
           description=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .description' ${packagesFile})
           components=$(jq -c --arg key "$key" '.[] | select(.key == $key) | .components' ${packagesFile})
+          module_prefixes=$(jq -c --arg key "$key" '.[] | select(.key == $key) | .modulePrefixes' ${packagesFile})
           doc=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .doc' ${packagesFile})
           safe_key=$(printf '%s' "$key" | tr -c 'A-Za-z0-9_.-' '-')
 
@@ -232,7 +231,8 @@
             --arg title "$title" \
             --arg description "$description" \
             --argjson components "$components" \
-            '{key: $key, safeKey: $safeKey, packageName: $packageName, title: $title, description: $description, components: $components}' \
+            --argjson modulePrefixes "$module_prefixes" \
+            '{key: $key, safeKey: $safeKey, packageName: $packageName, title: $title, description: $description, components: $components, modulePrefixes: $modulePrefixes}' \
             >> "$items"
         done < <(jq -r '.[].key' ${packagesFile})
 

@@ -47,6 +47,10 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function yamlString(value) {
   return JSON.stringify(String(value));
 }
@@ -1941,6 +1945,205 @@ function injectHaddockStyle(html, stylesheetHref) {
   return `${inject}\n${withoutGoogleFont}`;
 }
 
+function normalizeHaddockModulePrefixes(rawPrefixes, packageKey) {
+  if (rawPrefixes == null) {
+    return [];
+  }
+  if (!Array.isArray(rawPrefixes)) {
+    throw new Error(`Haskell package "${packageKey}" modulePrefixes must be a list.`);
+  }
+  const normalized = [];
+  for (const rawPrefix of rawPrefixes) {
+    if (typeof rawPrefix !== "string" || rawPrefix.trim() === "") {
+      throw new Error(`Haskell package "${packageKey}" modulePrefixes entries must be non-empty strings.`);
+    }
+    const prefix = rawPrefix.trim().replace(/\.+$/g, "");
+    const segments = prefix.split(".");
+    if (
+      prefix === "" ||
+      segments.some((segment) => segment === "" || segment.includes("/") || segment.includes("\\"))
+    ) {
+      throw new Error(`Haskell package "${packageKey}" module prefix "${rawPrefix}" is invalid.`);
+    }
+    if (!normalized.includes(prefix)) {
+      normalized.push(prefix);
+    }
+  }
+  return normalized;
+}
+
+function haddockModuleMatchesPrefix(moduleName, prefixes) {
+  return prefixes.some((prefix) => moduleName === prefix || moduleName.startsWith(`${prefix}.`));
+}
+
+function moduleNameFromHaddockHtmlPath(relativePath) {
+  const normalized = normalizeSlashes(relativePath);
+  if (!normalized.endsWith(".html")) {
+    return null;
+  }
+  const basename = path.posix.basename(normalized);
+  if (basename === "index.html" || basename === "doc-index.html") {
+    return null;
+  }
+  const stem = basename.slice(0, -".html".length);
+  if (!stem || !/^[A-Z]/.test(stem)) {
+    return null;
+  }
+  if (normalized.split("/").includes("src")) {
+    return stem;
+  }
+  return stem.replace(/-/g, ".");
+}
+
+function hasRelativePrefix(relativePath, prefix) {
+  return relativePath === prefix || relativePath.startsWith(`${prefix}/`);
+}
+
+function removeHaddockLinksToExcludedFiles(html, excludedHrefs) {
+  let rewritten = html;
+  for (const href of excludedHrefs) {
+    const hrefPattern = escapeRegExp(href);
+    const hrefAttribute = `href=["']${hrefPattern}(?:#[^"']*)?["']`;
+    const leafModuleItem = new RegExp(
+      `<li>\\s*<span class=(["'])module\\1>\\s*<span class=(["'])(?:noexpander|collapser|expander)\\2>[\\s\\S]*?${hrefAttribute}[\\s\\S]*?<\\/li>`,
+      "gi",
+    );
+    const tableRow = new RegExp(
+      `<tr\\b[^>]*>[\\s\\S]*?${hrefAttribute}[\\s\\S]*?<\\/tr>`,
+      "gi",
+    );
+    const anchor = new RegExp(
+      `<a\\b[^>]*${hrefAttribute}[^>]*>([\\s\\S]*?)<\\/a>`,
+      "gi",
+    );
+    rewritten = rewritten
+      .replace(leafModuleItem, "")
+      .replace(tableRow, "")
+      .replace(anchor, "$1");
+  }
+
+  return rewritten
+    .replace(/<ul>\s*<\/ul>/gi, "")
+    .replace(/<details\b[^>]*>\s*<summary\b[^>]*>[\s\S]*?<\/summary>\s*<\/details>/gi, "")
+    .replace(/<li>\s*<span class=(["'])module\b[^"']*\1[^>]*>[^<]*<\/span>\s*<\/li>/gi, "")
+    .replace(/<tr>\s*<td class=(["'])src\1>[^<]*<\/td>\s*<td>&nbsp;<\/td>\s*<\/tr>\s*(?=<tr>\s*<td class=(["'])src\2>|<\/table>)/gi, "");
+}
+
+async function filterHaddockModules(htmlRoot, modulePrefixes, packageKey) {
+  if (modulePrefixes.length === 0) {
+    return;
+  }
+
+  const files = (await listFiles(htmlRoot))
+    .map((absolutePath) => normalizeSlashes(path.relative(htmlRoot, absolutePath)))
+    .sort();
+  const htmlFiles = files.filter((relativePath) => path.extname(relativePath) === ".html");
+  const modulePages = htmlFiles
+    .map((relativePath) => ({
+      relativePath,
+      moduleName: moduleNameFromHaddockHtmlPath(relativePath),
+      isSource: normalizeSlashes(relativePath).split("/").includes("src"),
+    }))
+    .filter((entry) => entry.moduleName);
+  const keptModulePages = modulePages.filter(
+    (entry) => !entry.isSource && haddockModuleMatchesPrefix(entry.moduleName, modulePrefixes),
+  );
+
+  if (keptModulePages.length === 0) {
+    throw new Error(
+      `Haskell package "${packageKey}" modulePrefixes did not match any Haddock module pages.`,
+    );
+  }
+
+  const excludedModulePages = modulePages.filter(
+    (entry) => !haddockModuleMatchesPrefix(entry.moduleName, modulePrefixes),
+  );
+  const excludedPaths = new Set(excludedModulePages.map((entry) => entry.relativePath));
+  const removedDirs = new Set();
+  const componentDirs = [...new Set(
+    htmlFiles
+      .filter((relativePath) => path.posix.basename(relativePath) === "index.html")
+      .map((relativePath) => path.posix.dirname(relativePath))
+      .filter((dir) => dir !== "."),
+  )].sort((a, b) => b.length - a.length);
+
+  for (const dir of componentDirs) {
+    const modulePagesInDir = modulePages.filter(
+      (entry) => !entry.isSource && path.posix.dirname(entry.relativePath) === dir,
+    );
+    if (
+      modulePagesInDir.length > 0 &&
+      modulePagesInDir.every((entry) => excludedPaths.has(entry.relativePath))
+    ) {
+      removedDirs.add(dir);
+      for (const relativePath of files) {
+        if (hasRelativePrefix(relativePath, dir)) {
+          excludedPaths.add(relativePath);
+        }
+      }
+    }
+  }
+
+  for (const dir of removedDirs) {
+    await removeIfExists(path.join(htmlRoot, dir));
+  }
+
+  for (const relativePath of excludedModulePages.map((entry) => entry.relativePath)) {
+    if ([...removedDirs].some((dir) => hasRelativePrefix(relativePath, dir))) {
+      continue;
+    }
+    await removeIfExists(path.join(htmlRoot, relativePath));
+  }
+
+  for (const relativePath of files) {
+    const extension = path.posix.extname(relativePath);
+    if (extension === ".haddock" || extension === ".txt") {
+      await removeIfExists(path.join(htmlRoot, relativePath));
+    }
+  }
+
+  const remainingFiles = (await listFiles(htmlRoot))
+    .map((absolutePath) => normalizeSlashes(path.relative(htmlRoot, absolutePath)))
+    .sort();
+  const remainingHtmlFiles = remainingFiles.filter((relativePath) => path.extname(relativePath) === ".html");
+
+  for (const relativePath of remainingFiles.filter((file) => path.posix.basename(file) === "doc-index.json")) {
+    const absolutePath = path.join(htmlRoot, relativePath);
+    let entries;
+    try {
+      entries = JSON.parse(await fs.readFile(absolutePath, "utf8"));
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(entries)) {
+      continue;
+    }
+    const filtered = entries.filter((entry) => {
+      if (!entry || typeof entry !== "object" || typeof entry.module !== "string") {
+        return true;
+      }
+      return haddockModuleMatchesPrefix(entry.module, modulePrefixes);
+    });
+    await fs.writeFile(absolutePath, JSON.stringify(filtered), "utf8");
+  }
+
+  for (const relativePath of remainingHtmlFiles) {
+    const dir = path.posix.dirname(relativePath);
+    const excludedHrefs = [...excludedPaths]
+      .filter((excludedPath) => path.extname(excludedPath) === ".html")
+      .map((excludedPath) => {
+        const relativeHref = path.posix.relative(dir === "." ? "" : dir, excludedPath);
+        return relativeHref === "" ? path.posix.basename(excludedPath) : relativeHref;
+      });
+    if (excludedHrefs.length === 0) {
+      continue;
+    }
+    const absolutePath = path.join(htmlRoot, relativePath);
+    const html = await fs.readFile(absolutePath, "utf8");
+    await fs.writeFile(absolutePath, removeHaddockLinksToExcludedFiles(html, excludedHrefs), "utf8");
+  }
+}
+
 async function injectHaddockStyles(htmlRoot) {
   const stylesheetPath = path.join(htmlRoot, "repo-docs-haddock.css");
   await fs.writeFile(stylesheetPath, `${renderHaddockOverrideCss()}\n`, "utf8");
@@ -2010,12 +2213,14 @@ async function generateHaskellDocs(contentRoot, publicRoot, haskell) {
     const description = typeof rawPackage.description === "string" && rawPackage.description.trim() !== ""
       ? rawPackage.description.trim()
       : null;
+    const modulePrefixes = normalizeHaddockModulePrefixes(rawPackage.modulePrefixes, key);
 
     const renderedHtmlRoot = path.join(haskell.renderedDir, "packages", safeKey, "html");
     const publicHtmlRoot = path.join(publicHaskellRoot, safeKey, "haddock");
     await fs.mkdir(path.dirname(publicHtmlRoot), {recursive: true});
     await fs.cp(renderedHtmlRoot, publicHtmlRoot, {recursive: true});
     await makeWritableRecursive(publicHtmlRoot);
+    await filterHaddockModules(publicHtmlRoot, modulePrefixes, key);
     await injectHaddockStyles(publicHtmlRoot);
 
     normalizedPackages.push({safeKey, title});
