@@ -17,6 +17,9 @@ interface Props {
   headings?: MarkdownHeading[];
   navigation: SidebarSectionType[];
   title: string;
+  // "haddock" forces the TOC drawer on with an empty list skeleton; the
+  // Haddock embed populates it client-side from the iframe document.
+  tocVariant?: "headings" | "haddock";
 }
 
 const {
@@ -26,6 +29,7 @@ const {
   headings = [],
   navigation,
   title,
+  tocVariant = "headings",
 } = Astro.props;
 
 const currentPath = Astro.url.pathname;
@@ -52,6 +56,7 @@ const fontFamilies =
   "family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap";
 
 const tocEnabled =
+  tocVariant === "haddock" ||
   headings.filter((heading) => heading.depth >= 2 && heading.depth <= 4).length > 0;
 
 // Pagefind is generated alongside the static build (dist/pagefind/).
@@ -301,7 +306,14 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
               </svg>
             </button>
           </div>
-          <TableOfContents headings={headings} />
+          {tocVariant === "haddock" ? (
+            <nav class="docs-toc-nav docs-toc-nav-haddock" aria-label="On this page">
+              <p class="docs-toc-eyebrow">On this page</p>
+              <ol class="docs-toc-list" data-haddock-toc></ol>
+            </nav>
+          ) : (
+            <TableOfContents headings={headings} />
+          )}
         </div>
 
         <div class="docs-toc-rail" aria-hidden="true">

@@ -87,6 +87,7 @@ const sequence = findReadingSequence(navigation, currentHref);
   headings={layoutHeadings}
   hasMermaid={hasMermaid}
   docKind={docKind}
+  tocVariant={haddockHtmlHref ? "haddock" : "headings"}
 >
   {!haddockHtmlHref && <DocsTitle doc={doc} />}
   {!haddockHtmlHref && <MobileToc headings={headings} />}
@@ -202,10 +203,126 @@ const sequence = findReadingSequence(navigation, currentHref);
             doc.documentElement.dataset.mode = root.dataset.mode ?? "";
           }
 
+          // Hoist the iframe's per-module #table-of-contents into the
+          // parent shell's TOC drawer. Haddock's in-page Contents card
+          // is hidden so it doesn't double up. Re-runs on every iframe
+          // load so cross-module navigation refreshes the drawer.
+          let scrollSpyDispose = null;
+          function syncHaddockToc() {
+            const docFrame = iframe?.contentDocument;
+            if (!docFrame) return;
+            const list = document.querySelector("[data-haddock-toc]");
+            if (!list) return;
+
+            const tocEl = docFrame.getElementById("table-of-contents");
+            const links = tocEl
+              ? Array.from(tocEl.querySelectorAll("#contents-list ul li a"))
+              : [];
+            if (tocEl) tocEl.style.display = "none";
+
+            list.replaceChildren();
+            scrollSpyDispose?.();
+            scrollSpyDispose = null;
+
+            const tocAside = document.getElementById("docs-toc");
+            if (links.length === 0) {
+              if (tocAside) tocAside.hidden = true;
+              document.body.dataset.tocEnabled = "false";
+              return;
+            }
+            if (tocAside) tocAside.hidden = false;
+            document.body.dataset.tocEnabled = "true";
+
+            const entries = [];
+            for (const a of links) {
+              const href = a.getAttribute("href") || "";
+              const id = href.startsWith("#") ? href.slice(1) : "";
+              if (!id) continue;
+              const li = document.createElement("li");
+              li.className = "docs-toc-item docs-toc-item-d0";
+              li.dataset.tocAnchor = id;
+              const link = document.createElement("a");
+              link.className = "docs-toc-link";
+              link.href = href;
+              const span = document.createElement("span");
+              span.textContent = (a.textContent || "").trim();
+              link.appendChild(span);
+              li.appendChild(link);
+              list.appendChild(li);
+
+              link.addEventListener("click", (ev) => {
+                ev.preventDefault();
+                const target = docFrame.getElementById(id);
+                if (!target) return;
+                target.scrollIntoView({behavior: "smooth", block: "start"});
+                try {
+                  const win = iframe.contentWindow;
+                  if (win && win.history?.replaceState) {
+                    win.history.replaceState(null, "", "#" + id);
+                  } else {
+                    docFrame.location.hash = id;
+                  }
+                } catch {
+                  /* same-origin denied — non-fatal */
+                }
+              });
+
+              const heading = docFrame.getElementById(id);
+              if (heading) entries.push({id, item: li, heading});
+            }
+
+            if (entries.length === 0) return;
+
+            const setActive = (id) => {
+              for (const entry of entries) {
+                entry.item.classList.toggle("is-active", entry.id === id);
+              }
+            };
+
+            const TRIGGER = 120;
+            const scrollWin = iframe.contentWindow;
+            function computeActive() {
+              let active = null;
+              for (const entry of entries) {
+                const top = entry.heading.getBoundingClientRect().top;
+                if (top <= TRIGGER) {
+                  active = entry.id;
+                } else {
+                  break;
+                }
+              }
+              if (active === null && (scrollWin?.scrollY ?? 0) < 40) {
+                active = entries[0].id;
+              }
+              setActive(active);
+            }
+
+            let scheduled = false;
+            function schedule() {
+              if (scheduled) return;
+              scheduled = true;
+              (scrollWin?.requestAnimationFrame ?? window.requestAnimationFrame)(
+                () => {
+                  scheduled = false;
+                  computeActive();
+                },
+              );
+            }
+
+            scrollWin?.addEventListener("scroll", schedule, {passive: true});
+            scrollWin?.addEventListener("resize", schedule);
+            computeActive();
+            scrollSpyDispose = () => {
+              scrollWin?.removeEventListener("scroll", schedule);
+              scrollWin?.removeEventListener("resize", schedule);
+            };
+          }
+
           if (iframe) {
             iframe.addEventListener("load", () => {
               wrap.dataset.loaded = "true";
               syncTheme();
+              syncHaddockToc();
             });
             iframe.addEventListener("error", () => {
               if (fallback) fallback.hidden = false;
