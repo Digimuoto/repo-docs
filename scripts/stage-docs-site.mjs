@@ -1995,37 +1995,304 @@ span.rightedge {
   color: inherit;
 }
 
-/* Quick-jump panel (the modal Haddock renders for the "/" hotkey).
- * Repaint its surfaces / borders only — Haddock owns layout/JS. */
-#search,
-#search-form,
-#search-results,
-.search-result {
+/* ===== Top-bar polish =====
+ * The package-header is the strip across the very top of every Haddock
+ * module page. Linuwial drops in a Source / Contents / Index <ul> +
+ * (via haddock-bundle.min.js) a Quick Jump trigger and an Instances
+ * toggle. Hide the Quick Jump trigger (the search field below is
+ * always visible, the trigger is redundant), strip the interpunct
+ * separator Linuwial draws between items, and bring the JS-injected
+ * <button> elements (Instances) into the same pill-chip vocabulary as
+ * the existing <a> items. */
+ul.links > li + li:before {
+  content: none !important;
+}
+
+#page-menu li > button,
+#page-menu li > a:not([href]),
+ul.links li > button,
+ul.links li > a:not([href]) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.875rem;
+  padding: 0 0.75rem;
+  margin: 0;
   font-family: var(--rd-font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid var(--rd-border-primary);
+  border-radius: 0.5rem;
+  background: var(--rd-surface-primary);
+  color: var(--rd-text-content-secondary);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 
-#search {
-  background: color-mix(in srgb, var(--rd-bg-primary) 92%, transparent) !important;
+#page-menu li > button:hover,
+#page-menu li > a:not([href]):hover,
+#page-menu li > button:focus-visible,
+#page-menu li > a:not([href]):focus-visible {
+  background: var(--rd-surface-secondary);
+  border-color: var(--rd-border-secondary);
+  color: var(--rd-text-content);
+  outline: none;
 }
 
-#search > div,
-#search-form,
-#search-results,
-.search-result {
-  background: var(--rd-surface-primary) !important;
-  color: var(--rd-text-content) !important;
-  border-color: var(--rd-border-primary) !important;
+#page-menu li:has(a[title="Quick Jump"]),
+#page-menu li:has(button[title="Quick Jump"]) {
+  display: none !important;
 }
 
-#search-results .search-result.selected {
-  background: var(--rd-surface-secondary) !important;
+/* ===== Quick-jump search: re-skinned as an always-visible inline
+ *       field anchored in the package-header strip =====
+ *
+ * Haddock's quick-jump.css fixes #search at top: 3.2em with a 44em
+ * width, a box-shadow glow, and a hidden-by-default modal class — only
+ * shown when the trigger fires. We always show it, anchor it inside
+ * the sticky #package-header (top: 0.625rem aligns with header
+ * padding), strip the shadow and the light-blue chrome down to a
+ * token-driven pill input, and float the results in a styled dropdown
+ * directly beneath. The element stays in the DOM where Haddock's
+ * React tree mounts it — no JS reparenting — so re-renders don't
+ * fight us. */
+#search,
+#search.hidden {
+  position: fixed !important;
+  top: 0.625rem !important;
+  left: 50% !important;
+  transform: translateX(-50%);
+  width: min(28rem, 60vw) !important;
+  max-height: none !important;
+  bottom: auto !important;
+  overflow: visible !important;
+  background: transparent !important;
+  z-index: 21 !important;
+  display: block !important;
+  font-family: var(--rd-font-sans);
+  pointer-events: none;
 }
 
+#search > * {
+  pointer-events: auto;
+}
+
+#search-form {
+  position: relative;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+#search-form input,
 #search input {
-  background: var(--rd-bg-primary) !important;
+  width: 100%;
+  height: 1.875rem !important;
+  padding: 0 0.875rem 0 2rem !important;
+  margin: 0 !important;
+  font-family: var(--rd-font-sans);
+  font-size: 0.8125rem !important;
+  line-height: 1.875rem !important;
+  color: var(--rd-text-content) !important;
+  background-color: var(--rd-surface-primary) !important;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%238b949e' stroke-width='1.5'><circle cx='7' cy='7' r='4.5'/><path d='M10.5 10.5L13.5 13.5' stroke-linecap='round'/></svg>") !important;
+  background-repeat: no-repeat !important;
+  background-position: 0.625rem center !important;
+  background-size: 0.875rem 0.875rem !important;
+  border: 1px solid var(--rd-border-primary) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: none !important;
+  outline: none !important;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+html[data-theme="cortex-light"] #search-form input,
+html[data-theme="cortex-light"] #search input {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23656d76' stroke-width='1.5'><circle cx='7' cy='7' r='4.5'/><path d='M10.5 10.5L13.5 13.5' stroke-linecap='round'/></svg>") !important;
+}
+
+#search-form input:focus,
+#search input:focus {
+  border-color: var(--rd-brand-primary) !important;
+}
+
+/* Dropdown results panel beneath the input. Hidden when empty so the
+ * input sits alone before the user types. */
+#search-results {
+  margin-top: 0.375rem !important;
+  padding: 0 !important;
+  background: var(--rd-surface-primary) !important;
   color: var(--rd-text-content) !important;
   border: 1px solid var(--rd-border-primary) !important;
   border-radius: 0.5rem !important;
+  max-height: min(28rem, 70vh) !important;
+  overflow: auto !important;
+  box-shadow: none !important;
+}
+
+#search-results:empty {
+  display: none !important;
+}
+
+#search-form input + #search-results {
+  border-top: 1px solid var(--rd-border-primary) !important;
+}
+
+#search-results > ul {
+  margin: 0 !important;
+  padding: 0.25rem 0 !important;
+  list-style: none !important;
+}
+
+#search-results > ul > li {
+  padding: 0.5rem 0.875rem !important;
+  margin: 0 !important;
+  border-bottom: 1px solid var(--rd-border-primary) !important;
+  background: transparent !important;
+}
+
+#search-results > ul > li:last-child {
+  border-bottom: 0 !important;
+}
+
+#search-results .search-result.selected,
+#search-results > ul > li.selected {
+  background: var(--rd-surface-secondary) !important;
+}
+
+#search-results > p {
+  padding: 0.625rem 0.875rem !important;
+  margin: 0 !important;
+  color: var(--rd-text-content-secondary) !important;
+  font-size: 0.8125rem !important;
+}
+
+.search-module h4 {
+  margin: 0 0 0.25rem !important;
+  font-size: 0.6875rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rd-text-content-tertiary) !important;
+}
+
+.search-module > ul {
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+.search-module > ul > li > a[href] {
+  display: block;
+  padding: 0.25rem 0.5rem !important;
+  border-radius: 0.3rem;
+  font-family: var(--rd-font-mono);
+  font-size: 0.8125rem;
+  color: var(--rd-text-content) !important;
+  background: transparent !important;
+}
+
+.search-module > ul > li > a[href].active-link,
+.search-module > ul > li > a[href]:hover {
+  background: var(--rd-surface-secondary) !important;
+  color: var(--rd-brand-primary) !important;
+  text-decoration: none !important;
+}
+
+.search-result a a {
+  color: inherit !important;
+}
+
+.search-result ul.subs {
+  display: inline-block;
+}
+
+.search-result ul.subs::after {
+  color: var(--rd-text-content-quaternary) !important;
+}
+
+.more-results {
+  color: var(--rd-text-content-tertiary) !important;
+}
+
+.more-results::before {
+  color: var(--rd-text-content-quaternary) !important;
+}
+
+/* Keyboard-shortcut help table inside the empty-state quick-jump
+ * results panel. Linuwial paints `.key` with a pale-blue cap; tint to
+ * the surface palette. */
+.keyboard-shortcuts {
+  margin: 0.5rem 0.875rem !important;
+  font-size: 0.8125rem;
+}
+
+.keyboard-shortcuts th {
+  color: var(--rd-text-content-tertiary) !important;
+  font-weight: 500;
+}
+
+.key {
+  background: var(--rd-surface-secondary) !important;
+  border: 1px solid var(--rd-border-primary) !important;
+  color: var(--rd-text-content) !important;
+  border-radius: 0.25rem !important;
+}
+
+/* ===== Instances dropdown =====
+ * Haddock's quick-jump.css fixes .dropdown-menu top: 3.2em right: 0
+ * with a light-blue card and a hardcoded purple button palette (the
+ * Linuwial brand). Re-skin to match the pill-chip vocabulary so the
+ * Instances toggle reads as part of the same chrome family as the
+ * page-menu it springs from. */
+.dropdown-menu {
+  top: 3.0625rem !important;
+  right: clamp(0.75rem, 2vw, 1.5rem) !important;
+  padding: 0.375rem !important;
+  background: var(--rd-surface-primary) !important;
+  border: 1px solid var(--rd-border-primary) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: none !important;
+  font-family: var(--rd-font-sans);
+  z-index: 22 !important;
+}
+
+.dropdown-menu * {
+  margin: 0 !important;
+}
+
+.dropdown-menu button {
+  display: block;
+  width: 100%;
+  min-width: 7rem;
+  padding: 0.4rem 0.75rem !important;
+  border: 1px solid transparent !important;
+  border-radius: 0.375rem !important;
+  background: transparent !important;
+  color: var(--rd-text-content-secondary) !important;
+  font-family: var(--rd-font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.dropdown-menu button + button {
+  margin-top: 0.125rem !important;
+}
+
+.dropdown-menu button:hover,
+.dropdown-menu button:focus-visible {
+  background: var(--rd-surface-secondary) !important;
+  border-color: var(--rd-border-primary) !important;
+  color: var(--rd-text-content) !important;
+  outline: none;
+}
+
+.dropdown-menu button:active {
+  background: var(--rd-bg-primary) !important;
+  color: var(--rd-text-content) !important;
 }
 
 /* Smooth scrollbars in the dark themes. Webkit-specific; harmless on
