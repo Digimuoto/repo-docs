@@ -1,12 +1,13 @@
 import { defineConfig } from "astro/config";
 import mdx from "@astrojs/mdx";
-import tailwind from "@astrojs/tailwind";
+import autoprefixer from "autoprefixer";
 import {existsSync, readFileSync} from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {visit} from "unist-util-visit";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import tailwindcss from "tailwindcss";
 import {markdownLinkRewriter} from "./src/integrations/markdown-link-rewriter.mjs";
 import {treeSitterHighlight} from "./src/integrations/tree-sitter-highlight.mjs";
 
@@ -96,6 +97,13 @@ const preserveOriginalLang = hasCustomGrammars
 export default defineConfig({
   site,
   base,
+  vite: {
+    css: {
+      postcss: {
+        plugins: [tailwindcss(), autoprefixer()],
+      },
+    },
+  },
   markdown: {
     remarkPlugins: [
       remarkMath,
@@ -130,5 +138,5 @@ export default defineConfig({
       transformers: preserveOriginalLang,
     },
   },
-  integrations: [tailwind(), mdx()],
+  integrations: [mdx()],
 });
