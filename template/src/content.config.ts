@@ -1,11 +1,24 @@
 import {defineCollection, z} from "astro:content";
+import {glob} from "astro/loaders";
 
 // Accept either a single string or an array for flexible author attribution
 // (one primary author, a team byline, or multiple contributors).
 const authorField = z.union([z.string(), z.array(z.string())]).optional();
 
+function legacyDocsId(entry: string) {
+  const withoutExtension = entry.replace(/\.(md|mdx)$/i, "");
+  if (withoutExtension === "index") {
+    return "index";
+  }
+  return withoutExtension.replace(/\/index$/i, "");
+}
+
 const docs = defineCollection({
-  type: "content",
+  loader: glob({
+    pattern: "**/*.{md,mdx}",
+    base: "./src/content/docs",
+    generateId: ({entry}) => legacyDocsId(entry),
+  }),
   schema: z.object({
     title: z.string(),
     description: z.string().optional(),
