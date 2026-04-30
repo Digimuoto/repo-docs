@@ -203,6 +203,147 @@ const sequence = findReadingSequence(navigation, currentHref);
             doc.documentElement.dataset.mode = root.dataset.mode ?? "";
           }
 
+          function stripTrailingSlash(value) {
+            if (value === "/") return "/";
+            return value.endsWith("/") ? value.slice(0, -1) : value;
+          }
+
+          function haddockRouteParts() {
+            if (!iframe) return null;
+            const src = new URL(iframe.getAttribute("src") || iframe.src, window.location.href);
+            const marker = "/haddock/";
+            const markerIndex = src.pathname.lastIndexOf(marker);
+            if (markerIndex === -1) return null;
+            const routeBase = src.pathname.slice(0, markerIndex);
+            const haddockBase = src.pathname.slice(0, markerIndex + marker.length);
+            return {origin: src.origin, routeBase, haddockBase};
+          }
+
+          function moduleNameFromHaddockRelativePath(relativePath) {
+            const normalized = String(relativePath || "").replace(/^\/+/, "");
+            const segments = normalized.split("/").filter(Boolean);
+            const basename = segments.at(-1) || "index.html";
+            if (basename === "index.html" || basename === "doc-index.html" || !basename.endsWith(".html")) {
+              return null;
+            }
+            const stem = decodeURIComponent(basename.slice(0, -".html".length));
+            return segments.includes("src") ? stem : stem.replace(/-/g, ".");
+          }
+
+          function wrapperPathForHaddockLocation(href) {
+            const parts = haddockRouteParts();
+            if (!parts) return null;
+            const current = new URL(href, window.location.href);
+            if (current.origin !== parts.origin || !current.pathname.startsWith(parts.haddockBase)) {
+              return null;
+            }
+            const relativePath = current.pathname.slice(parts.haddockBase.length) || "index.html";
+            const moduleName = moduleNameFromHaddockRelativePath(relativePath);
+            if (!moduleName) {
+              return `${parts.routeBase}/`;
+            }
+            const modulePath = moduleName
+              .split(".")
+              .filter(Boolean)
+              .map((segment) => encodeURIComponent(segment))
+              .join("/");
+            return `${parts.routeBase}/${modulePath}/`;
+          }
+
+          function haddockHrefForWrapperPath(pathname) {
+            const parts = haddockRouteParts();
+            if (!parts) return null;
+            const target = stripTrailingSlash(pathname);
+            const base = stripTrailingSlash(parts.routeBase);
+            if (target === base) {
+              return `${parts.origin}${parts.haddockBase}index.html`;
+            }
+            if (!target.startsWith(`${base}/`)) {
+              return null;
+            }
+            const modulePath = target.slice(base.length + 1);
+            if (!modulePath) {
+              return `${parts.origin}${parts.haddockBase}index.html`;
+            }
+            const moduleName = modulePath
+              .split("/")
+              .filter(Boolean)
+              .map((segment) => decodeURIComponent(segment))
+              .join(".");
+            if (!moduleName) return null;
+            return `${parts.origin}${parts.haddockBase}${moduleName.replace(/\./g, "-")}.html`;
+          }
+
+          function setNavOpen(key, open) {
+            document
+              .querySelectorAll(`[data-nav-children-of="${CSS.escape(key)}"]`)
+              .forEach((list) => {
+                list.dataset.navOpen = open ? "true" : "false";
+              });
+            document
+              .querySelectorAll(`[data-nav-toggle="${CSS.escape(key)}"]`)
+              .forEach((toggle) => {
+                toggle.setAttribute("aria-expanded", open ? "true" : "false");
+              });
+          }
+
+          function markSidebarActive(pathname) {
+            const target = stripTrailingSlash(pathname);
+            let activeLink = null;
+
+            document.querySelectorAll("[data-docs-nav-link]").forEach((link) => {
+              const linkPath = stripTrailingSlash(new URL(link.href, window.location.href).pathname);
+              const active = linkPath === target;
+              link.classList.toggle("is-active", active);
+              link.classList.remove("has-active-descendant");
+              if (active) {
+                link.setAttribute("aria-current", "page");
+                activeLink = link;
+              } else {
+                link.removeAttribute("aria-current");
+              }
+            });
+
+            document
+              .querySelectorAll(".docs-nav-group.has-active-descendant")
+              .forEach((group) => group.classList.remove("has-active-descendant"));
+            document
+              .querySelectorAll("[data-nav-active-path]")
+              .forEach((list) => {
+                list.dataset.navActivePath = "false";
+              });
+
+            if (!activeLink) return;
+
+            let list = activeLink.closest("[data-nav-children-of]");
+            while (list) {
+              list.dataset.navActivePath = "true";
+              const key = list.dataset.navChildrenOf;
+              if (key) setNavOpen(key, true);
+              const owner = list.parentElement;
+              owner
+                ?.querySelector(":scope > .docs-nav-row .docs-nav-link, :scope > .docs-nav-row .docs-nav-group")
+                ?.classList.add("has-active-descendant");
+              list = owner?.parentElement?.closest("[data-nav-children-of]") ?? null;
+            }
+
+            activeLink.scrollIntoView({block: "nearest"});
+          }
+
+          function syncParentRouteFromHaddock({replace = false} = {}) {
+            const win = iframe?.contentWindow;
+            const href = win?.location?.href;
+            if (!href) return;
+            const targetPath = wrapperPathForHaddockLocation(href);
+            if (!targetPath) return;
+            markSidebarActive(targetPath);
+            if (stripTrailingSlash(targetPath) === stripTrailingSlash(window.location.pathname)) {
+              return;
+            }
+            const method = replace ? "replaceState" : "pushState";
+            window.history[method]({repoDocsHaddockPath: targetPath}, "", targetPath);
+          }
+
           // Hoist the iframe's per-module #table-of-contents into the
           // parent shell's TOC drawer. Haddock's in-page Contents card
           // is hidden so it doesn't double up. Re-runs on every iframe
@@ -346,6 +487,7 @@ const sequence = findReadingSequence(navigation, currentHref);
             iframe.addEventListener("load", () => {
               wrap.dataset.loaded = "true";
               syncTheme();
+              syncParentRouteFromHaddock();
               syncHaddockToc();
             });
             iframe.addEventListener("error", () => {
@@ -353,6 +495,21 @@ const sequence = findReadingSequence(navigation, currentHref);
               wrap.dataset.failed = "true";
             });
           }
+
+          window.addEventListener("popstate", () => {
+            const targetHref = haddockHrefForWrapperPath(window.location.pathname);
+            if (!targetHref || !iframe) return;
+            markSidebarActive(window.location.pathname);
+            try {
+              const currentHref = iframe.contentWindow?.location?.href;
+              if (currentHref && stripTrailingSlash(new URL(currentHref).pathname) === stripTrailingSlash(new URL(targetHref).pathname)) {
+                return;
+              }
+            } catch {
+              /* fall through and assign src */
+            }
+            iframe.src = targetHref;
+          });
 
           // Re-sync whenever the reader toggles the theme button.
           document.addEventListener("repodocs:mode-change", syncTheme);

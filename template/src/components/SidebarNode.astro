@@ -88,6 +88,7 @@ const hasProofs = node.tags?.includes("proofs") ?? false;
         ]}
         data-status={node.status}
         data-has-proofs={hasProofs ? "true" : undefined}
+        data-docs-nav-link
       >
         <span>{node.label}</span>
         {node.status && (

@@ -178,6 +178,9 @@
               grep -q "Demo.Sample" "$site/Haskell/demo/haddock/doc-index.json"
               grep -q "repo-docs-haddock.css" "$site/Haskell/demo/haddock/Demo-Sample.html"
               grep -q "repo-docs-haddock-search" "$site/Haskell/demo/haddock/Demo-Sample.html"
+              grep -q "repo-docs-haddock-breadcrumb" "$site/Haskell/demo/haddock/Demo-Sample.html"
+              grep -q "syncParentRouteFromHaddock" "$site/Haskell/demo/index.html"
+              grep -q "data-docs-nav-link" "$site/Haskell/demo/Demo/Sample/index.html"
               grep -q "repo-docs-haddock.css" "$site/Haskell/demo/haddock/src/Demo.Sample.html"
               if grep -q 'module-tree\|literate.css' "$site/Theory/Demo/Proof/index.html"; then
                 echo "Lean theory page should use native repo-docs chrome, not standalone Verso chrome"; exit 1
@@ -499,6 +502,9 @@
                 fi
                 grep -q 'repo-docs-haddock.css' "$site/Haskell/demo/haddock/index.html"
                 grep -q 'repo-docs-haddock-search' "$site/Haskell/demo/haddock/index.html"
+                grep -q 'repo-docs-haddock-breadcrumb' "$site/Haskell/demo/haddock/index.html"
+                grep -q 'syncParentRouteFromHaddock' "$site/Haskell/demo/index.html"
+                grep -q 'data-docs-nav-link' "$site/Haskell/demo/Demo/Sample/index.html"
                 grep -q '../repo-docs-haddock.css' "$site/Haskell/demo/haddock/src/Demo.Sample.html"
                 grep -q 'font-family: "IBM Plex Sans"' "$site/Haskell/demo/haddock/repo-docs-haddock.css"
                 grep -q 'repo-docs-haddock-search' "$site/Haskell/demo/haddock/repo-docs-haddock.css"

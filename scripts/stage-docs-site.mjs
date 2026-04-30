@@ -908,6 +908,91 @@ a[href].def:hover {
   letter-spacing: -0.005em;
 }
 
+#package-header .repo-docs-haddock-path {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.repo-docs-haddock-history {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 0 0 auto;
+}
+
+.repo-docs-haddock-history[hidden] {
+  display: none !important;
+}
+
+.repo-docs-haddock-history-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.875rem;
+  height: 1.875rem;
+  padding: 0;
+  border: 1px solid var(--rd-border-primary);
+  border-radius: 0.5rem;
+  background: var(--rd-surface-primary);
+  color: var(--rd-text-content-secondary);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.repo-docs-haddock-history-button:hover,
+.repo-docs-haddock-history-button:focus-visible {
+  background: var(--rd-surface-secondary);
+  border-color: var(--rd-border-secondary);
+  color: var(--rd-text-content);
+  outline: none;
+}
+
+.repo-docs-haddock-history-button svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.repo-docs-haddock-breadcrumb {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--rd-text-content-secondary);
+}
+
+.repo-docs-haddock-crumb,
+.repo-docs-haddock-crumb:link,
+.repo-docs-haddock-crumb:visited {
+  display: inline-block;
+  min-width: 0;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--rd-text-content-secondary) !important;
+  text-decoration: none !important;
+}
+
+a.repo-docs-haddock-crumb:hover,
+a.repo-docs-haddock-crumb:focus-visible {
+  color: var(--rd-brand-primary) !important;
+  text-decoration: none !important;
+  outline: none;
+}
+
+.repo-docs-haddock-crumb-current {
+  color: var(--rd-text-content) !important;
+  font-weight: 600;
+}
+
+.repo-docs-haddock-separator {
+  flex: 0 0 auto;
+  margin: 0 0.375rem;
+  color: var(--rd-text-content-quaternary);
+}
+
 /* Reset linuwial's heading-as-purple-titles convention: headings inherit
  * the page's content color, weight from the type system. */
 .caption,
@@ -2517,6 +2602,122 @@ function renderHaddockThemeSyncScript() {
     return new URL(".", window.location.href).toString();
   }
 
+  function haddockRelativePath() {
+    const base = new URL(haddockBaseUrl());
+    const here = new URL(window.location.href);
+    const basePath = base.pathname.endsWith("/") ? base.pathname : base.pathname + "/";
+    if (!here.pathname.startsWith(basePath)) {
+      return here.pathname.split("/").pop() || "index.html";
+    }
+    return decodeURIComponent(here.pathname.slice(basePath.length)) || "index.html";
+  }
+
+  function moduleNameFromHaddockRelativePath(relativePath) {
+    const normalized = String(relativePath || "").replace(/^\\/+/, "");
+    const segments = normalized.split("/").filter(Boolean);
+    const basename = segments.at(-1) || "index.html";
+    if (basename === "index.html" || basename === "doc-index.html" || !basename.endsWith(".html")) {
+      return null;
+    }
+    const stem = basename.slice(0, -".html".length);
+    if (!stem) return null;
+    return segments.includes("src") ? stem : stem.replace(/-/g, ".");
+  }
+
+  function currentHaddockPageInfo() {
+    const relativePath = haddockRelativePath();
+    const segments = relativePath.split("/").filter(Boolean);
+    const basename = segments.at(-1) || "index.html";
+    if (basename === "index.html") {
+      return {kind: "package", segments: ["Package index"], moduleName: null};
+    }
+    if (basename === "doc-index.html") {
+      return {kind: "index", segments: ["Symbol index"], moduleName: null};
+    }
+    const moduleName = moduleNameFromHaddockRelativePath(relativePath);
+    if (!moduleName) {
+      return {kind: "page", segments: [basename.replace(/\\.html$/i, "")], moduleName: null};
+    }
+    const isSource = segments.includes("src");
+    return {
+      kind: isSource ? "source" : "module",
+      segments: isSource ? ["src", ...moduleName.split(".")] : moduleName.split("."),
+      moduleName,
+    };
+  }
+
+  function moduleLinkMap(entries) {
+    const links = new Map();
+    for (const entry of entries || []) {
+      if (!entry || typeof entry.name !== "string" || typeof entry.module !== "string") continue;
+      if (entry.name !== entry.module || typeof entry.link !== "string") continue;
+      links.set(entry.module, new URL(entry.link, haddockBaseUrl()).toString());
+    }
+    return links;
+  }
+
+  function makeHistoryButton(label, pathD, action) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "repo-docs-haddock-history-button";
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.innerHTML =
+      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">' +
+      '<path d="' + pathD + '" stroke-linecap="round" stroke-linejoin="round" />' +
+      '</svg>';
+    button.addEventListener("click", action);
+    return button;
+  }
+
+  function renderHaddockHeaderPath(entries = []) {
+    const header = document.getElementById("package-header");
+    const caption = header?.querySelector(":scope > .caption");
+    if (!header || !caption) return;
+
+    const info = currentHaddockPageInfo();
+    const links = moduleLinkMap(entries);
+    caption.classList.add("repo-docs-haddock-path");
+    caption.textContent = "";
+
+    const historyGroup = document.createElement("span");
+    historyGroup.className = "repo-docs-haddock-history";
+    historyGroup.hidden = info.kind === "package" || info.kind === "index";
+    historyGroup.append(
+      makeHistoryButton("Back", "M10.5 3.5L6 8l4.5 4.5", () => window.history.back()),
+      makeHistoryButton("Forward", "M5.5 3.5L10 8l-4.5 4.5", () => window.history.forward()),
+    );
+
+    const breadcrumb = document.createElement("nav");
+    breadcrumb.className = "repo-docs-haddock-breadcrumb";
+    breadcrumb.setAttribute("aria-label", "Current API path");
+
+    let modulePrefix = "";
+    info.segments.forEach((segment, index) => {
+      if (index > 0) {
+        const separator = document.createElement("span");
+        separator.className = "repo-docs-haddock-separator";
+        separator.textContent = "/";
+        breadcrumb.append(separator);
+      }
+
+      const isSourcePrefix = info.kind === "source" && index === 0;
+      const isCurrent = index === info.segments.length - 1;
+      if (!isSourcePrefix) {
+        modulePrefix = modulePrefix ? modulePrefix + "." + segment : segment;
+      }
+
+      const href = !isSourcePrefix && !isCurrent ? links.get(modulePrefix) : null;
+      const crumb = href ? document.createElement("a") : document.createElement("span");
+      crumb.className = "repo-docs-haddock-crumb" + (isCurrent ? " repo-docs-haddock-crumb-current" : "");
+      crumb.textContent = segment;
+      if (href) crumb.setAttribute("href", href);
+      breadcrumb.append(crumb);
+    });
+
+    caption.append(historyGroup, breadcrumb);
+  }
+
   function installRepoDocsSearch() {
     const header = document.getElementById("package-header");
     if (!header || header.querySelector(".repo-docs-haddock-search")) return;
@@ -2611,6 +2812,7 @@ function renderHaddockThemeSyncScript() {
         if (!Array.isArray(rawEntries) || rawEntries.length === 0) {
           throw new Error("empty search index");
         }
+        renderHaddockHeaderPath(rawEntries);
         entries = rawEntries
           .filter((entry) => entry && typeof entry.name === "string" && typeof entry.module === "string" && typeof entry.link === "string")
           .map((entry) => ({
@@ -2631,6 +2833,7 @@ function renderHaddockThemeSyncScript() {
   }
 
   function setupHaddockAdapter() {
+    renderHaddockHeaderPath();
     installRepoDocsSearch();
   }
   if (document.readyState === "loading") {
