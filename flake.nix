@@ -152,6 +152,7 @@
               test -f "$site/Haskell/demo/index.html"
               test -f "$site/Haskell/demo/haddock/Demo-Sample.html"
               test -f "$site/Haskell/demo/haddock/src/Demo.Sample.html"
+              test -f "$site/Haskell/demo/haddock/doc-index.json"
               test -f "$site/Haskell/demo/haddock/repo-docs-haddock.css"
               test -f "$site/Haskell/demo/Demo/Sample/index.html"
               test ! -e "$site/private/notes/index.html"
@@ -173,7 +174,10 @@
                 echo "Haddock package page should be an undecorated embedded app surface"; exit 1
               fi
               grep -q "renderGreeting" "$site/Haskell/demo/haddock/Demo-Sample.html"
+              grep -q "renderGreeting" "$site/Haskell/demo/haddock/doc-index.json"
+              grep -q "Demo.Sample" "$site/Haskell/demo/haddock/doc-index.json"
               grep -q "repo-docs-haddock.css" "$site/Haskell/demo/haddock/Demo-Sample.html"
+              grep -q "repo-docs-haddock-search" "$site/Haskell/demo/haddock/Demo-Sample.html"
               grep -q "repo-docs-haddock.css" "$site/Haskell/demo/haddock/src/Demo.Sample.html"
               if grep -q 'module-tree\|literate.css' "$site/Theory/Demo/Proof/index.html"; then
                 echo "Lean theory page should use native repo-docs chrome, not standalone Verso chrome"; exit 1
@@ -440,9 +444,12 @@
                 test -f "$staged/public/Haskell/demo/haddock/index.html"
                 test -f "$staged/public/Haskell/demo/haddock/Demo-Sample.html"
                 test -f "$staged/public/Haskell/demo/haddock/src/Demo.Sample.html"
+                test -f "$staged/public/Haskell/demo/haddock/doc-index.json"
                 test -f "$staged/public/Haskell/demo/haddock/repo-docs-haddock.css"
                 test ! -e "$staged/public/Haskell/demo/haddock/logos/Logos-Sample.html"
                 grep -q 'href="Demo-Sample.html">Demo.Sample</a>' "$staged/public/Haskell/demo/haddock/index.html"
+                grep -q 'renderGreeting' "$staged/public/Haskell/demo/haddock/doc-index.json"
+                grep -q 'Demo.Sample' "$staged/public/Haskell/demo/haddock/doc-index.json"
                 if grep -R 'Logos\|extraGreeting' "$staged/public/Haskell/demo/haddock"; then
                   echo "filtered Haddock staging still contains excluded Logos module content" >&2
                   exit 1
@@ -485,12 +492,16 @@
                 fi
                 grep -q 'href="Demo-Sample.html">Demo.Sample</a>' "$site/Haskell/demo/haddock/index.html"
                 grep -q 'renderGreeting' "$site/Haskell/demo/haddock/Demo-Sample.html"
+                grep -q 'renderGreeting' "$site/Haskell/demo/haddock/doc-index.json"
+                grep -q 'Demo.Sample' "$site/Haskell/demo/haddock/doc-index.json"
                 if grep -R 'Logos\|extraGreeting' "$site/Haskell/demo/haddock"; then
                   echo "Haddock module-prefix filter should exclude unselected public sublibraries"; exit 1
                 fi
                 grep -q 'repo-docs-haddock.css' "$site/Haskell/demo/haddock/index.html"
+                grep -q 'repo-docs-haddock-search' "$site/Haskell/demo/haddock/index.html"
                 grep -q '../repo-docs-haddock.css' "$site/Haskell/demo/haddock/src/Demo.Sample.html"
                 grep -q 'font-family: "IBM Plex Sans"' "$site/Haskell/demo/haddock/repo-docs-haddock.css"
+                grep -q 'repo-docs-haddock-search' "$site/Haskell/demo/haddock/repo-docs-haddock.css"
                 if grep -q 'fonts.googleapis.com/css?family=PT+Sans' "$site/Haskell/demo/haddock/index.html"; then
                   echo "Haddock output should use repo-docs font styling instead of PT Sans"; exit 1
                 fi

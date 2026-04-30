@@ -173,8 +173,8 @@ table elements in generated Theory pages.
 the package with nixpkgs' Haskell infrastructure, publishes the generated
 Haddock HTML assets, injects repo-docs-compatible Haddock styling, and adds a
 generated `Haskell` section with one full API view per package. Haddock keeps
-ownership of module navigation, source links, and symbol search inside the
-embedded content window.
+ownership of module navigation and source links inside the embedded content
+window; repo-docs adds the inline symbol search from Haddock's `doc-index.json`.
 
 Packages with multiple public libraries can limit the published output with
 `modulePrefixes = ["MyProject"]`. This filters the generated Haddock tree after

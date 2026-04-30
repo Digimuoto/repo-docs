@@ -199,8 +199,8 @@ The directory must be a Cabal package. repo-docs builds it with
 `pkgs.haskellPackages.callCabal2nix`, copies and lightly restyles the Haddock
 HTML output, and appends a generated `Haskell` section unless your explicit
 navigation already includes it. repo-docs adds one wrapper page per package;
-Haddock's own module tree, source links, and quick-jump navigation remain inside
-the embedded API view.
+Haddock's own module tree and source links remain inside the embedded API view,
+with an inline API search control backed by Haddock's `doc-index.json`.
 
 If the Cabal package exposes multiple public libraries, constrain the published
 API with `modulePrefixes = ["MyCore"]`. repo-docs still builds package-level

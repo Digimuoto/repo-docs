@@ -254,7 +254,7 @@ docsSite.sites.<your-site>.haskell.packages.core = {
 };
 ```
 
-repo-docs builds the package with `pkgs.haskellPackages.callCabal2nix`, copies the generated Haddock HTML assets, injects repo-docs-compatible Haddock styling, and creates one repo-docs wrapper page per package. Haddock's own contents, module index, source links, and quick-jump navigation stay inside that embedded API view.
+repo-docs builds the package with `pkgs.haskellPackages.callCabal2nix`, copies the generated Haddock HTML assets, injects repo-docs-compatible Haddock styling, and creates one repo-docs wrapper page per package. Haddock's own contents, module index, and source links stay inside that embedded API view; repo-docs adds an inline API search control backed by Haddock's `doc-index.json`.
 
 By default, repo-docs publishes the package-level Haddock tree. If the Cabal
 package exposes multiple public libraries, set `modulePrefixes = ["MyCore"]` so

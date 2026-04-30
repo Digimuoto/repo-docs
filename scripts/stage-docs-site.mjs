@@ -879,11 +879,12 @@ a[href].def:hover {
   position: sticky;
   top: 0;
   z-index: 20;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 28rem) auto;
+  grid-template-areas: "caption search menu";
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  column-gap: 0.875rem;
+  row-gap: 0.5rem;
   min-height: 3rem;
   padding: 0.625rem clamp(1rem, 3vw, 2.25rem);
   background: color-mix(in srgb, var(--rd-bg-primary) 88%, transparent);
@@ -894,7 +895,12 @@ a[href].def:hover {
 
 #package-header .caption,
 #package-header > .caption {
+  grid-area: caption;
+  min-width: 0;
   margin: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--rd-text-content) !important;
   font-family: var(--rd-font-sans);
   font-size: 0.875rem;
@@ -931,9 +937,12 @@ p {
  * grouping read as a deliberate row rather than a packed strip. */
 #page-menu,
 ul.links {
+  grid-area: menu;
+  justify-self: end;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem;
   margin: 0;
   padding: 0;
@@ -969,6 +978,36 @@ ul.links a:focus-visible {
   border-color: var(--rd-border-secondary);
   color: var(--rd-text-content);
   text-decoration: none;
+}
+
+@media (max-width: 860px) {
+  #package-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "caption menu"
+      "search search";
+  }
+
+  .repo-docs-haddock-search {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  #package-header {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "caption"
+      "search"
+      "menu";
+  }
+
+  #page-menu,
+  ul.links {
+    justify-self: stretch;
+    justify-content: flex-start;
+  }
 }
 
 /* Cards: module header, description, synopsis, interface, index. The
@@ -2047,49 +2086,45 @@ ul.links li > a:not([href]) {
   display: none !important;
 }
 
-/* ===== Quick-jump search: always-visible inline field, JS-reparented
- *       into #package-header =====
+/* ===== API search =====
  *
- * The theme-sync script moves Haddock's #search div from document.body
- * into #package-header on first appearance (it's created lazily by
- * haddock-bundle.min.js). With #search now a child of the header, the
- * existing flex layout (caption / page-menu, justify-content:
- * space-between) gives us a third item in the middle for free. Strip
- * the modal chrome — fixed positioning, glow shadow, big width — down
- * to a token-driven pill input. We force display: block so '.hidden'
- * stops mattering; React's state.isVisible toggles class but our CSS
- * always shows it. The dropdown #search-results sits beneath via
- * position: absolute relative to #search. */
-#search,
-#search.hidden {
-  position: relative !important;
-  top: auto !important;
-  left: auto !important;
-  right: auto !important;
-  bottom: auto !important;
-  transform: none !important;
-  flex: 0 1 28rem;
-  min-width: 0;
-  max-width: 28rem;
-  width: 100%;
-  margin: 0 0.75rem;
-  background: transparent !important;
-  display: block !important;
-  font-family: var(--rd-font-sans);
-  overflow: visible !important;
-  max-height: none !important;
-  z-index: auto !important;
+ * Haddock's own quick-jump Preact widget is rendered into <body> and
+ * is designed as a fixed overlay. In an iframe header that made layout
+ * brittle: the centered overlay could cover the right-side page-menu
+ * pills, and timing changes in the bundle could leave it outside the
+ * header entirely. repo-docs now owns the visible search control and
+ * reads Haddock's doc-index.json directly. The original widget stays
+ * hidden so Haddock's details/instance helpers can still run. */
+body > #search,
+body > #search.hidden {
+  display: none !important;
 }
 
-#search-form {
+.repo-docs-haddock-search {
   position: relative;
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
+  grid-area: search;
+  justify-self: stretch;
+  width: min(28rem, 100%);
+  min-width: 12rem;
+  max-width: 28rem;
+  font-family: var(--rd-font-sans);
+  overflow: visible;
+  z-index: 23;
 }
 
-#search-form input,
-#search input {
+.repo-docs-haddock-search-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.repo-docs-haddock-search-input {
   width: 100%;
   height: 1.875rem !important;
   padding: 0 0.875rem 0 2rem !important;
@@ -2110,20 +2145,20 @@ ul.links li > a:not([href]) {
   transition: border-color 120ms ease, background-color 120ms ease;
 }
 
-html[data-theme="cortex-light"] #search-form input,
-html[data-theme="cortex-light"] #search input {
+html[data-theme="cortex-light"] .repo-docs-haddock-search-input {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23656d76' stroke-width='1.5'><circle cx='7' cy='7' r='4.5'/><path d='M10.5 10.5L13.5 13.5' stroke-linecap='round'/></svg>") !important;
 }
 
-#search-form input:focus,
-#search input:focus {
+.repo-docs-haddock-search-input:focus {
   border-color: var(--rd-brand-primary) !important;
 }
 
-/* Dropdown results panel beneath the input. Anchored absolutely so it
- * doesn't push the rest of the header down. Hidden when input is
- * empty (see :placeholder-shown rule above). */
-#search-results {
+.repo-docs-haddock-search-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.repo-docs-haddock-search-results {
   position: absolute !important;
   top: calc(100% + 0.375rem) !important;
   left: 0 !important;
@@ -2137,56 +2172,43 @@ html[data-theme="cortex-light"] #search input {
   max-height: min(28rem, 70vh) !important;
   overflow: auto !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
-  z-index: 21;
+  z-index: 24;
 }
 
-/* Haddock's React always renders SOMETHING inside #search-results —
- * either the matched-module list (when there's a query) or an
- * empty-state panel with a keyboard-shortcuts table. So ':empty' alone
- * never matches and the dropdown shows by default. Anchor the hide to
- * the input's :placeholder-shown state instead: when the input is
- * empty its placeholder is visible, and we hide the panel; the moment
- * the user types one character, :placeholder-shown stops matching and
- * the dropdown appears. */
-#search-results:empty,
-#search:has(input:placeholder-shown) #search-results {
+.repo-docs-haddock-search-results[hidden] {
   display: none !important;
 }
 
-#search-form input + #search-results {
-  border-top: 1px solid var(--rd-border-primary) !important;
-}
-
-#search-results > ul {
+.repo-docs-haddock-search-results > ul {
   margin: 0 !important;
   padding: 0.25rem 0 !important;
   list-style: none !important;
 }
 
-#search-results > ul > li {
+.repo-docs-haddock-search-results > ul > li {
   padding: 0.5rem 0.875rem !important;
   margin: 0 !important;
   border-bottom: 1px solid var(--rd-border-primary) !important;
   background: transparent !important;
 }
 
-#search-results > ul > li:last-child {
+.repo-docs-haddock-search-results > ul > li:last-child {
   border-bottom: 0 !important;
 }
 
-#search-results .search-result.selected,
-#search-results > ul > li.selected {
+.repo-docs-haddock-search-result.is-active,
+.repo-docs-haddock-search-results > ul > li.is-active {
   background: var(--rd-surface-secondary) !important;
 }
 
-#search-results > p {
+.repo-docs-haddock-search-results > p {
   padding: 0.625rem 0.875rem !important;
   margin: 0 !important;
   color: var(--rd-text-content-secondary) !important;
   font-size: 0.8125rem !important;
 }
 
-.search-module h4 {
+.repo-docs-haddock-search-module h4 {
   margin: 0 0 0.25rem !important;
   font-size: 0.6875rem !important;
   font-weight: 600 !important;
@@ -2195,13 +2217,13 @@ html[data-theme="cortex-light"] #search input {
   color: var(--rd-text-content-tertiary) !important;
 }
 
-.search-module > ul {
+.repo-docs-haddock-search-module > ul {
   margin: 0 !important;
   padding: 0 !important;
   list-style: none !important;
 }
 
-.search-module > ul > li > a[href] {
+.repo-docs-haddock-search-result[href] {
   display: block;
   padding: 0.25rem 0.5rem !important;
   border-radius: 0.3rem;
@@ -2211,30 +2233,26 @@ html[data-theme="cortex-light"] #search input {
   background: transparent !important;
 }
 
-.search-module > ul > li > a[href].active-link,
-.search-module > ul > li > a[href]:hover {
+.repo-docs-haddock-search-result.is-active,
+.repo-docs-haddock-search-result[href]:hover {
   background: var(--rd-surface-secondary) !important;
   color: var(--rd-brand-primary) !important;
   text-decoration: none !important;
 }
 
-.search-result a a {
-  color: inherit !important;
-}
-
-.search-result ul.subs {
+.repo-docs-haddock-search-result ul.subs {
   display: inline-block;
 }
 
-.search-result ul.subs::after {
+.repo-docs-haddock-search-result ul.subs::after {
   color: var(--rd-text-content-quaternary) !important;
 }
 
-.more-results {
+.repo-docs-haddock-search-more {
   color: var(--rd-text-content-tertiary) !important;
 }
 
-.more-results::before {
+.repo-docs-haddock-search-more::before {
   color: var(--rd-text-content-quaternary) !important;
 }
 
@@ -2389,41 +2407,236 @@ function renderHaddockThemeSyncScript() {
     }
   }
 
-  // Reparent Haddock's #search div into #package-header so the
-  // package-header's flex layout positions it inline (between the
-  // .caption title on the left and #page-menu on the right) instead
-  // of having it overlay the right-side pills as a fixed-position
-  // modal. The search div is created lazily by haddock-bundle.min.js
-  // (Preact render into document.body), and our inline script runs
-  // in <head> before <body> exists — so we wait for DOMContentLoaded
-  // before observing body, otherwise observer.observe(document.body,
-  // ...) throws (body is null) and the reparent never runs.
-  function reparentSearch() {
-    const search = document.getElementById("search");
-    const header = document.getElementById("package-header");
-    if (!search || !header) return false;
-    if (search.parentElement === header) return true;
-    const pageMenu = header.querySelector("#page-menu");
-    if (pageMenu) header.insertBefore(search, pageMenu);
-    else header.appendChild(search);
-    return true;
+  function stripHaddockSearchAnchors(html) {
+    const template = document.createElement("template");
+    template.innerHTML = html || "";
+    template.content.querySelectorAll("a").forEach((anchor) => {
+      const span = document.createElement("span");
+      while (anchor.firstChild) span.appendChild(anchor.firstChild);
+      anchor.replaceWith(span);
+    });
+    return template.innerHTML;
   }
-  function setupReparent() {
-    if (reparentSearch()) return;
-    if (!document.body) return;
-    try {
-      const observer = new MutationObserver(() => {
-        if (reparentSearch()) observer.disconnect();
-      });
-      observer.observe(document.body, {childList: true, subtree: true});
-    } catch {
-      /* MutationObserver unavailable */
+
+  function textFromHtml(html) {
+    const template = document.createElement("template");
+    template.innerHTML = html || "";
+    return template.content.textContent || "";
+  }
+
+  function escapeSearchText(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    })[char]);
+  }
+
+  function scoreText(text, token) {
+    const haystack = String(text || "").toLowerCase();
+    const needle = String(token || "").toLowerCase();
+    if (!needle) return 0;
+    const exact = haystack.indexOf(needle);
+    if (exact !== -1) return exact / 1000;
+
+    let last = -1;
+    let gap = 0;
+    for (const char of needle) {
+      const next = haystack.indexOf(char, last + 1);
+      if (next === -1) return Number.POSITIVE_INFINITY;
+      if (last !== -1) gap += next - last - 1;
+      last = next;
     }
+    return 1 + gap / 50 + Math.max(0, haystack.length - needle.length) / 1000;
+  }
+
+  function scoreEntry(entry, tokens) {
+    let total = 0;
+    for (const token of tokens) {
+      const nameScore = scoreText(entry.name, token);
+      const moduleScore = scoreText(entry.module, token);
+      const displayScore = scoreText(entry.searchText, token);
+      const score = Math.min(nameScore * 0.7, moduleScore * 0.9, displayScore);
+      if (!Number.isFinite(score)) return Number.POSITIVE_INFINITY;
+      total += score;
+    }
+    return total;
+  }
+
+  function searchEntries(entries, query) {
+    const tokens = query.trim().split(/\\s+/).filter(Boolean);
+    if (tokens.length === 0) return [];
+    return entries
+      .map((entry) => ({entry, score: scoreEntry(entry, tokens)}))
+      .filter((match) => Number.isFinite(match.score))
+      .sort((left, right) => left.score - right.score || left.entry.name.localeCompare(right.entry.name))
+      .slice(0, 80)
+      .map((match) => match.entry);
+  }
+
+  function renderSearchResults(results, baseUrl, activeIndex) {
+    if (results.length === 0) {
+      return '<p>No matches.</p>';
+    }
+
+    let rendered = '<ul>';
+    let index = 0;
+    const byModule = new Map();
+    for (const result of results) {
+      if (!byModule.has(result.module)) byModule.set(result.module, []);
+      byModule.get(result.module).push(result);
+    }
+
+    for (const [moduleName, moduleResults] of [...byModule.entries()].slice(0, 8)) {
+      rendered += '<li class="repo-docs-haddock-search-module"><h4>' + escapeSearchText(moduleName) + '</h4><ul>';
+      for (const result of moduleResults.slice(0, 8)) {
+        const href = new URL(result.link, baseUrl).toString();
+        const activeClass = index === activeIndex ? " is-active" : "";
+        rendered +=
+          '<li><a class="repo-docs-haddock-search-result' + activeClass + '" data-search-index="' + index +
+          '" href="' + escapeSearchText(href) + '">' + result.displayHtml + '</a></li>';
+        index += 1;
+      }
+      if (moduleResults.length > 8) {
+        rendered += '<li class="repo-docs-haddock-search-more">+' + (moduleResults.length - 8) + ' more in this module</li>';
+      }
+      rendered += '</ul></li>';
+    }
+
+    rendered += '</ul>';
+    return rendered;
+  }
+
+  function haddockBaseUrl() {
+    const quickJump = document.querySelector('link[href$="quick-jump.css"]');
+    if (quickJump) {
+      return new URL(".", quickJump.href).toString();
+    }
+    return new URL(".", window.location.href).toString();
+  }
+
+  function installRepoDocsSearch() {
+    const header = document.getElementById("package-header");
+    if (!header || header.querySelector(".repo-docs-haddock-search")) return;
+
+    const baseUrl = haddockBaseUrl();
+    const widget = document.createElement("div");
+    widget.className = "repo-docs-haddock-search";
+    widget.setAttribute("role", "search");
+    widget.innerHTML =
+      '<label class="repo-docs-haddock-search-label" for="repo-docs-haddock-search-input">Search API</label>' +
+      '<input id="repo-docs-haddock-search-input" class="repo-docs-haddock-search-input" type="search" autocomplete="off" spellcheck="false" placeholder="Search API" />' +
+      '<div class="repo-docs-haddock-search-results" role="listbox" hidden></div>';
+
+    const pageMenu = header.querySelector("#page-menu");
+    if (pageMenu) header.insertBefore(widget, pageMenu);
+    else header.appendChild(widget);
+
+    const input = widget.querySelector(".repo-docs-haddock-search-input");
+    const panel = widget.querySelector(".repo-docs-haddock-search-results");
+    let entries = [];
+    let activeIndex = -1;
+    let visibleResults = [];
+
+    function setPanel(html, hidden) {
+      panel.innerHTML = html;
+      panel.hidden = hidden;
+    }
+
+    function update() {
+      const query = input.value;
+      activeIndex = -1;
+      if (!query.trim()) {
+        visibleResults = [];
+        setPanel("", true);
+        return;
+      }
+      visibleResults = searchEntries(entries, query);
+      setPanel(renderSearchResults(visibleResults, baseUrl, activeIndex), false);
+    }
+
+    function activate(index) {
+      const links = [...panel.querySelectorAll("[data-search-index]")];
+      if (links.length === 0) return;
+      activeIndex = Math.max(0, Math.min(index, links.length - 1));
+      links.forEach((link) => link.classList.toggle("is-active", Number(link.dataset.searchIndex) === activeIndex));
+      links[activeIndex]?.scrollIntoView({block: "nearest"});
+    }
+
+    input.addEventListener("input", update);
+    input.addEventListener("focus", update);
+    input.addEventListener("keydown", (event) => {
+      const links = [...panel.querySelectorAll("[data-search-index]")];
+      if (event.key === "Escape") {
+        input.value = "";
+        update();
+        input.blur();
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        activate(activeIndex + 1);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        activate(activeIndex <= 0 ? links.length - 1 : activeIndex - 1);
+      } else if (event.key === "Enter" && activeIndex >= 0) {
+        event.preventDefault();
+        links[activeIndex]?.click();
+      }
+    });
+    panel.addEventListener("mouseover", (event) => {
+      const link = event.target.closest?.("[data-search-index]");
+      if (link) activate(Number(link.dataset.searchIndex));
+    });
+    document.addEventListener("mousedown", (event) => {
+      if (!widget.contains(event.target)) setPanel("", true);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (
+        event.key === "s" &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !/^(input|textarea|select)$/i.test(event.target?.tagName || "")
+      ) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        input.focus();
+      }
+    }, true);
+
+    fetch(new URL("doc-index.json", baseUrl).toString())
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("HTTP " + response.status)))
+      .then((rawEntries) => {
+        if (!Array.isArray(rawEntries) || rawEntries.length === 0) {
+          throw new Error("empty search index");
+        }
+        entries = rawEntries
+          .filter((entry) => entry && typeof entry.name === "string" && typeof entry.module === "string" && typeof entry.link === "string")
+          .map((entry) => ({
+            name: entry.name,
+            module: entry.module,
+            link: entry.link,
+            displayHtml: stripHaddockSearchAnchors(entry.display_html || entry.name),
+            searchText: textFromHtml(entry.display_html || "") + " " + entry.name + " " + entry.module,
+          }));
+        input.disabled = entries.length === 0;
+        if (entries.length === 0) input.placeholder = "Search unavailable";
+      })
+      .catch(() => {
+        entries = [];
+        input.disabled = true;
+        input.placeholder = "Search unavailable";
+      });
+  }
+
+  function setupHaddockAdapter() {
+    installRepoDocsSearch();
   }
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", setupReparent);
+    document.addEventListener("DOMContentLoaded", setupHaddockAdapter);
   } else {
-    setupReparent();
+    setupHaddockAdapter();
   }
 })();
 `.trim();
@@ -2883,6 +3096,182 @@ async function filterHaddockModules(htmlRoot, modulePrefixes, packageKey) {
   await rewriteHaddockIndexModuleLists(htmlRoot, keptModulePages);
 }
 
+function collectHaddockModulePages(relativePaths) {
+  return relativePaths
+    .filter((relativePath) => path.posix.extname(relativePath) === ".html")
+    .map((relativePath) => ({
+      relativePath,
+      moduleName: moduleNameFromHaddockHtmlPath(relativePath),
+      isSource: normalizeSlashes(relativePath).split("/").includes("src"),
+    }))
+    .filter((entry) => entry.moduleName && !entry.isSource)
+    .sort((left, right) => left.moduleName.localeCompare(right.moduleName));
+}
+
+function stripHtmlTags(html) {
+  return decodeBasicHtml(String(html || "").replace(/<[^>]*>/g, ""));
+}
+
+function findLastHaddockSrcOpenTag(html, tagName, offset) {
+  const tagPattern = new RegExp(
+    `<${escapeRegExp(tagName)}\\b(?=[^>]*\\bclass=["'][^"']*\\bsrc\\b)[^>]*>`,
+    "gi",
+  );
+  let found = null;
+  let match;
+  while ((match = tagPattern.exec(html))) {
+    if (match.index > offset) break;
+    found = match;
+  }
+  return found?.index ?? null;
+}
+
+function findEnclosingHaddockSrcFragment(html, offset) {
+  const candidates = ["p", "td"]
+    .map((tagName) => ({
+      tagName,
+      start: findLastHaddockSrcOpenTag(html, tagName, offset),
+    }))
+    .filter((candidate) => candidate.start != null)
+    .sort((left, right) => right.start - left.start);
+
+  for (const candidate of candidates) {
+    const range = findHtmlElementRange(html, candidate.tagName, candidate.start);
+    if (range && range.start <= offset && offset < range.end) {
+      return html.slice(range.start, range.end);
+    }
+  }
+
+  return "";
+}
+
+function cleanupHaddockSearchDisplayHtml(html) {
+  return String(html || "")
+    .replace(
+      /<a\b(?=[^>]*\bclass=["'][^"']*\b(?:link|selflink)\b)[^>]*>[\s\S]*?<\/a>/gi,
+      "",
+    )
+    .replace(/<a\b[^>]*>/gi, "<span>")
+    .replace(/<\/a>/gi, "</span>")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function haddockSearchLinkFromRelativePath(indexDir, pageRelativePath, fragmentId = null) {
+  const fromDir = indexDir === "." ? "" : indexDir;
+  const href = path.posix.relative(fromDir, pageRelativePath) || path.posix.basename(pageRelativePath);
+  return fragmentId ? `${href}#${fragmentId}` : href;
+}
+
+function haddockSearchEntryKey(entry) {
+  return `${entry.module}\u0000${entry.name}\u0000${entry.link}`;
+}
+
+function extractHaddockSearchEntriesFromModuleHtml({
+  html,
+  moduleName,
+  pageRelativePath,
+  indexDir,
+}) {
+  const entries = [{
+    display_html: `<span class="keyword">module</span> ${escapeHtml(moduleName)}`,
+    name: moduleName,
+    module: moduleName,
+    link: haddockSearchLinkFromRelativePath(indexDir, pageRelativePath),
+  }];
+
+  const seen = new Set(entries.map(haddockSearchEntryKey));
+  const defAnchorPattern =
+    /<a\b(?=[^>]*\bclass=["'][^"']*\bdef\b)(?=[^>]*\bid=["']([^"']+)["'])[^>]*>([\s\S]*?)<\/a>/gi;
+  let match;
+  while ((match = defAnchorPattern.exec(html))) {
+    const fragmentId = decodeBasicHtml(match[1]).trim();
+    const name = stripHtmlTags(match[2]).trim();
+    if (!fragmentId || !name) continue;
+
+    const fragment = findEnclosingHaddockSrcFragment(html, match.index) || match[0];
+    const displayHtml = cleanupHaddockSearchDisplayHtml(fragment) || escapeHtml(name);
+    const entry = {
+      display_html: displayHtml,
+      name,
+      module: moduleName,
+      link: haddockSearchLinkFromRelativePath(indexDir, pageRelativePath, fragmentId),
+    };
+    const key = haddockSearchEntryKey(entry);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    entries.push(entry);
+  }
+
+  return entries;
+}
+
+async function buildFallbackHaddockSearchIndex(htmlRoot, modulePages, indexDir) {
+  const entries = [];
+  for (const modulePage of modulePages) {
+    const html = await fs.readFile(path.join(htmlRoot, modulePage.relativePath), "utf8");
+    entries.push(...extractHaddockSearchEntriesFromModuleHtml({
+      html,
+      moduleName: modulePage.moduleName,
+      pageRelativePath: modulePage.relativePath,
+      indexDir,
+    }));
+  }
+  return entries;
+}
+
+async function ensureHaddockSearchIndexes(htmlRoot) {
+  const files = (await listFiles(htmlRoot))
+    .map((absolutePath) => normalizeSlashes(path.relative(htmlRoot, absolutePath)))
+    .sort();
+  const modulePages = collectHaddockModulePages(files);
+  if (modulePages.length === 0) {
+    return;
+  }
+
+  const indexFiles = files.filter((relativePath) => path.posix.basename(relativePath) === "doc-index.json");
+  if (indexFiles.length === 0) {
+    indexFiles.push("doc-index.json");
+  }
+
+  for (const relativePath of indexFiles) {
+    const absolutePath = path.join(htmlRoot, relativePath);
+    let entries = null;
+    try {
+      entries = JSON.parse(await fs.readFile(absolutePath, "utf8"));
+    } catch {
+      entries = null;
+    }
+
+    const indexDir = path.posix.dirname(relativePath);
+    const fallback = await buildFallbackHaddockSearchIndex(htmlRoot, modulePages, indexDir);
+    const merged = [];
+    const seen = new Set();
+    for (const entry of Array.isArray(entries) ? entries : []) {
+      if (
+        !entry ||
+        typeof entry.name !== "string" ||
+        typeof entry.module !== "string" ||
+        typeof entry.link !== "string"
+      ) {
+        continue;
+      }
+      const key = haddockSearchEntryKey(entry);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(entry);
+    }
+    for (const entry of fallback) {
+      const key = haddockSearchEntryKey(entry);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(entry);
+    }
+    await fs.mkdir(path.dirname(absolutePath), {recursive: true});
+    await fs.writeFile(absolutePath, JSON.stringify(merged), "utf8");
+  }
+}
+
 async function injectHaddockStyles(htmlRoot) {
   const stylesheetPath = path.join(htmlRoot, "repo-docs-haddock.css");
   await fs.writeFile(stylesheetPath, `${renderHaddockOverrideCss()}\n`, "utf8");
@@ -3033,6 +3422,7 @@ async function generateHaskellDocs(contentRoot, publicRoot, haskell) {
     await fs.cp(renderedHtmlRoot, publicHtmlRoot, {recursive: true});
     await makeWritableRecursive(publicHtmlRoot);
     await filterHaddockModules(publicHtmlRoot, modulePrefixes, key);
+    await ensureHaddockSearchIndexes(publicHtmlRoot);
     await injectHaddockStyles(publicHtmlRoot);
 
     normalizedPackages.push({safeKey, title, description});

@@ -164,17 +164,15 @@
         then cfg.packageName
         else key;
       sourceDir = builtins.dirOf contentDir + "/${cfg.packageDir}";
-      # --quickjump adds doc-index.json to the Haddock output, which
-      # quick-jump.min.js consumes for fuzzy search across the
-      # package. Without it doc-index.json is just '[]' and the
-      # search field returns no matches for any query. Threaded into
-      # the Haddock build via Cabal's --haddock-options pass-through.
+      # Nixpkgs only adds Haddock's --quickjump when
+      # doHaddockQuickjump is true. That writes doc-index.json, which
+      # the embedded API search consumes for fuzzy package search.
       package = pkgs.haskell.lib.dontCheck (
         pkgs.haskell.lib.doHaddock (
           pkgs.haskell.lib.overrideCabal
             (pkgs.haskellPackages.callCabal2nix packageName sourceDir {})
-            (drv: {
-              haddockFlags = (drv.haddockFlags or []) ++ [ "--quickjump" ];
+            (_: {
+              doHaddockQuickjump = true;
             })
         )
       );
