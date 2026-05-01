@@ -208,6 +208,10 @@ const sequence = findReadingSequence(navigation, currentHref);
             return value.endsWith("/") ? value.slice(0, -1) : value;
           }
 
+          function isHaddockSourceLineHash(hash) {
+            return /^#(?:L|line-)\d+(?:-(?:L|line-)?\d+)?$/.test(hash || "");
+          }
+
           function haddockRouteParts() {
             if (!iframe) return null;
             const src = new URL(iframe.getAttribute("src") || iframe.src, window.location.href);
@@ -242,15 +246,17 @@ const sequence = findReadingSequence(navigation, currentHref);
             if (!moduleName) {
               return `${parts.routeBase}/`;
             }
+            const isSourcePage = relativePath.split("/").includes("src");
+            const lineHash = isSourcePage && isHaddockSourceLineHash(current.hash) ? current.hash : "";
             const modulePath = moduleName
               .split(".")
               .filter(Boolean)
               .map((segment) => encodeURIComponent(segment))
               .join("/");
-            return `${parts.routeBase}/${modulePath}/`;
+            return `${parts.routeBase}/${modulePath}/${lineHash}`;
           }
 
-          function haddockHrefForWrapperPath(pathname) {
+          function haddockHrefForWrapperPath(pathname, hash = "") {
             const parts = haddockRouteParts();
             if (!parts) return null;
             const target = stripTrailingSlash(pathname);
@@ -271,7 +277,11 @@ const sequence = findReadingSequence(navigation, currentHref);
               .map((segment) => decodeURIComponent(segment))
               .join(".");
             if (!moduleName) return null;
-            return `${parts.origin}${parts.haddockBase}${moduleName.replace(/\./g, "-")}.html`;
+            const lineHash = isHaddockSourceLineHash(hash) ? hash : "";
+            const haddockPage = lineHash
+              ? `src/${moduleName}.html`
+              : `${moduleName.replace(/\./g, "-")}.html`;
+            return `${parts.origin}${parts.haddockBase}${haddockPage}${lineHash}`;
           }
 
           function setNavOpen(key, open) {
@@ -334,14 +344,56 @@ const sequence = findReadingSequence(navigation, currentHref);
             const win = iframe?.contentWindow;
             const href = win?.location?.href;
             if (!href) return;
-            const targetPath = wrapperPathForHaddockLocation(href);
-            if (!targetPath) return;
-            markSidebarActive(targetPath);
-            if (stripTrailingSlash(targetPath) === stripTrailingSlash(window.location.pathname)) {
+            const targetRoute = wrapperPathForHaddockLocation(href);
+            if (!targetRoute) return;
+            const targetUrl = new URL(targetRoute, window.location.href);
+            markSidebarActive(targetUrl.pathname);
+            if (
+              stripTrailingSlash(targetUrl.pathname) === stripTrailingSlash(window.location.pathname) &&
+              targetUrl.hash === window.location.hash
+            ) {
               return;
             }
             const method = replace ? "replaceState" : "pushState";
+            const targetPath = `${targetUrl.pathname}${targetUrl.hash}`;
             window.history[method]({repoDocsHaddockPath: targetPath}, "", targetPath);
+          }
+
+          let boundHaddockWindow = null;
+          function onHaddockHashChange() {
+            syncParentRouteFromHaddock();
+          }
+
+          function bindHaddockRouteSync() {
+            try {
+              const win = iframe?.contentWindow;
+              if (!win || win === boundHaddockWindow) return;
+              boundHaddockWindow?.removeEventListener("hashchange", onHaddockHashChange);
+              boundHaddockWindow = win;
+              boundHaddockWindow.addEventListener("hashchange", onHaddockHashChange);
+            } catch {
+              /* same-origin denied — non-fatal */
+            }
+          }
+
+          function syncIframeFromParentRoute() {
+            const targetHref = haddockHrefForWrapperPath(window.location.pathname, window.location.hash);
+            if (!targetHref || !iframe) return;
+            markSidebarActive(window.location.pathname);
+            try {
+              const target = new URL(targetHref);
+              const win = iframe.contentWindow;
+              const currentHref = win?.location?.href;
+              const current = currentHref ? new URL(currentHref) : null;
+              if (current?.href === target.href) return;
+              if (current && current.origin === target.origin && current.pathname === target.pathname && target.hash) {
+                win.location.hash = target.hash;
+                return;
+              }
+            } catch {
+              /* fall through and assign src */
+            }
+            iframe.src = targetHref;
           }
 
           // Hoist the iframe's per-module #table-of-contents into the
@@ -487,6 +539,7 @@ const sequence = findReadingSequence(navigation, currentHref);
             iframe.addEventListener("load", () => {
               wrap.dataset.loaded = "true";
               syncTheme();
+              bindHaddockRouteSync();
               syncParentRouteFromHaddock();
               syncHaddockToc();
             });
@@ -494,22 +547,13 @@ const sequence = findReadingSequence(navigation, currentHref);
               if (fallback) fallback.hidden = false;
               wrap.dataset.failed = "true";
             });
+            if (isHaddockSourceLineHash(window.location.hash)) {
+              syncIframeFromParentRoute();
+            }
           }
 
-          window.addEventListener("popstate", () => {
-            const targetHref = haddockHrefForWrapperPath(window.location.pathname);
-            if (!targetHref || !iframe) return;
-            markSidebarActive(window.location.pathname);
-            try {
-              const currentHref = iframe.contentWindow?.location?.href;
-              if (currentHref && stripTrailingSlash(new URL(currentHref).pathname) === stripTrailingSlash(new URL(targetHref).pathname)) {
-                return;
-              }
-            } catch {
-              /* fall through and assign src */
-            }
-            iframe.src = targetHref;
-          });
+          window.addEventListener("popstate", syncIframeFromParentRoute);
+          window.addEventListener("hashchange", syncIframeFromParentRoute);
 
           // Re-sync whenever the reader toggles the theme button.
           document.addEventListener("repodocs:mode-change", syncTheme);

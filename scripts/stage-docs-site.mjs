@@ -1704,6 +1704,73 @@ body > pre a[href]:hover {
   border-bottom-color: var(--rd-brand-primary);
 }
 
+body.repo-docs-haddock-source-page > pre.repo-docs-source-lines {
+  padding: 1rem 0;
+  white-space: normal;
+}
+
+.repo-docs-source-line {
+  display: grid;
+  grid-template-columns: minmax(3.75rem, max-content) max-content;
+  min-width: 100%;
+  width: max-content;
+  min-height: 1.6em;
+}
+
+.repo-docs-source-line:hover {
+  background: color-mix(in srgb, var(--rd-brand-primary) 8%, transparent);
+}
+
+.repo-docs-source-line:target,
+.repo-docs-source-line.is-linked {
+  background: var(--rd-target-tint);
+}
+
+.repo-docs-source-line-number,
+.repo-docs-source-line-number:link,
+.repo-docs-source-line-number:visited {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: block;
+  padding: 0 0.75rem;
+  background: var(--rd-bg-primary);
+  border-right: 1px solid var(--rd-border-primary);
+  border-bottom: 0 !important;
+  color: var(--rd-text-content-quaternary) !important;
+  font: inherit;
+  line-height: 1.6;
+  text-align: right;
+  text-decoration: none !important;
+  user-select: none;
+}
+
+.repo-docs-source-line-number::before {
+  content: attr(data-line);
+}
+
+.repo-docs-source-line:hover .repo-docs-source-line-number,
+.repo-docs-source-line:target .repo-docs-source-line-number,
+.repo-docs-source-line.is-linked .repo-docs-source-line-number {
+  background: var(--rd-surface-primary);
+  color: var(--rd-text-content-secondary) !important;
+}
+
+.repo-docs-source-line-number:hover,
+.repo-docs-source-line-number:focus-visible {
+  background: var(--rd-surface-secondary) !important;
+  color: var(--rd-brand-primary) !important;
+  outline: none;
+}
+
+.repo-docs-source-line-code {
+  display: block;
+  min-height: 1.6em;
+  padding: 0 1.25rem 0 0.875rem;
+  line-height: 1.6;
+  white-space: pre;
+}
+
 /* ===== Linuwial leaks (rendered Haddock pages) =====
  *
  * Everything below patches a hardcoded colour, surface, or layout in
@@ -2599,6 +2666,10 @@ function renderHaddockThemeSyncScript() {
     if (quickJump) {
       return new URL(".", quickJump.href).toString();
     }
+    const repoDocsTheme = document.querySelector('link[href$="repo-docs-haddock.css"]');
+    if (repoDocsTheme) {
+      return new URL(".", repoDocsTheme.href).toString();
+    }
     return new URL(".", window.location.href).toString();
   }
 
@@ -2718,6 +2789,150 @@ function renderHaddockThemeSyncScript() {
     caption.append(historyGroup, breadcrumb);
   }
 
+  function isAnnotationTooltipNode(node) {
+    return node?.nodeType === Node.ELEMENT_NODE && node.classList?.contains("annottext");
+  }
+
+  function fragmentWithNode(node) {
+    const fragment = document.createDocumentFragment();
+    if (node) fragment.appendChild(node);
+    return fragment;
+  }
+
+  function appendFragment(target, fragment) {
+    while (fragment.firstChild) target.appendChild(fragment.firstChild);
+  }
+
+  function splitSourceNodeByVisibleLines(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return String(node.nodeValue || "").split("\\n").map((part) => {
+        const fragment = document.createDocumentFragment();
+        if (part !== "") fragment.appendChild(document.createTextNode(part));
+        return fragment;
+      });
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE || isAnnotationTooltipNode(node)) {
+      return [fragmentWithNode(node.cloneNode(true))];
+    }
+
+    const lineNodes = [node.cloneNode(false)];
+    for (const child of Array.from(node.childNodes)) {
+      const childLines = splitSourceNodeByVisibleLines(child);
+      appendFragment(lineNodes[lineNodes.length - 1], childLines[0]);
+      for (const childLine of childLines.slice(1)) {
+        const clone = node.cloneNode(false);
+        appendFragment(clone, childLine);
+        lineNodes.push(clone);
+      }
+    }
+
+    return lineNodes.map(fragmentWithNode);
+  }
+
+  function splitPreIntoVisibleLines(pre) {
+    const lines = [document.createDocumentFragment()];
+    for (const child of Array.from(pre.childNodes)) {
+      const childLines = splitSourceNodeByVisibleLines(child);
+      appendFragment(lines[lines.length - 1], childLines[0]);
+      for (const childLine of childLines.slice(1)) {
+        lines.push(childLine);
+      }
+    }
+    return lines;
+  }
+
+  function visibleLineText(fragment) {
+    const clone = fragment.cloneNode(true);
+    clone.querySelectorAll?.(".annottext").forEach((node) => node.remove());
+    return clone.textContent || "";
+  }
+
+  function sourceLineRangeFromHash(hash) {
+    const value = decodeURIComponent(String(hash || "").replace(/^#/, ""));
+    const match = /^(?:L|line-)(\\d+)(?:-(?:L|line-)?(\\d+))?$/.exec(value);
+    if (!match) return null;
+    const first = Number(match[1]);
+    const second = Number(match[2] || match[1]);
+    if (!Number.isInteger(first) || !Number.isInteger(second)) return null;
+    return {
+      start: Math.max(1, Math.min(first, second)),
+      end: Math.max(first, second),
+    };
+  }
+
+  function highlightLinkedSourceLines(pre, scroll = false) {
+    const range = sourceLineRangeFromHash(window.location.hash);
+    let firstSelected = null;
+    pre.querySelectorAll(".repo-docs-source-line").forEach((line) => {
+      const number = Number(line.dataset.line);
+      const selected = range && number >= range.start && number <= range.end;
+      line.classList.toggle("is-linked", Boolean(selected));
+      if (selected && !firstSelected) firstSelected = line;
+    });
+    if (scroll && firstSelected) {
+      firstSelected.scrollIntoView({block: "center"});
+    }
+  }
+
+  function enhanceHaddockSourceLines() {
+    const pre = document.body?.querySelector(":scope > pre");
+    const relativePath = haddockRelativePath();
+    if (!pre || pre.classList.contains("repo-docs-source-lines") || !relativePath.split("/").includes("src")) {
+      return;
+    }
+
+    const lineFragments = splitPreIntoVisibleLines(pre);
+    while (lineFragments.length > 1 && visibleLineText(lineFragments[lineFragments.length - 1]) === "") {
+      lineFragments.pop();
+    }
+
+    document.body.classList.add("repo-docs-haddock-source-page");
+    pre.classList.add("repo-docs-source-lines");
+    pre.replaceChildren();
+
+    let selectedLine = null;
+    lineFragments.forEach((fragment, index) => {
+      const lineNumber = index + 1;
+      const line = document.createElement("span");
+      line.className = "repo-docs-source-line";
+      line.id = "L" + lineNumber;
+      line.dataset.line = String(lineNumber);
+
+      const number = document.createElement("a");
+      number.className = "repo-docs-source-line-number";
+      number.href = "#L" + lineNumber;
+      number.dataset.line = String(lineNumber);
+      number.title = "Link to line " + lineNumber;
+      number.setAttribute("aria-label", "Link to line " + lineNumber);
+
+      const code = document.createElement("span");
+      code.className = "repo-docs-source-line-code";
+      appendFragment(code, fragment);
+
+      line.append(number, code);
+      pre.append(line);
+    });
+
+    pre.addEventListener("click", (event) => {
+      const number = event.target.closest?.(".repo-docs-source-line-number");
+      if (!number) return;
+      const lineNumber = Number(number.dataset.line);
+      if (event.shiftKey && selectedLine) {
+        event.preventDefault();
+        const start = Math.min(selectedLine, lineNumber);
+        const end = Math.max(selectedLine, lineNumber);
+        window.location.hash = "L" + start + "-L" + end;
+      } else {
+        selectedLine = lineNumber;
+      }
+      window.setTimeout(() => highlightLinkedSourceLines(pre, true), 0);
+    });
+
+    window.addEventListener("hashchange", () => highlightLinkedSourceLines(pre, true));
+    highlightLinkedSourceLines(pre, Boolean(sourceLineRangeFromHash(window.location.hash)));
+  }
+
   function installRepoDocsSearch() {
     const header = document.getElementById("package-header");
     if (!header || header.querySelector(".repo-docs-haddock-search")) return;
@@ -2834,6 +3049,7 @@ function renderHaddockThemeSyncScript() {
 
   function setupHaddockAdapter() {
     renderHaddockHeaderPath();
+    enhanceHaddockSourceLines();
     installRepoDocsSearch();
   }
   if (document.readyState === "loading") {
