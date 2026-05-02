@@ -333,3 +333,7 @@ Then use (replace `docs` with whatever site name(s) you declared):
 - `nix build --builders '' .#checks.x86_64-linux.docs-typst-manuscripts`
 - `nix run .#docs-dev`
 - `git diff --check`
+
+## License
+
+repo-docs is licensed under the [MIT License](LICENSE).

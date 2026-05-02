@@ -1707,14 +1707,17 @@ body > pre a[href]:hover {
 body.repo-docs-haddock-source-page > pre.repo-docs-source-lines {
   padding: 1rem 0;
   white-space: normal;
+  scroll-padding-top: 4rem;
 }
 
 .repo-docs-source-line {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(3.75rem, max-content) max-content;
   min-width: 100%;
   width: max-content;
   min-height: 1.6em;
+  transition: background-color 140ms ease-out;
 }
 
 .repo-docs-source-line:hover {
@@ -1724,6 +1727,17 @@ body.repo-docs-haddock-source-page > pre.repo-docs-source-lines {
 .repo-docs-source-line:target,
 .repo-docs-source-line.is-linked {
   background: var(--rd-target-tint);
+  box-shadow: inset 3px 0 0 var(--rd-brand-primary);
+}
+
+@keyframes repo-docs-source-line-pulse {
+  0%   { background: color-mix(in srgb, var(--rd-brand-primary) 42%, transparent); }
+  60%  { background: color-mix(in srgb, var(--rd-brand-primary) 30%, transparent); }
+  100% { background: var(--rd-target-tint); }
+}
+
+.repo-docs-source-line.is-linked.is-pulse {
+  animation: repo-docs-source-line-pulse 760ms ease-out;
 }
 
 .repo-docs-source-line-number,
@@ -1732,21 +1746,61 @@ body.repo-docs-haddock-source-page > pre.repo-docs-source-lines {
   position: sticky;
   left: 0;
   z-index: 2;
-  display: block;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.42rem;
   padding: 0 0.75rem;
   background: var(--rd-bg-primary);
   border-right: 1px solid var(--rd-border-primary);
   border-bottom: 0 !important;
   color: var(--rd-text-content-quaternary) !important;
   font: inherit;
+  font-variant-numeric: tabular-nums;
   line-height: 1.6;
   text-align: right;
   text-decoration: none !important;
   user-select: none;
+  cursor: pointer;
+  transition: background-color 140ms ease-out, color 140ms ease-out;
 }
 
 .repo-docs-source-line-number::before {
   content: attr(data-line);
+  flex: 0 0 auto;
+}
+
+.repo-docs-source-line-number::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 0.78em;
+  height: 0.78em;
+  background: currentColor;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M9.6 6.4a2.6 2.6 0 0 1 0 3.68l-2 2a2.6 2.6 0 1 1-3.68-3.68l1-1' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round'/><path d='M6.4 9.6a2.6 2.6 0 0 1 0-3.68l2-2a2.6 2.6 0 1 1 3.68 3.68l-1 1' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round'/></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M9.6 6.4a2.6 2.6 0 0 1 0 3.68l-2 2a2.6 2.6 0 1 1-3.68-3.68l1-1' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round'/><path d='M6.4 9.6a2.6 2.6 0 0 1 0-3.68l2-2a2.6 2.6 0 1 1 3.68 3.68l-1 1' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round'/></svg>");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  opacity: 0;
+  transform: translateY(0.05em);
+  transition: opacity 160ms ease-out;
+}
+
+.repo-docs-source-line:hover .repo-docs-source-line-number::after {
+  opacity: 0.6;
+}
+
+.repo-docs-source-line:target .repo-docs-source-line-number::after,
+.repo-docs-source-line.is-linked .repo-docs-source-line-number::after {
+  opacity: 0.85;
+}
+
+.repo-docs-source-line-number:hover::after,
+.repo-docs-source-line-number:focus-visible::after {
+  opacity: 1;
 }
 
 .repo-docs-source-line:hover .repo-docs-source-line-number,
@@ -1763,12 +1817,71 @@ body.repo-docs-haddock-source-page > pre.repo-docs-source-lines {
   outline: none;
 }
 
+.repo-docs-source-line-number:focus-visible {
+  box-shadow: inset 2px 0 0 var(--rd-brand-primary);
+}
+
 .repo-docs-source-line-code {
   display: block;
   min-height: 1.6em;
   padding: 0 1.25rem 0 0.875rem;
   line-height: 1.6;
   white-space: pre;
+}
+
+.repo-docs-haddock-link-toast {
+  position: fixed;
+  z-index: 999;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem 0.55rem 0.7rem;
+  font: 500 0.84rem/1 var(--rd-font-sans);
+  letter-spacing: 0.01em;
+  color: var(--rd-text-content);
+  background: color-mix(in srgb, var(--rd-surface-primary) 92%, var(--rd-brand-primary) 8%);
+  border: 1px solid var(--rd-border-secondary);
+  border-radius: 0.55rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  opacity: 0;
+  transform: translateY(0.4rem);
+  pointer-events: none;
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.repo-docs-haddock-link-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.repo-docs-haddock-link-toast::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 0.92rem;
+  height: 0.92rem;
+  background: var(--rd-brand-primary);
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3 8.5l3 3 7-7' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3 8.5l3 3 7-7' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .repo-docs-source-line,
+  .repo-docs-source-line-number,
+  .repo-docs-source-line-number::after,
+  .repo-docs-haddock-link-toast {
+    transition: none;
+  }
+  .repo-docs-source-line.is-linked.is-pulse {
+    animation: none;
+  }
 }
 
 /* ===== Linuwial leaks (rendered Haddock pages) =====
@@ -2861,17 +2974,102 @@ function renderHaddockThemeSyncScript() {
     };
   }
 
-  function highlightLinkedSourceLines(pre, scroll = false) {
+  function prefersReducedMotion() {
+    try {
+      return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      return false;
+    }
+  }
+
+  function lineIsInViewport(line) {
+    const rect = line.getBoundingClientRect();
+    const view = window.innerHeight || document.documentElement.clientHeight;
+    return rect.top >= 56 && rect.bottom <= view - 16;
+  }
+
+  function pulseLinkedLines(pre) {
+    const lines = pre.querySelectorAll(".repo-docs-source-line.is-linked");
+    if (!lines.length || prefersReducedMotion()) return;
+    lines.forEach((line) => {
+      line.classList.remove("is-pulse");
+      void line.offsetWidth;
+      line.classList.add("is-pulse");
+    });
+    window.setTimeout(() => {
+      lines.forEach((line) => line.classList.remove("is-pulse"));
+    }, 800);
+  }
+
+  function highlightLinkedSourceLines(pre, options) {
+    const opts = options || {};
     const range = sourceLineRangeFromHash(window.location.hash);
     let firstSelected = null;
     pre.querySelectorAll(".repo-docs-source-line").forEach((line) => {
       const number = Number(line.dataset.line);
       const selected = range && number >= range.start && number <= range.end;
       line.classList.toggle("is-linked", Boolean(selected));
+      if (!selected) line.classList.remove("is-pulse");
       if (selected && !firstSelected) firstSelected = line;
     });
-    if (scroll && firstSelected) {
-      firstSelected.scrollIntoView({block: "center"});
+    if (opts.scroll && firstSelected && !lineIsInViewport(firstSelected)) {
+      const behavior = opts.behavior || (prefersReducedMotion() ? "auto" : "smooth");
+      firstSelected.scrollIntoView({block: "center", behavior});
+    }
+    if (opts.pulse && range) {
+      pulseLinkedLines(pre);
+    }
+  }
+
+  function ensureLinkToast() {
+    const existing = document.body.querySelector(":scope > .repo-docs-haddock-link-toast");
+    if (existing) return existing;
+    const toast = document.createElement("div");
+    toast.className = "repo-docs-haddock-link-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    document.body.appendChild(toast);
+    return toast;
+  }
+
+  let linkToastHideTimer = null;
+  function showLinkToast(message) {
+    const toast = ensureLinkToast();
+    toast.textContent = message;
+    void toast.offsetWidth;
+    toast.classList.add("is-visible");
+    if (linkToastHideTimer) window.clearTimeout(linkToastHideTimer);
+    linkToastHideTimer = window.setTimeout(() => {
+      toast.classList.remove("is-visible");
+    }, 1700);
+  }
+
+  function shareableUrlForHash(hash) {
+    let parentHref = null;
+    try {
+      if (window.parent && window.parent !== window) {
+        parentHref = window.parent.location.href;
+      }
+    } catch {
+      parentHref = null;
+    }
+    const base = parentHref || window.location.href;
+    try {
+      const url = new URL(base);
+      url.hash = hash || "";
+      return url.toString();
+    } catch {
+      return base;
+    }
+  }
+
+  async function copyShareableLink(hash) {
+    const target = shareableUrlForHash(hash);
+    try {
+      await navigator.clipboard.writeText(target);
+      return true;
+    } catch {
+      return false;
     }
   }
 
@@ -2891,7 +3089,6 @@ function renderHaddockThemeSyncScript() {
     pre.classList.add("repo-docs-source-lines");
     pre.replaceChildren();
 
-    let selectedLine = null;
     lineFragments.forEach((fragment, index) => {
       const lineNumber = index + 1;
       const line = document.createElement("span");
@@ -2903,8 +3100,8 @@ function renderHaddockThemeSyncScript() {
       number.className = "repo-docs-source-line-number";
       number.href = "#L" + lineNumber;
       number.dataset.line = String(lineNumber);
-      number.title = "Link to line " + lineNumber;
-      number.setAttribute("aria-label", "Link to line " + lineNumber);
+      number.title = "Link to line " + lineNumber + " \u00b7 Shift-click to extend range";
+      number.setAttribute("aria-label", "Copy link to line " + lineNumber + ", shift-click to extend selection");
 
       const code = document.createElement("span");
       code.className = "repo-docs-source-line-code";
@@ -2914,23 +3111,47 @@ function renderHaddockThemeSyncScript() {
       pre.append(line);
     });
 
+    const initialRange = sourceLineRangeFromHash(window.location.hash);
+    let anchorLine = initialRange ? initialRange.start : null;
+
     pre.addEventListener("click", (event) => {
       const number = event.target.closest?.(".repo-docs-source-line-number");
       if (!number) return;
       const lineNumber = Number(number.dataset.line);
-      if (event.shiftKey && selectedLine) {
+
+      let nextHash;
+      if (event.shiftKey && anchorLine && anchorLine !== lineNumber) {
         event.preventDefault();
-        const start = Math.min(selectedLine, lineNumber);
-        const end = Math.max(selectedLine, lineNumber);
-        window.location.hash = "L" + start + "-L" + end;
+        const start = Math.min(anchorLine, lineNumber);
+        const end = Math.max(anchorLine, lineNumber);
+        nextHash = "#L" + start + "-L" + end;
+        if (window.location.hash !== nextHash) {
+          window.location.hash = nextHash;
+        } else {
+          highlightLinkedSourceLines(pre, {scroll: false, pulse: true});
+        }
       } else {
-        selectedLine = lineNumber;
+        anchorLine = lineNumber;
+        nextHash = "#L" + lineNumber;
+        window.setTimeout(() => highlightLinkedSourceLines(pre, {scroll: false, pulse: true}), 0);
       }
-      window.setTimeout(() => highlightLinkedSourceLines(pre, true), 0);
+
+      copyShareableLink(nextHash).then((copied) => {
+        showLinkToast(copied ? "Link copied" : "Selection linked");
+      });
     });
 
-    window.addEventListener("hashchange", () => highlightLinkedSourceLines(pre, true));
-    highlightLinkedSourceLines(pre, Boolean(sourceLineRangeFromHash(window.location.hash)));
+    window.addEventListener("hashchange", () => {
+      const range = sourceLineRangeFromHash(window.location.hash);
+      if (range && !anchorLine) anchorLine = range.start;
+      highlightLinkedSourceLines(pre, {scroll: true, pulse: Boolean(range)});
+    });
+
+    highlightLinkedSourceLines(pre, {
+      scroll: Boolean(initialRange),
+      pulse: Boolean(initialRange),
+      behavior: "auto",
+    });
   }
 
   function installRepoDocsSearch() {
