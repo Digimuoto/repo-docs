@@ -1,3 +1,4 @@
 result*
+.direnv/
 template/node_modules
 template/dist
