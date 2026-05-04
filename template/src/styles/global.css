@@ -1696,13 +1696,18 @@ video {
 /* Code blocks already have overflow-x on .prose pre; the
  * --prose-max-width above caps their outer width. */
 
-/* Mermaid cards: card itself is capped to the prose width. The
- * inner .mermaid wrapper already has overflow-x: auto, and SVGs
- * carry max-width: 100%, so a graph that's wider than the column
- * scrolls horizontally inside the card.
+/* Mermaid cards: the wrapper carries `not-prose` (set by
+ * MermaidEnhancer.astro), which the `:where(.not-prose)` rule above
+ * exempts from the prose-width cap. That makes diagrams render wider
+ * than sibling code blocks on large screens. Re-apply the cap here —
+ * this selector is two-class specific, so it wins against the `:where()`
+ * exemption (which is zero-specificity). The inner `.mermaid` wrapper
+ * has overflow-x: auto and SVGs carry max-width: 100%, so a graph
+ * wider than the column scrolls horizontally inside the card.
  */
 .docs-prose > .mermaid-card {
   width: 100%;
+  max-width: var(--prose-max-width);
 }
 
 /* Long display equations scroll inside their own container.
