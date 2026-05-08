@@ -1673,12 +1673,15 @@ video {
 }
 
 /* These elements deliberately escape the prose column:
- *   - `.docs-title`: header zone, allowed to span the full inner-content
- *     width so the journal-opener H1 + breadcrumb + byline can breathe.
  *   - `hr`: a decorative rule with no content of its own.
  *   - `.not-prose`: explicit author opt-out for raw-HTML embeds.
+ *
+ * `.docs-title` intentionally stays inside `--prose-max-width` so the
+ * header stroke (the divider rule under the byline) lines up with the
+ * paragraph column underneath. Without this, the header reads as a
+ * mis-tracked banner instead of the opener of the article.
  */
-.docs-prose > :where(.docs-title, hr, .not-prose) {
+.docs-prose > :where(hr, .not-prose) {
   max-width: none;
 }
 
@@ -2810,10 +2813,18 @@ a.docs-haskell-package-card:focus-visible {
  * The rule separates the header zone from the prose so the layout
  * reads like a journal article opener.
  * ============================================================ */
+/*
+ * The title block flows as plain blocks. The command chip is a float
+ * placed inside the LAST ingress paragraph (byline or description), so
+ * the line of text wraps around the chip and ends flush with the
+ * chip's left edge. That keeps the chip on the same baseline as the
+ * last line of ingress copy without sacrificing line wrap behaviour
+ * for longer descriptions. Capped at the prose column width so the
+ * divider rule lines up with the article text below.
+ */
 .docs-title {
   margin-top: 0;
   margin-bottom: 2.5rem;
-  max-width: none;
 }
 
 .docs-title-breadcrumb {
@@ -2826,6 +2837,92 @@ a.docs-haskell-package-card:focus-visible {
   text-transform: uppercase;
   letter-spacing: 0.16em;
   color: var(--text-content-quaternary);
+}
+
+/*
+ * Per-page copy-permalink chip — icon-only square button. Floats
+ * inside the host paragraph so the line of ingress text wraps to its
+ * left and the chip sits on the line itself rather than dropping to a
+ * row of its own.
+ */
+.docs-title-command {
+  float: right;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Nudge upward so the icon's vertical centre tracks the host line's
+   * cap-height instead of dragging below the descender. */
+  margin: 0.0625em 0 0 0.875rem;
+  width: 1.625rem;
+  height: 1.625rem;
+  padding: 0;
+  color: var(--text-content-tertiary);
+  background: color-mix(in srgb, var(--surface-secondary) 70%, transparent);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.3125rem;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
+  position: relative;
+  font-style: normal;
+}
+.docs-title-command:hover,
+.docs-title-command:focus-visible {
+  color: var(--text-content);
+  border-color: var(--border-secondary);
+  background: var(--surface-secondary);
+  outline: none;
+}
+.docs-title-command-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: inherit;
+}
+.docs-title-command-icon svg {
+  width: 100%;
+  height: 100%;
+}
+/*
+ * Confirmation flag drawn beside the icon when a copy succeeds. Sits
+ * to the LEFT of the chip via a negative-margin pseudo-position so it
+ * never crops inside the small square. Fades in/out instead of
+ * replacing the icon, keeping the click target stable. */
+.docs-title-command-status {
+  position: absolute;
+  right: calc(100% + 0.5rem);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  background: var(--surface-secondary);
+  color: var(--text-content);
+  font-family: var(--font-mono, ui-monospace, "JetBrains Mono", monospace);
+  font-weight: 600;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.5625rem;
+  padding: 0.1875rem 0.4375rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--border-primary);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+.docs-title-command[data-copied] .docs-title-command-status {
+  opacity: 1;
+}
+.docs-title-command[data-copied="true"] {
+  border-color: color-mix(in srgb, var(--brand-primary, currentColor) 50%, var(--border-secondary));
+}
+@media (max-width: 640px) {
+  .docs-title-command {
+    /* On narrow screens the chip can squeeze the ingress text uncomfortably,
+     * so cap its width tighter and let the host paragraph keep more room. */
+    max-width: 50%;
+    font-size: 0.6875rem;
+  }
 }
 .docs-title-breadcrumb-sep {
   color: var(--text-content-quaternary);
@@ -2907,6 +3004,18 @@ a.docs-haskell-package-card:focus-visible {
   font-weight: 400;
 }
 
+/*
+ * When the description hosts the floated command chip, lift the 70ch
+ * cap so the chip can float flush with the prose column's right edge
+ * (where the divider rule ends). The body text still wraps short of
+ * the chip thanks to its float offset, so readability is preserved
+ * for one- and two-line descriptions.
+ */
+.docs-title-description:has(.docs-title-command),
+.docs-title-byline:has(.docs-title-command) {
+  max-width: none;
+}
+
 .docs-title-byline {
   display: flex;
   flex-wrap: wrap;
@@ -2937,6 +3046,10 @@ a.docs-haskell-package-card:focus-visible {
 }
 
 .docs-title-divider {
+  /* Clear is required so the floated command chip doesn't ride into
+   * the divider rule on shorter ingress paragraphs. */
+  clear: both;
+  width: 100%;
   margin: 2rem 0 0;
   border: 0;
   border-top: 1px solid var(--border-primary);

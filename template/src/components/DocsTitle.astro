@@ -27,6 +27,20 @@ const crumbs = trimmedId
   .filter((segment) => segment !== "")
   .map((segment) => kebabToTitle(segment));
 
+// Copy-source button rendered to the right of the last line of the
+// ingress copy. Floats inside whichever block carries that last line
+// so it tracks the line's baseline instead of dropping onto its own
+// row. Hidden on the root page — there's no useful path to copy.
+const commandTarget = trimmedId;
+const showCommand = commandTarget !== "";
+
+// Raw markdown source for the copy button. doc.body is the body
+// content with frontmatter stripped — exactly what a reader wants
+// when "copying the source" of a doc page (the prose itself, ready
+// to paste into another file or chat). Falls back to empty so the
+// data-attribute is always a string.
+const docSource = doc.body ?? "";
+
 function normaliseAuthors(
   primary: string | string[] | undefined,
   plural: string | string[] | undefined,
@@ -67,6 +81,21 @@ const badges = [...statusBadges, ...tagBadges];
 const hasByline =
   authors.length > 0 || Boolean(published) || Boolean(updated);
 const hasBreadcrumb = crumbs.length > 0;
+
+// Pick the host for the floated command chip — the LAST ingress block.
+// Order of preference: byline → description → head row → breadcrumb.
+// That keeps the chip baseline-locked to whichever line ends the
+// ingress copy on every page shape.
+const commandSlot: "byline" | "description" | "head" | "breadcrumb" | "none" =
+  !showCommand
+    ? "none"
+    : hasByline
+    ? "byline"
+    : data.description
+    ? "description"
+    : hasBreadcrumb
+    ? "head"
+    : "head";
 ---
 
 <header class="docs-title" data-has-breadcrumb={hasBreadcrumb}>
@@ -82,6 +111,24 @@ const hasBreadcrumb = crumbs.length > 0;
   )}
 
   <div class="docs-title-head">
+    {commandSlot === "head" && (
+      <button
+        type="button"
+        class="docs-title-command"
+        data-docs-title-command
+        data-source={docSource}
+        title="Copy markdown source"
+        aria-label={`Copy markdown source for ${commandTarget}`}
+      >
+        <span class="docs-title-command-icon" aria-hidden="true">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4">
+            <rect x="4" y="4" width="7" height="7" rx="1.2" stroke-linejoin="round" />
+            <path d="M3 9.25V3a.75.75 0 0 1 .75-.75H10" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
+        <span class="docs-title-command-status" aria-live="polite"></span>
+      </button>
+    )}
     <h1 class="docs-title-heading">{data.title}</h1>
     {badges.length > 0 && (
       <ul class="docs-title-badges" aria-label="Document tags">
@@ -99,11 +146,49 @@ const hasBreadcrumb = crumbs.length > 0;
   </div>
 
   {data.description && (
-    <p class="docs-title-description">{data.description}</p>
+    <p class="docs-title-description">
+      {commandSlot === "description" && (
+        <button
+          type="button"
+          class="docs-title-command"
+          data-docs-title-command
+          data-source={docSource}
+          title="Copy markdown source"
+          aria-label={`Copy markdown source for ${commandTarget}`}
+        >
+          <span class="docs-title-command-icon" aria-hidden="true">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4">
+              <rect x="4" y="4" width="7" height="7" rx="1.2" stroke-linejoin="round" />
+              <path d="M3 9.25V3a.75.75 0 0 1 .75-.75H10" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <span class="docs-title-command-status" aria-live="polite"></span>
+        </button>
+      )}
+      {data.description}
+    </p>
   )}
 
   {hasByline && (
     <p class="docs-title-byline">
+      {commandSlot === "byline" && (
+        <button
+          type="button"
+          class="docs-title-command"
+          data-docs-title-command
+          data-source={docSource}
+          title="Copy markdown source"
+          aria-label={`Copy markdown source for ${commandTarget}`}
+        >
+          <span class="docs-title-command-icon" aria-hidden="true">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4">
+              <rect x="4" y="4" width="7" height="7" rx="1.2" stroke-linejoin="round" />
+              <path d="M3 9.25V3a.75.75 0 0 1 .75-.75H10" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <span class="docs-title-command-status" aria-live="polite"></span>
+        </button>
+      )}
       {authors.length > 0 && (
         <span class="docs-title-byline-authors">
           {authors.map((author, index) => (
@@ -135,3 +220,28 @@ const hasBreadcrumb = crumbs.length > 0;
 
   <hr class="docs-title-divider" />
 </header>
+
+<script>
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-docs-title-command]")
+    .forEach((button) => {
+      const status = button.querySelector<HTMLElement>(".docs-title-command-status");
+      let resetTimer: number | null = null;
+      button.addEventListener("click", async () => {
+        const source = button.dataset.source ?? "";
+        try {
+          await navigator.clipboard.writeText(source);
+          button.dataset.copied = "true";
+          if (status) status.textContent = "Copied";
+        } catch {
+          button.dataset.copied = "error";
+          if (status) status.textContent = "Copy failed";
+        }
+        if (resetTimer) window.clearTimeout(resetTimer);
+        resetTimer = window.setTimeout(() => {
+          delete button.dataset.copied;
+          if (status) status.textContent = "";
+        }, 1600);
+      });
+    });
+</script>
