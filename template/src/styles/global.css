@@ -1555,6 +1555,11 @@ video {
 }
 
 .prose pre {
+  /* Match the Lean theorem-card treatment exactly — surface-primary
+   * fill plus the standard border. The chrome value is theme-driven,
+   * so the panel naturally tracks the active palette (deeper on
+   * cortex-slate-darker, lifted on cortex-slate, paper on cortex-light)
+   * rather than parking a fixed colour on every theme. */
   background-color: var(--surface-primary);
   border: 1px solid var(--border-primary);
   border-radius: 0.5rem;

@@ -1,0 +1,96 @@
+/*
+ * cortex-slate-darker
+ *
+ * cortex-slate, calibrated a couple of stops further down the
+ * lightness curve. Same periwinkle indigo accent, same
+ * github-dark-dimmed token palette, same cool-white body text — only
+ * the canvases and surfaces move. Built for OLED panels and
+ * late-night reading where cortex-slate's lifted Dimmed canvas
+ * (#22272e) reads as too bright.
+ *
+ * Notes on choices:
+ *   - Body background #181d24 — roughly nine lightness ticks below
+ *     cortex-slate's #22272e. Visibly darker at a glance, still
+ *     unmistakably the same cool-slate family; cortex-dark's
+ *     near-black warmth is deliberately avoided so the reader's
+ *     colour memory of "the dark theme" carries over.
+ *   - Chrome surfaces #232930 → #2d343d → #3a414b → #4a5159 —
+ *     each ~8-10 ticks below the cortex-slate counterpart. The
+ *     surface ramp keeps cortex-slate's relatively-flat lift
+ *     between body and chrome (rather than cortex-dark's bigger
+ *     jumps) so cards still read as the same "elevated workspace
+ *     surface" they did on slate.
+ *   - Borders use the cortex-slate rgba ramp (0.08 / 0.16 / 0.24)
+ *     against the slightly-darker canvas; the cool luminance bias
+ *     keeps chrome lines reading as cool-grey strokes rather than
+ *     dead grey.
+ *   - Brand, status, and token palettes are byte-for-byte
+ *     cortex-slate. Switching modes should never reshuffle a
+ *     reader's colour memory of a keyword or an accent.
+ */
+:root {
+  --font-sans:
+    "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    system-ui, sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --brand-primary: #6e7bd6;
+  --brand-secondary: #5159b3;
+
+  --bg-primary: #181d24;
+  --bg-secondary: #232930;
+
+  --surface-primary: #232930;
+  --surface-secondary: #2d343d;
+  --surface-tertiary: #3a414b;
+  --surface-hover: #4a5159;
+
+  --text-content: #cdd9e5;
+  --text-content-secondary: #adbac7;
+  --text-content-tertiary: #768390;
+  --text-content-quaternary: #545d68;
+
+  --border-primary: rgba(205, 217, 229, 0.08);
+  --border-secondary: rgba(205, 217, 229, 0.16);
+  --border-tertiary: rgba(205, 217, 229, 0.24);
+
+  --selection-text: #ffffff;
+
+  /*
+   * Tree-sitter capture palette. Identical to cortex-slate so Shiki
+   * blocks and tree-sitter-highlighted custom-language blocks share
+   * a family with the lifted-slate theme.
+   */
+  --tok-default: #adbac7;
+  --tok-keyword: #f47067;
+  --tok-keyword-operator: #f47067;
+  --tok-function: #dcbdfb;
+  --tok-method: #dcbdfb;
+  --tok-constructor: #dcbdfb;
+  --tok-type: #f69d50;
+  --tok-constant: #6cb6ff;
+  --tok-number: #6cb6ff;
+  --tok-boolean: #6cb6ff;
+  --tok-string: #96d0ff;
+  --tok-escape: #96d0ff;
+  --tok-comment: #768390;
+  --tok-variable: #adbac7;
+  --tok-property: #6cb6ff;
+  --tok-parameter: #adbac7;
+  --tok-operator: #f47067;
+  --tok-punctuation: #768390;
+  --tok-tag: #8ddb8c;
+  --tok-attribute: #6cb6ff;
+  --tok-namespace: #f69d50;
+  --tok-label: #f69d50;
+
+  /* Status pill palette, identical to cortex-slate. */
+  --status-draft: #c69026;
+  --status-proposed: #c69026;
+  --status-accepted: #57ab5a;
+  --status-active: #539bf5;
+  --status-superseded: #768390;
+  --status-deprecated: #f47067;
+  --status-archived: #545d68;
+}

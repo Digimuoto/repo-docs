@@ -41,7 +41,7 @@
       };
 
       theme = lib.mkOption {
-        type = lib.types.enum ["cortex-dark" "cortex-light" "cortex-slate"];
+        type = lib.types.enum ["cortex-dark" "cortex-light" "cortex-slate" "cortex-slate-darker"];
         default = "cortex-dark";
         example = "cortex-light";
         description = ''
@@ -58,6 +58,11 @@
             canvas, periwinkle indigo accent, github-dark-dimmed
             tokens. Built for sustained reading on bright displays
             where pure-black canvases fatigue the eye.
+          - `cortex-slate-darker`: cortex-slate calibrated a couple
+            of stops down the lightness curve — same periwinkle
+            accent, same github-dark-dimmed tokens, deeper canvas.
+            Built for OLED panels and late-night reading where even
+            cortex-slate feels lit.
 
           Consumers can still override `template/src/styles/palette.css`
           through `templateFiles` to ship their own palette entirely.
@@ -68,17 +73,17 @@
         type = lib.types.nullOr (lib.types.submodule {
           options = {
             light = lib.mkOption {
-              type = lib.types.enum ["cortex-dark" "cortex-light" "cortex-slate"];
+              type = lib.types.enum ["cortex-dark" "cortex-light" "cortex-slate" "cortex-slate-darker"];
               description = "Theme used when the reader picks (or the OS reports) light mode.";
             };
             dark = lib.mkOption {
-              type = lib.types.enum ["cortex-dark" "cortex-light" "cortex-slate"];
+              type = lib.types.enum ["cortex-dark" "cortex-light" "cortex-slate" "cortex-slate-darker"];
               description = "Theme used when the reader picks (or the OS reports) dark mode.";
             };
           };
         });
         default = null;
-        example = {light = "cortex-light"; dark = "cortex-slate";};
+        example = {light = "cortex-light"; dark = "cortex-slate-darker";};
         description = ''
           Enable an unobtrusive light/dark switcher in the sidebar
           footer. When set, both palettes are inlined into the build

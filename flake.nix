@@ -55,7 +55,7 @@
             theme = "cortex-light";
             themeModes = {
               light = "cortex-light";
-              dark = "cortex-slate";
+              dark = "cortex-slate-darker";
             };
             site = {
               title = "repo-docs";
@@ -120,7 +120,7 @@
               # docs has themeModes — both palette names should be
               # surfaced as data attributes for the pre-paint script.
               grep -q 'data-mode-light="cortex-light"' "$docs/index.html"
-              grep -q 'data-mode-dark="cortex-slate"' "$docs/index.html"
+              grep -q 'data-mode-dark="cortex-slate-darker"' "$docs/index.html"
               # internal stays single-theme cortex-dark.
               grep -q 'data-theme="cortex-dark"' "$internal/index.html"
 

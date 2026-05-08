@@ -10,7 +10,11 @@ export interface NavigationSectionConfig {
   }>;
 }
 
-export type SiteTheme = "cortex-dark" | "cortex-light" | "cortex-slate";
+export type SiteTheme =
+  | "cortex-dark"
+  | "cortex-light"
+  | "cortex-slate"
+  | "cortex-slate-darker";
 
 export interface SiteThemeModes {
   dark: SiteTheme;
@@ -52,7 +56,12 @@ export interface SiteConfig {
   themeModes: SiteThemeModes | null;
 }
 
-const THEMES: ReadonlyArray<SiteTheme> = ["cortex-dark", "cortex-light", "cortex-slate"];
+const THEMES: ReadonlyArray<SiteTheme> = [
+  "cortex-dark",
+  "cortex-light",
+  "cortex-slate",
+  "cortex-slate-darker",
+];
 function isTheme(value: unknown): value is SiteTheme {
   return typeof value === "string" && (THEMES as ReadonlyArray<string>).includes(value);
 }
@@ -90,6 +99,7 @@ export const siteConfig = {
     const raw = (rawConfig as {theme?: string}).theme;
     if (raw === "cortex-light") return "cortex-light";
     if (raw === "cortex-slate") return "cortex-slate";
+    if (raw === "cortex-slate-darker") return "cortex-slate-darker";
     return "cortex-dark";
   })(),
   themeModes: parseThemeModes((rawConfig as {themeModes?: unknown}).themeModes),

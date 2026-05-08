@@ -3,7 +3,12 @@ import path from "node:path";
 
 const MARKDOWN_EXTENSIONS = new Set([".md", ".mdx"]);
 const RESERVED_CONFIG_NAMES = new Set(["config.yaml", "config.yml", "config.json"]);
-const BUILTIN_THEMES = new Set(["cortex-dark", "cortex-light", "cortex-slate"]);
+const BUILTIN_THEMES = new Set([
+  "cortex-dark",
+  "cortex-light",
+  "cortex-slate",
+  "cortex-slate-darker",
+]);
 const GENERATED_THEORY_DIR = "Theory";
 const GENERATED_HASKELL_DIR = "Haskell";
 
@@ -770,6 +775,31 @@ html[data-theme="cortex-slate"] {
   --rd-surface-secondary: #373e47;
   --rd-surface-tertiary: #444c56;
   --rd-surface-hover: #545d68;
+  --rd-text-content: #cdd9e5;
+  --rd-text-content-secondary: #adbac7;
+  --rd-text-content-tertiary: #768390;
+  --rd-text-content-quaternary: #545d68;
+  --rd-border-primary: rgba(205, 217, 229, 0.08);
+  --rd-border-secondary: rgba(205, 217, 229, 0.16);
+  --rd-brand-primary: #6e7bd6;
+  --rd-brand-secondary: #5159b3;
+  --rd-tok-keyword: #f47067;
+  --rd-tok-type: #f69d50;
+  --rd-tok-string: #96d0ff;
+  --rd-tok-comment: #768390;
+  --rd-tok-number: #6cb6ff;
+  --rd-tok-operator: #f47067;
+  --rd-tok-function: #dcbdfb;
+  --rd-status-deprecated: #f47067;
+}
+
+html[data-theme="cortex-slate-darker"] {
+  --rd-bg-primary: #181d24;
+  --rd-bg-secondary: #232930;
+  --rd-surface-primary: #232930;
+  --rd-surface-secondary: #2d343d;
+  --rd-surface-tertiary: #3a414b;
+  --rd-surface-hover: #4a5159;
   --rd-text-content: #cdd9e5;
   --rd-text-content-secondary: #adbac7;
   --rd-text-content-tertiary: #768390;
