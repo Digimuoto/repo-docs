@@ -1,4 +1,8 @@
-{pkgs, lib, repoRoot}: let
+{
+  pkgs,
+  lib,
+  repoRoot,
+}: let
   npmDepsHash = "sha256-hzofBxSfUOjq0A0ZdNWqTYUxrpuoyJPjHvIZ3EY6Ois=";
   templateDir = repoRoot + "/template";
   stageScript = repoRoot + "/scripts/stage-docs-site.mjs";
@@ -25,323 +29,53 @@
     ];
   };
 
+  # Minimal Lean 4 dependency set — only what the in-repo fixture
+  # imports (`import Batteries`). The previous default included
+  # mathlib, which transitively pulls in aesop / Qq / proofwidgets /
+  # plausible / LeanSearchClient / importGraph / Cli AND turns CI
+  # builds into multi-hour mathlib compiles when the binary cache
+  # misses. Consumers who genuinely need mathlib should override
+  # `lean4Deps` at the call site. Verso brings its own plausible
+  # dependency along separately.
   defaultLean4Deps = with pkgs.leanPackages; [
-    mathlib
     batteries
-    aesop
-    Qq
-    proofwidgets
-    plausible
-    LeanSearchClient
-    importGraph
-    Cli
   ];
+
+  typstPlugin = import ./plugins/typst.nix {inherit pkgs lib;};
+  haskellPlugin = import ./plugins/haskell.nix {inherit pkgs lib;};
+  lean4Plugin = import ./plugins/lean4.nix {inherit pkgs lib verso;};
 
   mkTypstManuscripts = {
     name,
     contentDir,
     typstManuscripts,
-  }: let
-    manuscriptsFile = pkgs.writeText "${name}-typst-manuscripts.json" (builtins.toJSON typstManuscripts);
-  in
-    pkgs.stdenv.mkDerivation {
-      pname = "${name}-typst-manuscripts";
-      version = "0.1.0";
-      src = contentDir;
-
-      nativeBuildInputs = [
-        pkgs.jq
-        pkgs.typst
-      ];
-
-      dontConfigure = true;
-
-      buildPhase = ''
-        runHook preBuild
-
-        mkdir -p "$out/assets"
-        items="$TMPDIR/typst-manuscripts.jsonl"
-        : > "$items"
-
-        while IFS= read -r key; do
-          dir=$(jq -r --arg key "$key" '.[$key].dir // empty' ${manuscriptsFile})
-          if [ -z "$dir" ]; then
-            echo "docsSite.typst.manuscripts.$key.dir must be set" >&2
-            exit 1
-          fi
-
-          case "$dir" in
-            /*|*..*)
-              echo "docsSite.typst.manuscripts.$key.dir must be a relative docs path without '..'" >&2
-              exit 1
-              ;;
-          esac
-
-          manifest="$PWD/$dir/repo-docs-typst.json"
-          if [ ! -f "$manifest" ]; then
-            echo "Typst manuscript '$key' is missing $dir/repo-docs-typst.json" >&2
-            exit 1
-          fi
-
-          entry=$(jq -r '.entry // empty' "$manifest")
-          if [ -z "$entry" ]; then
-            echo "Typst manuscript '$key' manifest must define entry" >&2
-            exit 1
-          fi
-
-          output=$(jq -r '.output // "manuscript.pdf"' "$manifest")
-          case "$output" in
-            *.pdf) ;;
-            *)
-              echo "Typst manuscript '$key' output must end in .pdf" >&2
-              exit 1
-              ;;
-          esac
-
-          route=$(jq -r '.route // empty' "$manifest")
-          if [ -z "$route" ]; then
-            parent="''${dir%/*}"
-            route="$parent/''${output%.pdf}"
-          fi
-
-          title=$(jq -r '.title // empty' "$manifest")
-          if [ -z "$title" ]; then
-            title="$key"
-          fi
-          description=$(jq -r '.description // empty' "$manifest")
-          sidebar=$(jq -c '.sidebar // {}' "$manifest")
-
-          asset="''${key//[^A-Za-z0-9_.-]/-}.pdf"
-          typst compile --root "$PWD" "$dir/$entry" "$out/assets/$asset"
-
-          jq -n \
-            --arg key "$key" \
-            --arg dir "$dir" \
-            --arg route "$route" \
-            --arg title "$title" \
-            --arg description "$description" \
-            --arg asset "$asset" \
-            --argjson sidebar "$sidebar" \
-            '{key: $key, dir: $dir, route: $route, title: $title, description: $description, asset: $asset, sidebar: $sidebar}' \
-            >> "$items"
-        done < <(jq -r 'keys[]' ${manuscriptsFile})
-
-        jq -s '.' "$items" > "$out/manuscripts.json"
-
-        runHook postBuild
-      '';
-
-      installPhase = ''
-        runHook preInstall
-        runHook postInstall
-      '';
+  }:
+    typstPlugin.mkBuild {
+      inherit name contentDir;
+      pluginConfig = typstManuscripts;
     };
 
   mkHaskellHaddockDocs = {
     name,
     contentDir,
     haskellPackages,
-  }: let
-    packageEntries = lib.mapAttrsToList (key: cfg: let
-      singleComponent =
-        if cfg ? component && cfg.component != null && cfg.component != ""
-        then [cfg.component]
-        else [];
-      components = lib.unique (
-        singleComponent
-        ++ (
-          if cfg ? components && cfg.components != null
-          then cfg.components
-          else []
-        )
-      );
-      modulePrefixes =
-        if cfg ? modulePrefixes && cfg.modulePrefixes != null
-        then cfg.modulePrefixes
-        else [];
-      packageName =
-        if cfg ? packageName && cfg.packageName != null && cfg.packageName != ""
-        then cfg.packageName
-        else key;
-      sourceDir = builtins.dirOf contentDir + "/${cfg.packageDir}";
-      # Nixpkgs only adds Haddock's --quickjump when
-      # doHaddockQuickjump is true. That writes doc-index.json, which
-      # the embedded API search consumes for fuzzy package search.
-      package = pkgs.haskell.lib.dontCheck (
-        pkgs.haskell.lib.doHaddock (
-          pkgs.haskell.lib.overrideCabal
-            (pkgs.haskellPackages.callCabal2nix packageName sourceDir {})
-            (_: {
-              doHaddockQuickjump = true;
-            })
-        )
-      );
-    in {
-      inherit key packageName components modulePrefixes;
-      title =
-        if cfg ? title && cfg.title != null && cfg.title != ""
-        then cfg.title
-        else packageName;
-      description =
-        if cfg ? description && cfg.description != null
-        then cfg.description
-        else "";
-      doc = "${package.doc}";
-    }) haskellPackages;
-    packagesFile = pkgs.writeText "${name}-haskell-haddock-packages.json" (builtins.toJSON packageEntries);
-  in
-    pkgs.stdenv.mkDerivation {
-      pname = "${name}-haskell-haddock";
-      version = "0.1.0";
-
-      nativeBuildInputs = [pkgs.jq];
-
-      dontUnpack = true;
-      dontConfigure = true;
-
-      buildPhase = ''
-        runHook preBuild
-
-        mkdir -p "$out/packages"
-        items="$TMPDIR/haskell-haddock-packages.jsonl"
-        : > "$items"
-
-        while IFS= read -r key; do
-          package_name=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .packageName' ${packagesFile})
-          title=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .title' ${packagesFile})
-          description=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .description' ${packagesFile})
-          components=$(jq -c --arg key "$key" '.[] | select(.key == $key) | .components' ${packagesFile})
-          module_prefixes=$(jq -c --arg key "$key" '.[] | select(.key == $key) | .modulePrefixes' ${packagesFile})
-          doc=$(jq -r --arg key "$key" '.[] | select(.key == $key) | .doc' ${packagesFile})
-          safe_key=$(printf '%s' "$key" | tr -c 'A-Za-z0-9_.-' '-')
-
-          if [ -z "$safe_key" ]; then
-            echo "docsSite.haskell.packages key must contain at least one URL-safe character" >&2
-            exit 1
-          fi
-
-          html_dirs=("$doc"/share/doc/*/html)
-          if [ ! -d "''${html_dirs[0]}" ]; then
-            echo "Haddock output for '$key' did not contain share/doc/*/html" >&2
-            exit 1
-          fi
-
-          target="$out/packages/$safe_key/html"
-          mkdir -p "$target"
-          cp -R "''${html_dirs[0]}"/. "$target"
-          chmod -R u+w "$target"
-
-          jq -n \
-            --arg key "$key" \
-            --arg safeKey "$safe_key" \
-            --arg packageName "$package_name" \
-            --arg title "$title" \
-            --arg description "$description" \
-            --argjson components "$components" \
-            --argjson modulePrefixes "$module_prefixes" \
-            '{key: $key, safeKey: $safeKey, packageName: $packageName, title: $title, description: $description, components: $components, modulePrefixes: $modulePrefixes}' \
-            >> "$items"
-        done < <(jq -r '.[].key' ${packagesFile})
-
-        jq -s '.' "$items" > "$out/packages.json"
-
-        runHook postBuild
-      '';
-
-      installPhase = ''
-        runHook preInstall
-        runHook postInstall
-      '';
+  }:
+    haskellPlugin.mkBuild {
+      inherit name contentDir;
+      pluginConfig = haskellPackages;
     };
 
   mkLean4VersoHtml = {
     name,
     lean4SourceDir,
     lean4Deps,
-  }: let
-    allLeanDeps = lib.unique (
-      builtins.concatMap (dep: [dep] ++ (dep.passthru.allLeanDeps or [])) lean4Deps
-    );
-    overridesFile = pkgs.writeText "${name}-lean4-overrides.json" (
-      builtins.toJSON {
-        schemaVersion = "1.2.0";
-        packages = map (dep: {
-          type = "path";
-          name = dep.passthru.lakePackageName or dep.pname;
-          inherited = false;
-          dir = "${dep}";
-        }) allLeanDeps;
-      }
-    );
-  in
-    pkgs.stdenv.mkDerivation {
-      pname = "${name}-lean4-theory";
-      version = "0.1.0";
-      src = lean4SourceDir;
-
-      nativeBuildInputs = [
-        pkgs.gitMinimal
-        # Match the Lean toolchain used by pkgs.leanPackages.* artifacts so
-        # Lake can reuse dependency config traces from the Nix store.
-        pkgs.leanPackages.lean4
-      ];
-      buildInputs = allLeanDeps;
-
-      dontConfigure = true;
-
-      buildPhase = ''
-        runHook preBuild
-
-        export HOME="$TMPDIR"
-        export LAKE_NO_CACHE=1
-        export RESERVOIR_API_URL=""
-        export LEAN_CC="${pkgs.stdenv.cc}/bin/cc"
-
-        if [ ! -f lakefile.lean ]; then
-          echo "docsSite.lean4.theoryDir must point to a Lean Lake project with a lakefile.lean" >&2
-          exit 1
-        fi
-
-        modules_file="$TMPDIR/lean-modules"
-        : > "$modules_file"
-        while IFS= read -r file; do
-          rel="''${file#./}"
-          module="''${rel%.lean}"
-          module="''${module//\//.}"
-          case "$module" in
-            lakefile|Main) continue ;;
-          esac
-          printf '%s\n' "$module" >> "$modules_file"
-        done < <(find . -type f -name '*.lean' -not -path './.lake/*' | sort)
-
-        if [ ! -s "$modules_file" ]; then
-          echo "No Lean modules found under docsSite.lean4.theoryDir" >&2
-          exit 1
-        fi
-
-        lake build --no-ansi --packages=${overridesFile} $(tr '\n' ' ' < "$modules_file")
-
-        export LEAN_PATH="$PWD/.lake/build/lib/lean''${LEAN_PATH:+:$LEAN_PATH}"
-        json_dir="$TMPDIR/literate-json"
-        module_map="$TMPDIR/literate-module-map"
-        mkdir -p "$json_dir"
-        : > "$module_map"
-
-        while IFS= read -r module; do
-          json_path="$json_dir/$module.json"
-          ${verso}/bin/verso-literate "$module" "$json_path"
-          printf '%s\t%s\t%s\n' "$module" "$json_path" "$PWD" >> "$module_map"
-        done < "$modules_file"
-
-        ${verso}/bin/verso-literate-html "$out" "$module_map"
-
-        runHook postBuild
-      '';
-
-      installPhase = ''
-        runHook preInstall
-        runHook postInstall
-      '';
+  }:
+    lean4Plugin.mkBuild {
+      inherit name;
+      pluginConfig = {
+        sourceDir = lean4SourceDir;
+        deps = lean4Deps;
+      };
     };
 
   # Serialise the attrset of built grammars to a form the staging script
@@ -352,7 +86,8 @@
       parser = "${entry.wasm}/parser.wasm";
       queries = "${entry.wasm}/queries";
       aliases = entry.aliases;
-    }) languages;
+    })
+    languages;
 
   mkApp = {
     name,
@@ -379,48 +114,48 @@
         templateFilesJson = pkgs.writeText "${name}-template-files.json" (builtins.toJSON (lib.mapAttrs (_: value: toString value) templateFiles));
         languagesJson = pkgs.writeText "${name}-languages.json" (builtins.toJSON (languagesManifest languages));
       in ''
-        host="''${HOST:-127.0.0.1}"
-        port="''${PORT:-${toString port}}"
-        workdir="$(mktemp -d "''${TMPDIR:-/tmp}/${name}-XXXXXX")"
+                host="''${HOST:-127.0.0.1}"
+                port="''${PORT:-${toString port}}"
+                workdir="$(mktemp -d "''${TMPDIR:-/tmp}/${name}-XXXXXX")"
 
-        cleanup() {
-          rm -rf "$workdir"
-        }
+                cleanup() {
+                  rm -rf "$workdir"
+                }
 
-        trap cleanup EXIT
+                trap cleanup EXIT
 
-        cp -R ${templateDir}/. "$workdir"
-        chmod -R u+w "$workdir"
+                cp -R ${templateDir}/. "$workdir"
+                chmod -R u+w "$workdir"
 
-        stageArgs=(
-          --content-dir ${contentDir}
-          --config-json ${configJson}
-          --template-files-json ${templateFilesJson}
-          --languages-json ${languagesJson}
-${lib.optionalString (lean4RenderedDir != null) ''
+                stageArgs=(
+                  --content-dir ${contentDir}
+                  --config-json ${configJson}
+                  --template-files-json ${templateFilesJson}
+                  --languages-json ${languagesJson}
+        ${lib.optionalString (lean4RenderedDir != null) ''
           --lean4-rendered-dir ${lean4RenderedDir}
           --lean4-source-dir ${lean4SourceDir}
-''}${lib.optionalString (typstRenderedDir != null) ''
+        ''}${lib.optionalString (typstRenderedDir != null) ''
           --typst-rendered-dir ${typstRenderedDir}
-''}${lib.optionalString (haskellRenderedDir != null) ''
+        ''}${lib.optionalString (haskellRenderedDir != null) ''
           --haskell-rendered-dir ${haskellRenderedDir}
-''}          --out-dir "$workdir"
-        )
-        node ${stageScript} "''${stageArgs[@]}"
+        ''}          --out-dir "$workdir"
+                )
+                node ${stageScript} "''${stageArgs[@]}"
 
-        cd "$workdir"
-        source build-env.sh
-        npm ci --no-fund --no-audit
+                cd "$workdir"
+                source build-env.sh
+                npm ci --no-fund --no-audit
 
-        if [ "${mode}" = "preview" ]; then
-          npm run build
-          # Generate the Pagefind static index alongside the built site.
-          # Failures shouldn't block the preview — search just won't work.
-          pagefind --site dist || echo "[pagefind] index generation failed; continuing without search"
-          npm run preview -- --host "$host" --port "$port"
-        else
-          npm run dev -- --host "$host" --port "$port"
-        fi
+                if [ "${mode}" = "preview" ]; then
+                  npm run build
+                  # Generate the Pagefind static index alongside the built site.
+                  # Failures shouldn't block the preview — search just won't work.
+                  pagefind --site dist || echo "[pagefind] index generation failed; continuing without search"
+                  npm run preview -- --host "$host" --port "$port"
+                else
+                  npm run dev -- --host "$host" --port "$port"
+                fi
       '';
     };
 in
@@ -453,32 +188,33 @@ in
       if haskellPackages == {}
       then null
       else mkHaskellHaddockDocs {inherit name contentDir haskellPackages;};
-    stagedSrc = pkgs.runCommand "${name}-src" {
-      nativeBuildInputs = [
-        pkgs.nodejs_22
-      ];
-    } ''
-      set -euo pipefail
+    stagedSrc =
+      pkgs.runCommand "${name}-src" {
+        nativeBuildInputs = [
+          pkgs.nodejs_22
+        ];
+      } ''
+              set -euo pipefail
 
-      cp -R ${templateDir}/. "$out"
-      chmod -R u+w "$out"
+              cp -R ${templateDir}/. "$out"
+              chmod -R u+w "$out"
 
-      stageArgs=(
-        --content-dir ${contentDir}
-        --config-json ${pkgs.writeText "${name}-config.json" (builtins.toJSON config)}
-        --template-files-json ${pkgs.writeText "${name}-template-files.json" (builtins.toJSON (lib.mapAttrs (_: value: toString value) templateFiles))}
-        --languages-json ${pkgs.writeText "${name}-languages.json" (builtins.toJSON (languagesManifest languages))}
-${lib.optionalString (lean4SourceDir != null) ''
-        --lean4-rendered-dir ${lean4RenderedDir}
-        --lean4-source-dir ${lean4SourceDir}
-''}${lib.optionalString (typstRenderedDir != null) ''
-        --typst-rendered-dir ${typstRenderedDir}
-''}${lib.optionalString (haskellRenderedDir != null) ''
-        --haskell-rendered-dir ${haskellRenderedDir}
-''}        --out-dir "$out"
-      )
-      node ${stageScript} "''${stageArgs[@]}"
-    '';
+              stageArgs=(
+                --content-dir ${contentDir}
+                --config-json ${pkgs.writeText "${name}-config.json" (builtins.toJSON config)}
+                --template-files-json ${pkgs.writeText "${name}-template-files.json" (builtins.toJSON (lib.mapAttrs (_: value: toString value) templateFiles))}
+                --languages-json ${pkgs.writeText "${name}-languages.json" (builtins.toJSON (languagesManifest languages))}
+        ${lib.optionalString (lean4SourceDir != null) ''
+          --lean4-rendered-dir ${lean4RenderedDir}
+          --lean4-source-dir ${lean4SourceDir}
+        ''}${lib.optionalString (typstRenderedDir != null) ''
+          --typst-rendered-dir ${typstRenderedDir}
+        ''}${lib.optionalString (haskellRenderedDir != null) ''
+          --haskell-rendered-dir ${haskellRenderedDir}
+        ''}        --out-dir "$out"
+              )
+              node ${stageScript} "''${stageArgs[@]}"
+      '';
 
     package = pkgs.buildNpmPackage {
       pname = name;
