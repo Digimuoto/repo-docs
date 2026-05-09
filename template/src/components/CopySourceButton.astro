@@ -1,0 +1,48 @@
+---
+/*
+ * Copy-source button rendered in DocsTitle's eyebrow / byline /
+ * description rows. Floats to the right of the last line of ingress
+ * copy via CSS.
+ *
+ * The button caches the doc body in a data-attribute; the click
+ * handler in DocsTitle.astro picks it up and writes to the
+ * clipboard. Three slot positions in DocsTitle (head, description,
+ * byline) used to inline the same SVG + status pill three times —
+ * this component collapses that to a single source.
+ */
+
+interface Props {
+  /** Markdown body to copy when the button is clicked. */
+  source: string;
+  /** Path label used in the aria-label and title (the page slug). */
+  target: string;
+}
+
+const { source, target } = Astro.props;
+---
+
+<button
+  type="button"
+  class="docs-title-command"
+  data-docs-title-command
+  data-source={source}
+  title="Copy markdown source"
+  aria-label={`Copy markdown source for ${target}`}
+>
+  <span class="docs-title-command-icon" aria-hidden="true">
+    <svg
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.4"
+    >
+      <rect x="4" y="4" width="7" height="7" rx="1.2" stroke-linejoin="round"
+      ></rect>
+      <path
+        d="M3 9.25V3a.75.75 0 0 1 .75-.75H10"
+        stroke-linecap="round"
+        stroke-linejoin="round"></path>
+    </svg>
+  </span>
+  <span class="docs-title-command-status" aria-live="polite"></span>
+</button>

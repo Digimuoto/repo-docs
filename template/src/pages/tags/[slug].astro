@@ -9,10 +9,10 @@
  * route is `/<routeBase>/tags/<slug>/` — Astro's catch-all in
  * `[...slug].astro` defers to this more specific route.
  */
-import {getCollection} from "astro:content";
+import { getCollection } from "astro:content";
 import DocsLayout from "../../layouts/DocsLayout.astro";
-import {buildSidebar, normalizeEntryId} from "../../lib/navigation";
-import {kebabToTitle, withBasePath} from "../../lib/site-config";
+import { buildSidebar, normalizeEntryId } from "../../lib/navigation";
+import { kebabToTitle, withBasePath } from "../../lib/site-config";
 
 export async function getStaticPaths() {
   // Astro extracts getStaticPaths into its own module and helpers
@@ -24,29 +24,56 @@ export async function getStaticPaths() {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
 
-  const docs = await getCollection("docs", ({data}) => !data.draft);
-  const byTag = new Map<string, {
-    canonical: string;
-    docs: Array<(typeof docs)[number]>;
-  }>();
+  const docs = await getCollection("docs", ({ data }) => !data.draft);
+
+  // Authored docs under tags/<slug> would render at the same route
+  // this index produces. Astro picks the more-specific tag route, so
+  // the authored doc disappears with only a warning. Reserve those
+  // slugs and skip the corresponding tag indexes — authored content
+  // wins. doc.id has already been normalised through legacyDocsId, so
+  // both `tags/reference.md` and `tags/reference/index.md` collapse
+  // to the same `tags/reference` id.
+  const reservedTagSlugs = new Set<string>();
+  for (const doc of docs) {
+    const m = doc.id.match(/^tags\/([^/]+)$/);
+    if (m) reservedTagSlugs.add(m[1]);
+  }
+
+  const byTag = new Map<
+    string,
+    {
+      canonical: string;
+      docs: Array<(typeof docs)[number]>;
+    }
+  >();
 
   for (const doc of docs) {
-    const tags = (doc.data as {tags?: unknown}).tags;
+    const tags = (doc.data as { tags?: unknown }).tags;
     if (!Array.isArray(tags)) continue;
     for (const raw of tags) {
       if (typeof raw !== "string") continue;
       const slug = slugify(raw);
       if (!slug) continue;
-      const bucket = byTag.get(slug) ?? {canonical: raw.trim(), docs: []};
+      const bucket = byTag.get(slug) ?? { canonical: raw.trim(), docs: [] };
       bucket.docs.push(doc);
       byTag.set(slug, bucket);
     }
   }
 
-  return Array.from(byTag.entries()).map(([slug, bucket]) => ({
-    params: {slug},
-    props: {tag: bucket.canonical, slug, docs: bucket.docs},
-  }));
+  return Array.from(byTag.entries())
+    .filter(([slug]) => {
+      if (reservedTagSlugs.has(slug)) {
+        console.warn(
+          `[tags] slug "${slug}" collides with authored doc tags/${slug}; skipping tag index so the authored page wins`,
+        );
+        return false;
+      }
+      return true;
+    })
+    .map(([slug, bucket]) => ({
+      params: { slug },
+      props: { tag: bucket.canonical, slug, docs: bucket.docs },
+    }));
 }
 
 interface DocsEntry {
@@ -59,13 +86,13 @@ interface DocsEntry {
   };
 }
 
-const {tag, docs} = Astro.props as {
+const { tag, docs } = Astro.props as {
   tag: string;
   slug: string;
   docs: DocsEntry[];
 };
 
-const allDocs = await getCollection("docs", ({data}) => !data.draft);
+const allDocs = await getCollection("docs", ({ data }) => !data.draft);
 const navigation = buildSidebar(allDocs);
 
 function dateValue(d: DocsEntry): number {
@@ -127,24 +154,35 @@ const titleLabel = `Tag: ${kebabToTitle(tag)}`;
   </header>
 
   <ul class="docs-tag-list">
-    {ordered.map((doc) => {
-      const date = dateLabel(doc);
-      return (
-        <li class="docs-tag-item">
-          <a class="docs-tag-link" href={hrefFor(doc)}>{doc.data.title}</a>
-          {(date || doc.data.description) && (
-            <p class="docs-tag-meta">
-              {date && (
-                <time class="docs-tag-date" datetime={date.iso}>{date.display}</time>
-              )}
-              {date && doc.data.description && <span class="docs-tag-sep" aria-hidden="true"> · </span>}
-              {doc.data.description && (
-                <span class="docs-tag-desc">{doc.data.description}</span>
-              )}
-            </p>
-          )}
-        </li>
-      );
-    })}
+    {
+      ordered.map((doc) => {
+        const date = dateLabel(doc);
+        return (
+          <li class="docs-tag-item">
+            <a class="docs-tag-link" href={hrefFor(doc)}>
+              {doc.data.title}
+            </a>
+            {(date || doc.data.description) && (
+              <p class="docs-tag-meta">
+                {date && (
+                  <time class="docs-tag-date" datetime={date.iso}>
+                    {date.display}
+                  </time>
+                )}
+                {date && doc.data.description && (
+                  <span class="docs-tag-sep" aria-hidden="true">
+                    {" "}
+                    ·{" "}
+                  </span>
+                )}
+                {doc.data.description && (
+                  <span class="docs-tag-desc">{doc.data.description}</span>
+                )}
+              </p>
+            )}
+          </li>
+        );
+      })
+    }
   </ul>
 </DocsLayout>

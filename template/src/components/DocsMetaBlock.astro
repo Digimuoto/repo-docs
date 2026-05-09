@@ -1,6 +1,6 @@
 ---
-import type {CollectionEntry} from "astro:content";
-import {siteConfig} from "../lib/site-config";
+import type { CollectionEntry } from "astro:content";
+import { withBasePath } from "../lib/site-config";
 
 /*
  * Decision-record cross-references.
@@ -19,35 +19,35 @@ interface Props {
   doc: CollectionEntry<"docs">;
 }
 
-const {doc} = Astro.props;
+const { doc } = Astro.props;
 const data = doc.data as {
   superseded_by?: string | null;
   related?: string[];
 };
 
-function stripTrailingSlash(value: string) {
-  if (value === "/") return "";
-  return value.endsWith("/") ? value.slice(0, -1) : value;
-}
-
 function repoPathToUrl(raw: string): string | null {
-  const trimmed = raw.trim();
-  const match = trimmed.match(/^docs\/[^/]+\/(.+\.(?:md|mdx))$/i);
+  // Accept three shapes authors use interchangeably for cross-refs:
+  //   docs/<site>/path/to/page.md      (file path with extension)
+  //   docs/<site>/path/to/page         (extension-less)
+  //   docs/<site>/path/to/page/        (trailing-slash directory form)
+  // All three normalise to the same site-relative slug.
+  const trimmed = raw.trim().replace(/\/+$/, "");
+  const match = trimmed.match(/^docs\/[^/]+\/(.+)$/i);
   if (!match) return null;
   const noExt = match[1].replace(/\.(md|mdx)$/i, "");
   const slug =
     noExt === "index"
       ? ""
       : noExt.endsWith("/index")
-      ? noExt.slice(0, -"/index".length)
-      : noExt;
-  const base = stripTrailingSlash(siteConfig.site.routeBase || "/");
-  return slug === "" ? `${base}/` : `${base}/${slug}/`;
+        ? noExt.slice(0, -"/index".length)
+        : noExt;
+  return withBasePath(slug);
 }
 
 function shortLabel(rawPath: string): string {
   // Strip the docs/<site>/ prefix authors use for portable cross-refs.
   const trimmed = rawPath
+    .replace(/\/+$/, "")
     .replace(/\.(md|mdx)$/i, "")
     .replace(/^docs\/[^/]+\//, "");
   // ADR shorthand: adrs/NNNN-… → "ADR NNNN".
@@ -72,11 +72,17 @@ interface Pointer {
 function classify(item: string): Pointer {
   const trimmed = item.trim();
   if (/^[A-Z][A-Z0-9]+-\d+$/i.test(trimmed)) {
-    return {kind: "ticket", label: trimmed.toUpperCase(), title: trimmed};
+    return { kind: "ticket", label: trimmed.toUpperCase(), title: trimmed };
   }
   const docUrl = repoPathToUrl(trimmed);
-  if (docUrl) return {kind: "doc", label: shortLabel(trimmed), title: trimmed, href: docUrl};
-  return {kind: "text", label: trimmed, title: trimmed};
+  if (docUrl)
+    return {
+      kind: "doc",
+      label: shortLabel(trimmed),
+      title: trimmed,
+      href: docUrl,
+    };
+  return { kind: "text", label: trimmed, title: trimmed };
 }
 
 const supersededBy =
@@ -84,52 +90,62 @@ const supersededBy =
     ? classify(data.superseded_by)
     : null;
 const related: Pointer[] = (data.related ?? [])
-  .filter((item): item is string => typeof item === "string" && item.trim() !== "")
+  .filter(
+    (item): item is string => typeof item === "string" && item.trim() !== "",
+  )
   .map(classify);
 
 const hasMeta = supersededBy !== null || related.length > 0;
 ---
 
-{hasMeta && (
-  <aside class="docs-meta-block" aria-label="Document references">
-    {supersededBy && (
-      supersededBy.kind === "doc" && supersededBy.href ? (
-        <a
-          class="docs-meta-pill docs-meta-pill-superseded"
-          href={supersededBy.href}
-          title={`Superseded by ${supersededBy.title}`}
-        >
-          superseded by → <span>{supersededBy.label}</span>
-        </a>
-      ) : (
-        <span
-          class="docs-meta-pill docs-meta-pill-superseded"
-          title={`Superseded by ${supersededBy.title}`}
-        >
-          superseded by → <span>{supersededBy.label}</span>
-        </span>
-      )
-    )}
-    {related.map((item) => {
-      if (item.kind === "doc" && item.href) {
-        return (
-          <a class="docs-meta-pill docs-meta-pill-related" href={item.href} title={item.title}>
-            {item.label}
+{
+  hasMeta && (
+    <aside class="docs-meta-block" aria-label="Document references">
+      {supersededBy &&
+        (supersededBy.kind === "doc" && supersededBy.href ? (
+          <a
+            class="docs-meta-pill docs-meta-pill-superseded"
+            href={supersededBy.href}
+            title={`Superseded by ${supersededBy.title}`}
+          >
+            superseded by → <span>{supersededBy.label}</span>
           </a>
-        );
-      }
-      if (item.kind === "ticket") {
+        ) : (
+          <span
+            class="docs-meta-pill docs-meta-pill-superseded"
+            title={`Superseded by ${supersededBy.title}`}
+          >
+            superseded by → <span>{supersededBy.label}</span>
+          </span>
+        ))}
+      {related.map((item) => {
+        if (item.kind === "doc" && item.href) {
+          return (
+            <a
+              class="docs-meta-pill docs-meta-pill-related"
+              href={item.href}
+              title={item.title}
+            >
+              {item.label}
+            </a>
+          );
+        }
+        if (item.kind === "ticket") {
+          return (
+            <span
+              class="docs-meta-pill docs-meta-pill-ticket"
+              title={item.title}
+            >
+              {item.label}
+            </span>
+          );
+        }
         return (
-          <span class="docs-meta-pill docs-meta-pill-ticket" title={item.title}>
+          <span class="docs-meta-pill docs-meta-pill-text" title={item.title}>
             {item.label}
           </span>
         );
-      }
-      return (
-        <span class="docs-meta-pill docs-meta-pill-text" title={item.title}>
-          {item.label}
-        </span>
-      );
-    })}
-  </aside>
-)}
+      })}
+    </aside>
+  )
+}
