@@ -5,7 +5,8 @@
     // selector alone — sniff each pre > code's leading keyword to
     // pick up Mermaid diagrams that the markdown pipeline tagged
     // *and* Verso's untagged variants.
-    const VERSO_MERMAID_LEAD = /^\s*(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|gitGraph|mindmap|timeline|quadrantChart|requirementDiagram|sankey-beta|xychart-beta|block-beta|C4(?:Context|Container|Component|Dynamic|Deployment))\b/;
+    const VERSO_MERMAID_LEAD =
+      /^\s*(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|gitGraph|mindmap|timeline|quadrantChart|requirementDiagram|sankey-beta|xychart-beta|block-beta|C4(?:Context|Container|Component|Dynamic|Deployment))\b/;
     const tagged = Array.from(
       document.querySelectorAll(
         "pre[data-language='mermaid'] > code, pre > code.language-mermaid, pre > code.lang-mermaid",
@@ -15,25 +16,26 @@
     const sniffed = Array.from(
       document.querySelectorAll(".repo-docs-lean-page pre > code"),
     ).filter(
-      (node) => !taggedSet.has(node) && VERSO_MERMAID_LEAD.test(node.textContent ?? ""),
+      (node) =>
+        !taggedSet.has(node) && VERSO_MERMAID_LEAD.test(node.textContent ?? ""),
     );
     const sourceNodes = [...tagged, ...sniffed];
 
     if (sourceNodes.length > 0) {
-      const {default: mermaid} = await import("mermaid");
+      const { default: mermaid } = await import("mermaid");
       const docsState =
         (window as any).__repoDocsState ??
         ((window as any).__repoDocsState = {
-          buttons: [] as {updateLabel: () => void}[],
+          buttons: [] as { updateLabel: () => void }[],
           fullscreenInstalled: false,
         });
 
       // Each entry caches the source text + the diagram <div> so we
       // can re-render after a mode change without losing the original
       // markup (Mermaid replaces textContent with an SVG on first run).
-      type DiagramEntry = {diagram: HTMLElement; source: string};
+      type DiagramEntry = { diagram: HTMLElement; source: string };
       const diagrams: DiagramEntry[] = [];
-      const buttons: {updateLabel: () => void}[] = [];
+      const buttons: { updateLabel: () => void }[] = [];
 
       sourceNodes.forEach((node) => {
         const pre = node.closest("pre");
@@ -59,7 +61,9 @@
 
         const updateLabel = () => {
           button.textContent =
-            document.fullscreenElement === wrapper ? "Exit fullscreen" : "Fullscreen";
+            document.fullscreenElement === wrapper
+              ? "Exit fullscreen"
+              : "Fullscreen";
         };
 
         button.addEventListener("click", async () => {
@@ -77,28 +81,31 @@
         wrapper.appendChild(toolbar);
         wrapper.appendChild(diagram);
         pre.replaceWith(wrapper);
-        diagrams.push({diagram, source});
-        buttons.push({updateLabel});
+        diagrams.push({ diagram, source });
+        buttons.push({ updateLabel });
       });
 
       docsState.buttons = buttons;
 
       if (!docsState.fullscreenInstalled) {
         document.addEventListener("fullscreenchange", () => {
-          docsState.buttons.forEach(({updateLabel}: {updateLabel: () => void}) => updateLabel());
+          docsState.buttons.forEach(
+            ({ updateLabel }: { updateLabel: () => void }) => updateLabel(),
+          );
         });
         docsState.fullscreenInstalled = true;
       }
 
-      docsState.buttons.forEach(({updateLabel}: {updateLabel: () => void}) => updateLabel());
+      docsState.buttons.forEach(
+        ({ updateLabel }: { updateLabel: () => void }) => updateLabel(),
+      );
 
-      // Cortex-slate / cortex-slate-darker share the cycling-tints
-      // Mermaid treatment. The slate-darker variant uses the same
-      // indigo → teal → amber → rose → sage palette but pulls each
-      // fill ~6 ticks darker so the diagram cards sit comfortably on
-      // the darker body. Other themes keep Mermaid's stock dark /
-      // default (which already sit in the github-dark / github-light
-      // family).
+      // Cortex-slate gets a cycling-tints Mermaid treatment (indigo
+      // → teal → amber → rose → sage) so diagram cards pick up the
+      // periwinkle workspace feel. Other themes — cortex-dark,
+      // cortex-dark-darker, cortex-light — keep Mermaid's stock dark
+      // / default themes (which already sit in the github-dark /
+      // github-light family that those palettes target).
       const slateThemeVariables = {
         background: "#2d333b",
         mainBkg: "#383f5e",
@@ -149,51 +156,16 @@
         fillType7: "#4a3f2f",
       };
 
-      const slateDarkerThemeVariables = {
-        ...slateThemeVariables,
-        background: "#232930",
-        mainBkg: "#2e3552",
-        secondBkg: "#274040",
-        tertiaryBkg: "#403628",
-
-        primaryColor: "#2e3552",
-        primaryBorderColor: "#525c8a",
-
-        secondaryColor: "#274040",
-        secondaryBorderColor: "#456b69",
-
-        tertiaryColor: "#403628",
-        tertiaryBorderColor: "#6e5d40",
-
-        actorBkg: "#2e3552",
-        actorBorder: "#525c8a",
-        labelBoxBkgColor: "#274040",
-        labelBoxBorderColor: "#456b69",
-        noteBkgColor: "#403628",
-        noteBorderColor: "#6e5d40",
-        activationBkgColor: "#402b36",
-        activationBorderColor: "#6e4754",
-
-        fillType0: "#2e3552",
-        fillType1: "#274040",
-        fillType2: "#403628",
-        fillType3: "#402b36",
-        fillType4: "#324032",
-        fillType5: "#2e3552",
-        fillType6: "#274040",
-        fillType7: "#403628",
-      };
-
       function buildConfig() {
         const activeTheme = document.documentElement.dataset.theme;
         const isDark = document.documentElement.classList.contains("dark");
         if (activeTheme === "cortex-slate") {
-          return {theme: "base" as const, themeVariables: slateThemeVariables};
+          return {
+            theme: "base" as const,
+            themeVariables: slateThemeVariables,
+          };
         }
-        if (activeTheme === "cortex-slate-darker") {
-          return {theme: "base" as const, themeVariables: slateDarkerThemeVariables};
-        }
-        return {theme: isDark ? ("dark" as const) : ("default" as const)};
+        return { theme: isDark ? ("dark" as const) : ("default" as const) };
       }
 
       let renderToken = 0;
@@ -215,7 +187,10 @@
           diagrams.map(async (entry, index) => {
             const id = `mermaid-diagram-${index}-${token}`;
             try {
-              const {svg, bindFunctions} = await mermaid.render(id, entry.source);
+              const { svg, bindFunctions } = await mermaid.render(
+                id,
+                entry.source,
+              );
               if (token !== renderToken) return; // newer render in flight
               entry.diagram.innerHTML = svg;
               if (bindFunctions) {
