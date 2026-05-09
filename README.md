@@ -25,7 +25,7 @@ Reusable docs site module for `flake-parts` repositories.
 - Typst manuscript PDF compilation and generated reader pages from explicit manuscript folders
 - Per-site Nix outputs: `packages.<name>-site`, `apps.<name>-{dev,preview}`, `checks.<name>-site`
 
-The consumer repo keeps one or more markdown trees. Each tree is declared as a *site* under `docsSite.sites.<name>`; the module configures the shared Astro template, routing, navigation, theme, and any custom-language grammars from Nix. The consumer repo does not need its own Astro config, layout, Tailwind config, or docs `package.json`.
+The consumer repo keeps one or more markdown trees. Each tree is declared as a _site_ under `docsSite.sites.<name>`; the module configures the shared Astro template, routing, navigation, theme, and any custom-language grammars from Nix. The consumer repo does not need its own Astro config, layout, Tailwind config, or docs `package.json`.
 
 This repository dogfoods both single- and multi-site shapes: `docsSite.sites.docs` builds `packages.docs-site` (cortex-light) from `./docs`, and `docsSite.sites.internal` builds `packages.internal-site` (cortex-dark) from `./docs-internal`.
 
@@ -149,7 +149,7 @@ nix run .#cortex-preview    # Cortex research site (cortex-light)
 
 **Per-site knobs** (each entry under `docsSite.sites.<name>` accepts):
 
-- `contentDir` *(required)*
+- `contentDir` _(required)_
 - `excludePaths`
 - `theme` — `"cortex-dark"` (default), `"cortex-light"`, or `"cortex-slate"` (lifted dark, GitHub Dimmed lineage)
 - `site.*` — `title`, `tagline`, `description`, `publicBaseUrl`, `routeBase`, `footerText`
@@ -182,7 +182,7 @@ See [Wire grammar](../reference/wire/grammar-v1.md).
 See [the runtime](./06-pulse-runtime.md#executors).
 ```
 
-Both forms work in your editor, on GitHub web, *and* on the rendered site. External (`https://…`), absolute (`/foo`), and bare-anchor (`#bar`) links pass through untouched.
+Both forms work in your editor, on GitHub web, _and_ on the rendered site. External (`https://…`), absolute (`/foo`), and bare-anchor (`#bar`) links pass through untouched.
 
 ### Date-prefixed filenames sort newest-first
 
@@ -205,29 +205,29 @@ Add `status: <value>` to a page's frontmatter and the nav renders a small pill n
 ```yaml
 ---
 title: ADR 0014 — Executor taxonomy
-status: accepted        # well-known → green
+status: accepted # well-known → green
 ---
 ```
 
 ```yaml
 ---
 title: Wire composition sugar
-status: research        # cortex-specific → neutral pill
+status: research # cortex-specific → neutral pill
 ---
 ```
 
 Built-in palette (each theme overrides the colours):
 
-| Status         | Colour family             |
-| -------------- | ------------------------- |
-| `draft`        | warning / amber           |
-| `proposed`     | warning / amber           |
-| `accepted`     | success / green           |
-| `active`       | accent / brand blue       |
-| `superseded`   | muted grey + dimmed label |
-| `deprecated`   | danger / red              |
-| `archived`     | very muted, dimmed label  |
-| *(other)*      | neutral default pill      |
+| Status       | Colour family             |
+| ------------ | ------------------------- |
+| `draft`      | warning / amber           |
+| `proposed`   | warning / amber           |
+| `accepted`   | success / green           |
+| `active`     | accent / brand blue       |
+| `superseded` | muted grey + dimmed label |
+| `deprecated` | danger / red              |
+| `archived`   | very muted, dimmed label  |
+| _(other)_    | neutral default pill      |
 
 `superseded` and `archived` also dim the label itself so the eye lands on still-current docs first.
 
@@ -307,7 +307,7 @@ docsSite.sites.<your-site>.languages.wire = {
 };
 ```
 
-Any `` ```wire `` (or an alias) fenced block is tokenised by the grammar at build time; tokens get CSS classes derived from the capture names (`tok-keyword`, `tok-function`, `tok-string.special`, …). The token palette lives in the theme CSS files and is swapped automatically with `docsSite.theme`.
+Any ` ```wire ` (or an alias) fenced block is tokenised by the grammar at build time; tokens get CSS classes derived from the capture names (`tok-keyword`, `tok-function`, `tok-string.special`, …). The token palette lives in the theme CSS files and is swapped automatically with `docsSite.theme`.
 
 Unregistered languages continue to flow through Shiki's github-light / github-dark dual-theme path.
 

@@ -59,15 +59,15 @@ and sidebar metadata:
 
 Manifest fields:
 
-| Field | Required | Purpose |
-|-------|----------|---------|
-| `entry` | yes | Typst file compiled by `typst compile` |
-| `output` | no | PDF filename, defaults to `manuscript.pdf` |
-| `route` | no | Reader route, defaults beside the project folder using `output` |
-| `title` | no | Generated page title, defaults to the Nix manuscript key |
-| `description` | no | Generated page description |
-| `sidebar.label` | no | Sidebar label, defaults to `Manuscript` |
-| `sidebar.order` | no | Sidebar sort order for the generated route |
+| Field           | Required | Purpose                                                         |
+| --------------- | -------- | --------------------------------------------------------------- |
+| `entry`         | yes      | Typst file compiled by `typst compile`                          |
+| `output`        | no       | PDF filename, defaults to `manuscript.pdf`                      |
+| `route`         | no       | Reader route, defaults beside the project folder using `output` |
+| `title`         | no       | Generated page title, defaults to the Nix manuscript key        |
+| `description`   | no       | Generated page description                                      |
+| `sidebar.label` | no       | Sidebar label, defaults to `Manuscript`                         |
+| `sidebar.order` | no       | Sidebar sort order for the generated route                      |
 
 The Typst compiler runs with the docs tree as the project root, so local layout
 files, figures, and bibliographies can live in or below the manuscript folder.

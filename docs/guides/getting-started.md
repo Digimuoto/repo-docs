@@ -169,11 +169,11 @@ sites.docs = {
 
 The `templateFiles` option lets you replace any file in the shared Astro template. Common overrides:
 
-| File | Purpose |
-|------|---------|
-| `src/styles/global.css` | Colors, fonts, spacing |
-| `tailwind.config.mjs` | Tailwind theme tokens |
-| `src/layouts/DocsLayout.astro` | Page layout |
+| File                           | Purpose                |
+| ------------------------------ | ---------------------- |
+| `src/styles/global.css`        | Colors, fonts, spacing |
+| `tailwind.config.mjs`          | Tailwind theme tokens  |
+| `src/layouts/DocsLayout.astro` | Page layout            |
 
 ## Content Schema
 
@@ -184,10 +184,10 @@ Every markdown file needs a `title` in its frontmatter:
 title: Page Title
 description: Optional description
 sidebar:
-  order: 1        # optional sort order
-  label: Custom   # optional sidebar label override
-  hidden: false   # optional, hide from sidebar
-draft: false       # optional, exclude from build
+  order: 1 # optional sort order
+  label: Custom # optional sidebar label override
+  hidden: false # optional, hide from sidebar
+draft: false # optional, exclude from build
 ---
 ```
 

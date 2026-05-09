@@ -2,3 +2,4 @@ result*
 .direnv/
 template/node_modules
 template/dist
+.claude/scheduled_tasks.lock

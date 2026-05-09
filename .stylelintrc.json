@@ -1,0 +1,45 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "rules": {
+    "color-no-hex": [
+      true,
+      {
+        "message": "Use a theme variable (var(--*)) or color-mix() instead of a literal hex. Theme files under template/src/styles/themes/ are exempt — see .stylelintrc.json excludes."
+      }
+    ],
+    "selector-class-pattern": null,
+    "max-nesting-depth": 3,
+    "function-disallowed-list": ["rgb", "hsl", "hwb"],
+    "alpha-value-notation": null,
+    "color-function-notation": null,
+    "comment-empty-line-before": null,
+    "declaration-empty-line-before": null,
+    "rule-empty-line-before": null,
+    "at-rule-empty-line-before": null,
+    "no-descending-specificity": null,
+    "no-duplicate-selectors": null,
+    "media-feature-range-notation": null,
+    "selector-no-vendor-prefix": null,
+    "property-no-vendor-prefix": null,
+    "value-no-vendor-prefix": null,
+    "import-notation": null,
+    "number-max-precision": null,
+    "declaration-block-no-redundant-longhand-properties": null,
+    "shorthand-property-no-redundant-values": null,
+    "value-keyword-case": null,
+    "color-hex-length": null,
+    "selector-attribute-quotes": null,
+    "selector-pseudo-class-no-unknown": [
+      true,
+      {
+        "ignorePseudoClasses": ["global", "deep"]
+      }
+    ],
+    "at-rule-no-unknown": [
+      true,
+      {
+        "ignoreAtRules": ["tailwind", "apply", "layer", "screen", "variants", "responsive", "config"]
+      }
+    ]
+  }
+}

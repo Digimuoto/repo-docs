@@ -21,7 +21,7 @@
  */
 
 import path from "node:path";
-import {visit} from "unist-util-visit";
+import { visit } from "unist-util-visit";
 
 function toCleanSlug(docsRoot, absolutePath) {
   const rel = path.relative(docsRoot, absolutePath).replace(/\\/g, "/");
@@ -35,7 +35,7 @@ function buildHref(trimmedBase, slug, suffix) {
   return `${trimmedBase}${pathPart}${suffix}`;
 }
 
-export function markdownLinkRewriter({docsRoot, routeBase = "/"}) {
+export function markdownLinkRewriter({ docsRoot, routeBase = "/" }) {
   if (!docsRoot) {
     throw new Error("markdownLinkRewriter: docsRoot is required");
   }
@@ -53,7 +53,8 @@ export function markdownLinkRewriter({docsRoot, routeBase = "/"}) {
       // External: scheme:something (http:, https:, mailto:, ftp:, …).
       if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return;
       // Absolute path or bare fragment / query → leave alone.
-      if (url.startsWith("/") || url.startsWith("#") || url.startsWith("?")) return;
+      if (url.startsWith("/") || url.startsWith("#") || url.startsWith("?"))
+        return;
 
       // Only rewrite .md / .mdx hrefs (with optional #frag or ?query suffix).
       const match = url.match(/^([^#?]+\.(?:md|mdx))(.*)$/i);

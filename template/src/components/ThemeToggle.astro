@@ -1,11 +1,11 @@
 ---
-import type {SiteThemeModes} from "../lib/site-config";
+import type { SiteThemeModes } from "../lib/site-config";
 
 interface Props {
   modes: SiteThemeModes;
 }
 
-const {modes} = Astro.props;
+const { modes } = Astro.props;
 ---
 
 <button
@@ -17,12 +17,14 @@ const {modes} = Astro.props;
   aria-label="Toggle colour mode"
   title="Toggle colour mode"
 >
-  {/*
-   * Lowkey glyph: a circle bisected vertically. Left half is filled
-   * (currentColor), right half is hollow. The button rotates 180° on
-   * mode change — sun-side up = light, moon-side up = dark — so the
-   * affordance comes from motion rather than icon-swapping.
-   */}
+  {
+    /*
+     * Lowkey glyph: a circle bisected vertically. Left half is filled
+     * (currentColor), right half is hollow. The button rotates 180° on
+     * mode change — sun-side up = light, moon-side up = dark — so the
+     * affordance comes from motion rather than icon-swapping.
+     */
+  }
   <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
     <circle
       cx="8"
@@ -30,8 +32,7 @@ const {modes} = Astro.props;
       r="5.5"
       fill="none"
       stroke="currentColor"
-      stroke-width="1"
-    />
-    <path d="M8 2.5 A 5.5 5.5 0 0 1 8 13.5 Z" fill="currentColor" />
+      stroke-width="1"></circle>
+    <path d="M8 2.5 A 5.5 5.5 0 0 1 8 13.5 Z" fill="currentColor"></path>
   </svg>
 </button>
