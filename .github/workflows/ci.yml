@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+
+      - name: Magic Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Run treefmt --fail-on-change
+        run: nix run '.#_check-format' --print-build-logs
+
+  flake-check:
+    name: Flake Check
+    runs-on: ubuntu-latest
+    needs: [format-check]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+
+      - name: Magic Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: nix flake check
+        run: nix flake check --print-build-logs
+
+  build:
+    name: Build Sites
+    runs-on: ubuntu-latest
+    needs: [format-check]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+
+      - name: Magic Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build docs-site
+        run: nix build '.#docs-site' --print-build-logs
+
+      - name: Build internal-site
+        run: nix build '.#internal-site' --print-build-logs
+
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs: [format-check, flake-check, build]
+    if: always()
+    steps:
+      - name: All gates green
+        run: |
+          for r in \
+            "${{ needs.format-check.result }}" \
+            "${{ needs.flake-check.result }}" \
+            "${{ needs.build.result }}"; do
+            if [[ "$r" != "success" ]]; then
+              echo "::error::A required job failed (result: $r)"
+              exit 1
+            fi
+          done
+          echo "All required jobs passed."

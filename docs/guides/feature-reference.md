@@ -31,23 +31,23 @@ tags:
 
 Required fields:
 
-| Field | Purpose |
-|-------|---------|
+| Field   | Purpose                                                |
+| ------- | ------------------------------------------------------ |
 | `title` | Page heading, browser title, navigation fallback label |
 
 Common optional fields:
 
-| Field | Purpose |
-|-------|---------|
-| `description` | Page subtitle and meta description |
-| `draft` | Exclude the page from collections and static paths when `true` |
-| `status` | Sidebar status pill such as `draft`, `active`, `accepted` |
-| `tags` | Clickable title badges and generated `/tags/<slug>/` pages |
-| `kind` | Override the derived document kind CSS hook |
-| `author`, `authors`, `date`, `updated` | Title byline metadata |
-| `sidebar.label` | Shorter navigation label |
-| `sidebar.order` | Manual ordering within a directory |
-| `sidebar.hidden` | Build the page but omit it from the sidebar |
+| Field                                  | Purpose                                                        |
+| -------------------------------------- | -------------------------------------------------------------- |
+| `description`                          | Page subtitle and meta description                             |
+| `draft`                                | Exclude the page from collections and static paths when `true` |
+| `status`                               | Sidebar status pill such as `draft`, `active`, `accepted`      |
+| `tags`                                 | Clickable title badges and generated `/tags/<slug>/` pages     |
+| `kind`                                 | Override the derived document kind CSS hook                    |
+| `author`, `authors`, `date`, `updated` | Title byline metadata                                          |
+| `sidebar.label`                        | Shorter navigation label                                       |
+| `sidebar.order`                        | Manual ordering within a directory                             |
+| `sidebar.hidden`                       | Build the page but omit it from the sidebar                    |
 
 Generated integrations add private frontmatter fields such as `verso.fragment`
 and `typst.pdf`. Authored pages should not set those directly.
@@ -131,10 +131,10 @@ notes, and explicit navigation sections.
 
 Built-in themes:
 
-| Theme | Use case |
-|-------|----------|
-| `cortex-dark` | Default deep dark documentation site |
-| `cortex-light` | Warm paper-like research wiki |
+| Theme          | Use case                                |
+| -------------- | --------------------------------------- |
+| `cortex-dark`  | Default deep dark documentation site    |
+| `cortex-light` | Warm paper-like research wiki           |
 | `cortex-slate` | Lifted dark theme for sustained reading |
 
 Set one static theme:

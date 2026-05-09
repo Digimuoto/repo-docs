@@ -49,14 +49,14 @@ need to vendor the template or have their own `package.json`.
 
 Run the smallest relevant check while iterating, then broaden before publishing.
 
-| Change area | Useful command |
-|-------------|----------------|
-| Markdown/template rendering | `nix build .#checks.x86_64-linux.docs-html` |
-| Multi-site behavior | `nix build .#checks.x86_64-linux.docs-multi-site` |
-| Lean Theory rendering | `nix build .#checks.x86_64-linux.docs-lean4-theory` |
-| Typst manuscripts | `nix build .#checks.x86_64-linux.docs-typst-manuscripts` |
-| Staging script syntax | `node --check scripts/stage-docs-site.mjs` |
-| Whitespace sanity | `git diff --check` |
+| Change area                 | Useful command                                           |
+| --------------------------- | -------------------------------------------------------- |
+| Markdown/template rendering | `nix build .#checks.x86_64-linux.docs-html`              |
+| Multi-site behavior         | `nix build .#checks.x86_64-linux.docs-multi-site`        |
+| Lean Theory rendering       | `nix build .#checks.x86_64-linux.docs-lean4-theory`      |
+| Typst manuscripts           | `nix build .#checks.x86_64-linux.docs-typst-manuscripts` |
+| Staging script syntax       | `node --check scripts/stage-docs-site.mjs`               |
+| Whitespace sanity           | `git diff --check`                                       |
 
 For larger changes, run:
 

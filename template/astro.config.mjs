@@ -1,15 +1,15 @@
 import { defineConfig } from "astro/config";
 import mdx from "@astrojs/mdx";
 import autoprefixer from "autoprefixer";
-import {existsSync, readFileSync} from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import {fileURLToPath} from "node:url";
-import {visit} from "unist-util-visit";
+import { fileURLToPath } from "node:url";
+import { visit } from "unist-util-visit";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import tailwindcss from "tailwindcss";
-import {markdownLinkRewriter} from "./src/integrations/markdown-link-rewriter.mjs";
-import {treeSitterHighlight} from "./src/integrations/tree-sitter-highlight.mjs";
+import { markdownLinkRewriter } from "./src/integrations/markdown-link-rewriter.mjs";
+import { treeSitterHighlight } from "./src/integrations/tree-sitter-highlight.mjs";
 
 const site = process.env.DOCS_SITE_URL || "http://127.0.0.1:4321";
 const base = process.env.DOCS_ROUTE_BASE || "/";
@@ -24,7 +24,10 @@ const base = process.env.DOCS_ROUTE_BASE || "/";
 // plugin runs.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const docsContentRoot = path.resolve(__dirname, "src/content/docs");
-const grammarManifestPath = path.resolve(__dirname, "src/generated/grammars.json");
+const grammarManifestPath = path.resolve(
+  __dirname,
+  "src/generated/grammars.json",
+);
 let hasCustomGrammars = false;
 const registeredLangs = new Set();
 if (existsSync(grammarManifestPath)) {
@@ -82,9 +85,11 @@ const preserveOriginalLang = hasCustomGrammars
           const rawMeta =
             typeof this.options?.meta === "string"
               ? this.options.meta
-              : this.options?.meta?.__raw ?? "";
+              : (this.options?.meta?.__raw ?? "");
           const match = rawMeta.match(
-            new RegExp(`${META_MARK.replace(/[-/\\^$*+?.()|[\\]{}]/g, "\\\\$&")}([^\\s]+)`),
+            new RegExp(
+              `${META_MARK.replace(/[-/\\^$*+?.()|[\\]{}]/g, "\\\\$&")}([^\\s]+)`,
+            ),
           );
           if (match) {
             node.properties["data-ts-lang"] = match[1];
@@ -108,12 +113,12 @@ export default defineConfig({
     remarkPlugins: [
       remarkMath,
       ...(hasCustomGrammars ? [markRegisteredLanguages] : []),
-      [markdownLinkRewriter, {docsRoot: docsContentRoot, routeBase: base}],
+      [markdownLinkRewriter, { docsRoot: docsContentRoot, routeBase: base }],
     ],
     rehypePlugins: [
       rehypeKatex,
       ...(hasCustomGrammars
-        ? [[treeSitterHighlight, {manifestPath: grammarManifestPath}]]
+        ? [[treeSitterHighlight, { manifestPath: grammarManifestPath }]]
         : []),
     ],
     // Dual-theme syntax highlighting: emit both palettes as CSS vars

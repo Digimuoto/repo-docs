@@ -1,5 +1,5 @@
-import type {CollectionEntry} from "astro:content";
-import {kebabToTitle, siteConfig, withBasePath} from "./site-config";
+import type { CollectionEntry } from "astro:content";
+import { kebabToTitle, siteConfig, withBasePath } from "./site-config";
 
 type DocsEntry = CollectionEntry<"docs">;
 
@@ -65,7 +65,7 @@ function normalizeEntryId(entryId: string) {
   return withoutExtension.replace(/\/index$/i, "");
 }
 
-export {normalizeEntryId};
+export { normalizeEntryId };
 
 function normalizeConfigPath(pathValue: string) {
   const normalized = pathValue.replace(/^\/+|\/+$/g, "").replace(/\\/g, "/");
@@ -96,7 +96,7 @@ function getPageMeta(entry: DocsEntry): PageMeta {
     label: entry.data.sidebar?.label ?? entry.data.title,
     order: entry.data.sidebar?.order ?? null,
     relativeSegments,
-    status: (entry.data as {status?: DocStatus}).status,
+    status: (entry.data as { status?: DocStatus }).status,
     tags: entry.data.tags ?? [],
   };
 }
@@ -245,7 +245,9 @@ function requirePage(
 ) {
   const page = pagesByKey.get(normalizeConfigPath(slug));
   if (!page) {
-    throw new Error(`Missing navigation entry "${slug}" in section "${sectionLabel}".`);
+    throw new Error(
+      `Missing navigation entry "${slug}" in section "${sectionLabel}".`,
+    );
   }
   return page;
 }
@@ -267,7 +269,7 @@ export function flattenSidebar(sections: SidebarSection[]): SequenceLink[] {
   const result: SequenceLink[] = [];
   function walk(node: SidebarNode) {
     if (node.href) {
-      result.push({href: node.href, label: node.label});
+      result.push({ href: node.href, label: node.label });
     }
     for (const child of node.children) walk(child);
   }
@@ -285,11 +287,11 @@ function trimmedPath(value: string) {
 export function findReadingSequence(
   sections: SidebarSection[],
   currentHref: string,
-): {prev: SequenceLink | null; next: SequenceLink | null} {
+): { prev: SequenceLink | null; next: SequenceLink | null } {
   const flat = flattenSidebar(sections);
   const target = trimmedPath(currentHref);
   const idx = flat.findIndex((entry) => trimmedPath(entry.href) === target);
-  if (idx === -1) return {prev: null, next: null};
+  if (idx === -1) return { prev: null, next: null };
   return {
     prev: idx > 0 ? flat[idx - 1] : null,
     next: idx < flat.length - 1 ? flat[idx + 1] : null,
@@ -297,16 +299,16 @@ export function findReadingSequence(
 }
 
 export function buildSidebar(entries: DocsEntry[]): SidebarSection[] {
-  const pages = entries
-    .filter((entry) => !entry.data.draft)
-    .map(getPageMeta);
+  const pages = entries.filter((entry) => !entry.data.draft).map(getPageMeta);
   const pagesByKey = new Map(pages.map((page) => [page.key, page]));
 
   return siteConfig.navigation.map((section, index) => {
     const rawLabel = section.label;
     const label =
       typeof rawLabel === "string" && rawLabel.trim() !== "" ? rawLabel : null;
-    const sectionKey = label ? `section:${slugKey(label)}` : `section:root-${index}`;
+    const sectionKey = label
+      ? `section:${slugKey(label)}`
+      : `section:root-${index}`;
 
     if (section.entries) {
       return {

@@ -2,15 +2,86 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const MARKDOWN_EXTENSIONS = new Set([".md", ".mdx"]);
-const RESERVED_CONFIG_NAMES = new Set(["config.yaml", "config.yml", "config.json"]);
-const BUILTIN_THEMES = new Set([
-  "cortex-dark",
-  "cortex-light",
-  "cortex-slate",
-  "cortex-slate-darker",
+const RESERVED_CONFIG_NAMES = new Set([
+  "config.yaml",
+  "config.yml",
+  "config.json",
 ]);
 const GENERATED_THEORY_DIR = "Theory";
 const GENERATED_HASKELL_DIR = "Haskell";
+
+// Subset of `--*` declarations that the haddock-iframe palette
+// block re-encodes as `--rd-*`. The CSS in renderHaddockOverrideCss
+// expects every theme to define each of these in its `:root` block;
+// missing values fall back to the cortex-dark baseline.
+const HADDOCK_PALETTE_PROPS = [
+  "bg-primary",
+  "bg-secondary",
+  "surface-primary",
+  "surface-secondary",
+  "surface-tertiary",
+  "surface-hover",
+  "text-content",
+  "text-content-secondary",
+  "text-content-tertiary",
+  "text-content-quaternary",
+  "border-primary",
+  "border-secondary",
+  "brand-primary",
+  "brand-secondary",
+  "tok-keyword",
+  "tok-type",
+  "tok-string",
+  "tok-comment",
+  "tok-number",
+  "tok-operator",
+  "tok-function",
+  "status-deprecated",
+];
+
+/**
+ * Parse a theme CSS file's `:root { ... }` block into a Map of
+ * `--var-name -> "raw value"`. Stops at the first `}` that closes
+ * the `:root` selector — nested `@media` rules with their own `:root`
+ * declarations are ignored.
+ */
+function parseThemePalette(css) {
+  const rootMatch = css.match(/:root\s*\{([\s\S]*?)\n\}/);
+  if (!rootMatch) return new Map();
+  const body = rootMatch[1];
+  const vars = new Map();
+  for (const match of body.matchAll(
+    /^\s*(--[a-zA-Z0-9-]+)\s*:\s*([^;]+?);/gm,
+  )) {
+    vars.set(match[1], match[2].trim());
+  }
+  return vars;
+}
+
+/**
+ * Discover every `<name>.css` under `themesDir` and parse it into a
+ * `palettes: Map<themeName, Map<varName, value>>` registry.
+ *
+ * Theme names are derived from the file basename (e.g.
+ * `cortex-dark.css` -> "cortex-dark") so adding a theme is just
+ * dropping a CSS file alongside the existing ones.
+ */
+async function loadThemePalettes(themesDir) {
+  const palettes = new Map();
+  let entries;
+  try {
+    entries = await fs.readdir(themesDir);
+  } catch {
+    return palettes;
+  }
+  for (const entry of entries.sort()) {
+    if (!entry.endsWith(".css")) continue;
+    const name = entry.slice(0, -".css".length);
+    const css = await fs.readFile(path.join(themesDir, entry), "utf8");
+    palettes.set(name, parseThemePalette(css));
+  }
+  return palettes;
+}
 
 function usage() {
   console.error(
@@ -35,7 +106,9 @@ function normalizeRouteBase(routeBase) {
 function withRouteBase(routeBase, ...segments) {
   const base = normalizeRouteBase(routeBase);
   const suffix = segments
-    .map((segment) => normalizeSlashes(String(segment)).replace(/^\/+|\/+$/g, ""))
+    .map((segment) =>
+      normalizeSlashes(String(segment)).replace(/^\/+|\/+$/g, ""),
+    )
     .filter(Boolean)
     .join("/");
   if (!suffix) {
@@ -98,14 +171,23 @@ function parseLean4Config(config, renderedDir, sourceDir) {
   if (typeof config.lean4 !== "object") {
     throw new Error("docsSite.lean4 must be an object when set.");
   }
-  if (typeof config.lean4.theoryDir !== "string" || config.lean4.theoryDir.trim() === "") {
-    throw new Error("docsSite.lean4.theoryDir must be a non-empty string when lean4 is set.");
+  if (
+    typeof config.lean4.theoryDir !== "string" ||
+    config.lean4.theoryDir.trim() === ""
+  ) {
+    throw new Error(
+      "docsSite.lean4.theoryDir must be a non-empty string when lean4 is set.",
+    );
   }
   if (!renderedDir) {
-    throw new Error("Internal error: docsSite.lean4 is set, but no rendered Lean output was staged.");
+    throw new Error(
+      "Internal error: docsSite.lean4 is set, but no rendered Lean output was staged.",
+    );
   }
   if (!sourceDir) {
-    throw new Error("Internal error: docsSite.lean4 is set, but no Lean source directory was staged.");
+    throw new Error(
+      "Internal error: docsSite.lean4 is set, but no Lean source directory was staged.",
+    );
   }
 
   return {
@@ -124,13 +206,17 @@ function parseHaskellConfig(config, renderedDir) {
   }
   const packages = config.haskell.packages ?? {};
   if (typeof packages !== "object" || Array.isArray(packages)) {
-    throw new Error("docsSite.haskell.packages must be an attribute set when haskell is set.");
+    throw new Error(
+      "docsSite.haskell.packages must be an attribute set when haskell is set.",
+    );
   }
   if (Object.keys(packages).length === 0) {
     return null;
   }
   if (!renderedDir) {
-    throw new Error("Internal error: docsSite.haskell.packages is set, but no rendered Haddock output was staged.");
+    throw new Error(
+      "Internal error: docsSite.haskell.packages is set, but no rendered Haddock output was staged.",
+    );
   }
 
   return {
@@ -141,7 +227,7 @@ function parseHaskellConfig(config, renderedDir) {
 
 function theoryLinkFromRenderedIndex(relativePath) {
   if (relativePath === "index.html") {
-    return {href: GENERATED_THEORY_DIR, label: "Module Index"};
+    return { href: GENERATED_THEORY_DIR, label: "Module Index" };
   }
   if (!relativePath.endsWith("/index.html")) {
     return null;
@@ -193,14 +279,23 @@ function rewriteVersoDataLinks(rawValue, assetBaseHref) {
     if (!Array.isArray(links)) {
       return rawValue;
     }
-    return escapeHtml(JSON.stringify(
-      links.map((link) => {
-        if (!link || typeof link !== "object" || typeof link.href !== "string") {
-          return link;
-        }
-        return {...link, href: decodeBasicHtml(rewriteVersoHref(link.href, assetBaseHref))};
-      }),
-    ));
+    return escapeHtml(
+      JSON.stringify(
+        links.map((link) => {
+          if (
+            !link ||
+            typeof link !== "object" ||
+            typeof link.href !== "string"
+          ) {
+            return link;
+          }
+          return {
+            ...link,
+            href: decodeBasicHtml(rewriteVersoHref(link.href, assetBaseHref)),
+          };
+        }),
+      ),
+    );
   } catch {
     return rawValue;
   }
@@ -208,10 +303,14 @@ function rewriteVersoDataLinks(rawValue, assetBaseHref) {
 
 function rewriteVersoLinks(html, assetBaseHref) {
   return html
-    .replace(/\bhref="([^"]*)"/g, (_match, href) => `href="${rewriteVersoHref(href, assetBaseHref)}"`)
+    .replace(
+      /\bhref="([^"]*)"/g,
+      (_match, href) => `href="${rewriteVersoHref(href, assetBaseHref)}"`,
+    )
     .replace(
       /\bdata-verso-links="([^"]*)"/g,
-      (_match, links) => `data-verso-links="${rewriteVersoDataLinks(links, assetBaseHref)}"`,
+      (_match, links) =>
+        `data-verso-links="${rewriteVersoDataLinks(links, assetBaseHref)}"`,
     );
 }
 
@@ -221,7 +320,9 @@ function extractFirstStyle(html) {
 }
 
 function extractVersoInitScript(html, assetBaseHref) {
-  const match = html.match(/<script>\s*([\s\S]*?window\.onload[\s\S]*?)<\/script>/i);
+  const match = html.match(
+    /<script>\s*([\s\S]*?window\.onload[\s\S]*?)<\/script>/i,
+  );
   if (!match) {
     return "";
   }
@@ -242,29 +343,39 @@ function extractVersoInitScript(html, assetBaseHref) {
 function extractLeanContentFragment(html) {
   const match = html.match(/<section class="code-content"[\s\S]*?<\/section>/i);
   if (!match) {
-    throw new Error("Verso module HTML did not contain a code-content section.");
+    throw new Error(
+      "Verso module HTML did not contain a code-content section.",
+    );
   }
   return match[0];
 }
 
 function normalizeMalformedVersoLists(html) {
-  return html.replace(/<(ul|ol)(\b[^>]*)>([\s\S]*?)<\/\1>/gi, (match, tagName, attributes, body) => {
-    if (/<li\b/i.test(body)) {
-      return match;
-    }
-
-    let changed = false;
-    const normalizedBody = body.replace(/<p>\s*([\s\S]*?)\s*<\/p>/gi, (_paragraph, content) => {
-      const trimmed = content.trim();
-      if (trimmed === "") {
-        return _paragraph;
+  return html.replace(
+    /<(ul|ol)(\b[^>]*)>([\s\S]*?)<\/\1>/gi,
+    (match, tagName, attributes, body) => {
+      if (/<li\b/i.test(body)) {
+        return match;
       }
-      changed = true;
-      return `<li>\n${trimmed}\n</li>`;
-    });
 
-    return changed ? `<${tagName}${attributes}>${normalizedBody}</${tagName}>` : match;
-  });
+      let changed = false;
+      const normalizedBody = body.replace(
+        /<p>\s*([\s\S]*?)\s*<\/p>/gi,
+        (_paragraph, content) => {
+          const trimmed = content.trim();
+          if (trimmed === "") {
+            return _paragraph;
+          }
+          changed = true;
+          return `<li>\n${trimmed}\n</li>`;
+        },
+      );
+
+      return changed
+        ? `<${tagName}${attributes}>${normalizedBody}</${tagName}>`
+        : match;
+    },
+  );
 }
 
 function splitPipeTableRow(line) {
@@ -279,11 +390,16 @@ function splitPipeTableRow(line) {
 }
 
 function isPipeTableDelimiter(cells) {
-  return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s+/g, "")));
+  return (
+    cells.length > 0 &&
+    cells.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s+/g, "")))
+  );
 }
 
 function renderHtmlTable(headers, rows) {
-  const headerHtml = headers.map((cell) => `<th scope="col">${cell}</th>`).join("");
+  const headerHtml = headers
+    .map((cell) => `<th scope="col">${cell}</th>`)
+    .join("");
   const bodyHtml = rows
     .map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`)
     .join("\n");
@@ -307,13 +423,20 @@ function normalizeVersoPipeTableParagraph(body) {
     .map((line) => line.trim())
     .filter(Boolean);
 
-  if (lines.length < 3 || !lines.every((line) => line.startsWith("|") && line.endsWith("|"))) {
+  if (
+    lines.length < 3 ||
+    !lines.every((line) => line.startsWith("|") && line.endsWith("|"))
+  ) {
     return null;
   }
 
   const headers = splitPipeTableRow(lines[0]);
   const delimiter = splitPipeTableRow(lines[1]);
-  if (headers.length === 0 || delimiter.length !== headers.length || !isPipeTableDelimiter(delimiter)) {
+  if (
+    headers.length === 0 ||
+    delimiter.length !== headers.length ||
+    !isPipeTableDelimiter(delimiter)
+  ) {
     return null;
   }
 
@@ -344,7 +467,10 @@ function moduleRelativeLeanPath(relativeHtmlPath) {
 }
 
 async function readLeanModuleSource(sourceDir, relativeHtmlPath) {
-  const leanPath = path.join(sourceDir, moduleRelativeLeanPath(relativeHtmlPath));
+  const leanPath = path.join(
+    sourceDir,
+    moduleRelativeLeanPath(relativeHtmlPath),
+  );
   try {
     return await fs.readFile(leanPath, "utf8");
   } catch {
@@ -356,10 +482,18 @@ function classifyLeanModuleTags(source) {
   if (!source) {
     return ["lean"];
   }
-  const code = source
-    .replace(/\/-[\s\S]*?-\//g, "")
-    .replace(/--.*$/gm, "");
-  const hasProofDeclaration = /(^|\n)\s*(?:@\[[\s\S]*?\]\s*)*(?:private\s+|protected\s+|noncomputable\s+|unsafe\s+)*(?:theorem|lemma|example)\b/.test(code);
+  const code = source.replace(/\/-[\s\S]*?-\//g, "").replace(/--.*$/gm, "");
+  // Inner attribute body uses [^\]]* (single-line, no `]`) instead of
+  // [\s\S]*? to keep the outer `(?:...)*` quantifier linear-time —
+  // the lazy form trips a ReDoS path on inputs like a long run of
+  // `@[`. Lean attribute brackets aren't nested in practice, so the
+  // narrower class still recognises the cases we care about
+  // (`@[simp]`, `@[reducible, inline]`, etc.) and gracefully misses
+  // exotic multi-line attributes rather than hanging the build.
+  const hasProofDeclaration =
+    /(^|\n)\s*(?:@\[[^\]]*\]\s*)*(?:private\s+|protected\s+|noncomputable\s+|unsafe\s+)*(?:theorem|lemma|example)\b/.test(
+      code,
+    );
   return hasProofDeclaration ? ["proofs"] : ["lean"];
 }
 
@@ -474,7 +608,10 @@ function renderTheoryIndexMarkdown(moduleLinks) {
   // Authors who want a richer landing page can drop their own
   // `Theory/index.md` in the content tree (see callsite below).
   const items = moduleLinks
-    .map((link) => `- [${link.label}](${link.href.replace(`${GENERATED_THEORY_DIR}/`, "")}/)`)
+    .map(
+      (link) =>
+        `- [${link.label}](${link.href.replace(`${GENERATED_THEORY_DIR}/`, "")}/)`,
+    )
     .join("\n");
   return [
     "---",
@@ -489,7 +626,7 @@ function renderTheoryIndexMarkdown(moduleLinks) {
   ].join("\n");
 }
 
-function renderTheoryModuleMarkdown({title, label, fragmentPath, tags}) {
+function renderTheoryModuleMarkdown({ title, label, fragmentPath, tags }) {
   return [
     "---",
     `title: ${yamlString(title)}`,
@@ -510,7 +647,10 @@ function assertSafeRelativePath(value, label) {
     throw new Error(`${label} must be a non-empty relative path.`);
   }
   const normalized = normalizeSlashes(value.trim()).replace(/^\/+|\/+$/g, "");
-  if (normalized === "" || normalized.split("/").some((segment) => segment === "..")) {
+  if (
+    normalized === "" ||
+    normalized.split("/").some((segment) => segment === "..")
+  ) {
     throw new Error(`${label} must be a relative path without '..'.`);
   }
   return normalized;
@@ -519,11 +659,16 @@ function assertSafeRelativePath(value, label) {
 async function ensureTypstRouteAvailable(contentRoot, route) {
   const basePath = path.join(contentRoot, route);
   for (const extension of MARKDOWN_EXTENSIONS) {
-    for (const candidate of [`${basePath}${extension}`, path.join(basePath, `index${extension}`)]) {
+    for (const candidate of [
+      `${basePath}${extension}`,
+      path.join(basePath, `index${extension}`),
+    ]) {
       try {
         const stat = await fs.stat(candidate);
         if (stat.isFile()) {
-          throw new Error(`Generated Typst manuscript route "${route}" would overwrite existing docs page "${normalizeSlashes(path.relative(contentRoot, candidate))}".`);
+          throw new Error(
+            `Generated Typst manuscript route "${route}" would overwrite existing docs page "${normalizeSlashes(path.relative(contentRoot, candidate))}".`,
+          );
         }
       } catch (error) {
         if (error?.code !== "ENOENT") {
@@ -534,11 +679,13 @@ async function ensureTypstRouteAvailable(contentRoot, route) {
   }
 }
 
-function renderTypstManuscriptMarkdown({title, description, pdfPath, sidebar}) {
-  const lines = [
-    "---",
-    `title: ${yamlString(title)}`,
-  ];
+function renderTypstManuscriptMarkdown({
+  title,
+  description,
+  pdfPath,
+  sidebar,
+}) {
+  const lines = ["---", `title: ${yamlString(title)}`];
   if (description) {
     lines.push(`description: ${yamlString(description)}`);
   }
@@ -550,16 +697,15 @@ function renderTypstManuscriptMarkdown({title, description, pdfPath, sidebar}) {
   if (typeof sidebar.order === "number") {
     lines.push(`  order: ${sidebar.order}`);
   }
-  lines.push(
-    "typst:",
-    `  pdf: ${yamlString(pdfPath)}`,
-    "---",
-    "",
-  );
+  lines.push("typst:", `  pdf: ${yamlString(pdfPath)}`, "---", "");
   return lines.join("\n");
 }
 
-async function generateTypstManuscripts(contentRoot, publicRoot, typstRenderedDir) {
+async function generateTypstManuscripts(
+  contentRoot,
+  publicRoot,
+  typstRenderedDir,
+) {
   if (!typstRenderedDir) {
     return [];
   }
@@ -580,22 +726,35 @@ async function generateTypstManuscripts(contentRoot, publicRoot, typstRenderedDi
     if (!manuscript || typeof manuscript !== "object") {
       throw new Error("Rendered Typst manifest entries must be objects.");
     }
-    const key = typeof manuscript.key === "string" && manuscript.key.trim() !== ""
-      ? manuscript.key.trim()
-      : "manuscript";
-    const route = assertSafeRelativePath(manuscript.route, `Typst manuscript "${key}" route`);
-    const asset = assertSafeRelativePath(manuscript.asset, `Typst manuscript "${key}" asset`);
-    const title = typeof manuscript.title === "string" && manuscript.title.trim() !== ""
-      ? manuscript.title.trim()
-      : key;
-    const description = typeof manuscript.description === "string" && manuscript.description.trim() !== ""
-      ? manuscript.description.trim()
-      : null;
-    const sidebar = manuscript.sidebar && typeof manuscript.sidebar === "object"
-      ? manuscript.sidebar
-      : {};
+    const key =
+      typeof manuscript.key === "string" && manuscript.key.trim() !== ""
+        ? manuscript.key.trim()
+        : "manuscript";
+    const route = assertSafeRelativePath(
+      manuscript.route,
+      `Typst manuscript "${key}" route`,
+    );
+    const asset = assertSafeRelativePath(
+      manuscript.asset,
+      `Typst manuscript "${key}" asset`,
+    );
+    const title =
+      typeof manuscript.title === "string" && manuscript.title.trim() !== ""
+        ? manuscript.title.trim()
+        : key;
+    const description =
+      typeof manuscript.description === "string" &&
+      manuscript.description.trim() !== ""
+        ? manuscript.description.trim()
+        : null;
+    const sidebar =
+      manuscript.sidebar && typeof manuscript.sidebar === "object"
+        ? manuscript.sidebar
+        : {};
     if (sidebar.order != null && typeof sidebar.order !== "number") {
-      throw new Error(`Typst manuscript "${key}" sidebar.order must be a number when set.`);
+      throw new Error(
+        `Typst manuscript "${key}" sidebar.order must be a number when set.`,
+      );
     }
 
     await ensureTypstRouteAvailable(contentRoot, route);
@@ -603,15 +762,15 @@ async function generateTypstManuscripts(contentRoot, publicRoot, typstRenderedDi
     const pdfPath = `${route}.pdf`;
     const sourcePdf = path.join(typstRenderedDir, "assets", asset);
     const targetPdf = path.join(publicRoot, pdfPath);
-    await fs.mkdir(path.dirname(targetPdf), {recursive: true});
+    await fs.mkdir(path.dirname(targetPdf), { recursive: true });
     await fs.copyFile(sourcePdf, targetPdf);
     await fs.chmod(targetPdf, 0o644);
 
     const targetMarkdown = path.join(contentRoot, `${route}.md`);
-    await fs.mkdir(path.dirname(targetMarkdown), {recursive: true});
+    await fs.mkdir(path.dirname(targetMarkdown), { recursive: true });
     await fs.writeFile(
       targetMarkdown,
-      renderTypstManuscriptMarkdown({title, description, pdfPath, sidebar}),
+      renderTypstManuscriptMarkdown({ title, description, pdfPath, sidebar }),
       "utf8",
     );
     generated.push(`${route}.md`);
@@ -641,9 +800,10 @@ function renderHaskellIndexMarkdown(packages) {
     })
     .join("\n");
 
-  const body = packages.length === 0
-    ? "_No Haskell packages registered._"
-    : `<div class="docs-haskell-index not-prose">\n${cards}\n</div>`;
+  const body =
+    packages.length === 0
+      ? "_No Haskell packages registered._"
+      : `<div class="docs-haskell-index not-prose">\n${cards}\n</div>`;
 
   return [
     "---",
@@ -658,11 +818,14 @@ function renderHaskellIndexMarkdown(packages) {
   ].join("\n");
 }
 
-function renderHaskellHaddockMarkdown({title, description, label, htmlPath, packageName}) {
-  const lines = [
-    "---",
-    `title: ${yamlString(title)}`,
-  ];
+function renderHaskellHaddockMarkdown({
+  title,
+  description,
+  label,
+  htmlPath,
+  packageName,
+}) {
+  const lines = ["---", `title: ${yamlString(title)}`];
   if (description) {
     lines.push(`description: ${yamlString(description)}`);
   }
@@ -678,13 +841,37 @@ function renderHaskellHaddockMarkdown({title, description, label, htmlPath, pack
   return lines.join("\n");
 }
 
-function renderHaddockOverrideCss() {
+/**
+ * Build a single `html[data-theme="<name>"] { --rd-*: ...; }` block
+ * from a parsed theme palette. The HADDOCK_PALETTE_PROPS list is
+ * the full set the iframe consumes; values absent from the palette
+ * are silently skipped (they fall back to the cortex-dark baseline
+ * in the same stylesheet).
+ */
+function renderHaddockBlockFor(themeName, vars) {
+  const lines = [];
+  for (const prop of HADDOCK_PALETTE_PROPS) {
+    const value = vars.get("--" + prop);
+    if (value != null) lines.push(`  --rd-${prop}: ${value};`);
+  }
+  return `html[data-theme="${themeName}"] {\n${lines.join("\n")}\n}`;
+}
+
+function renderHaddockOverrideCss(themePalettes) {
   // Every palette block below mirrors the corresponding repo-docs theme
   // file (template/src/styles/themes/<theme>.css) so the iframe's
   // surfaces, text, links, and code colors match the parent shell
   // exactly. The DocsPage iframe-load handler mirrors the parent's
   // `data-theme` / `data-mode` attributes onto the iframe's <html>, so
   // these scoped blocks activate without any build-time injection.
+  //
+  // The per-theme blocks are generated from the staged
+  // `template/src/styles/themes/*.css` files at staging time, so
+  // dropping a new `<name>.css` alongside the existing palettes is
+  // enough to make the haddock iframe pick the new theme up.
+  const themeOverrides = [...themePalettes]
+    .map(([name, vars]) => renderHaddockBlockFor(name, vars))
+    .join("\n\n");
   return `
 :root {
   color-scheme: light dark;
@@ -718,106 +905,7 @@ function renderHaddockOverrideCss() {
   --rd-target-tint: color-mix(in srgb, var(--rd-brand-primary) 22%, transparent);
 }
 
-html[data-theme="cortex-dark"] {
-  --rd-bg-primary: #0e1116;
-  --rd-bg-secondary: #161b22;
-  --rd-surface-primary: #161b22;
-  --rd-surface-secondary: #1c222a;
-  --rd-surface-tertiary: #262d36;
-  --rd-surface-hover: #30363d;
-  --rd-text-content: #e6edf3;
-  --rd-text-content-secondary: #b8c1cc;
-  --rd-text-content-tertiary: #8b949e;
-  --rd-text-content-quaternary: #6e7681;
-  --rd-border-primary: rgba(240, 246, 252, 0.10);
-  --rd-border-secondary: rgba(240, 246, 252, 0.18);
-  --rd-brand-primary: #f0883e;
-  --rd-brand-secondary: #d97706;
-  --rd-tok-keyword: #ff7b72;
-  --rd-tok-type: #ffa657;
-  --rd-tok-string: #a5d6ff;
-  --rd-tok-comment: #8b949e;
-  --rd-tok-number: #79c0ff;
-  --rd-tok-operator: #ff7b72;
-  --rd-tok-function: #d2a8ff;
-  --rd-status-deprecated: #ff7b72;
-}
-
-html[data-theme="cortex-light"] {
-  --rd-bg-primary: #ffffff;
-  --rd-bg-secondary: #f6f8fa;
-  --rd-surface-primary: #f6f8fa;
-  --rd-surface-secondary: #eaeef2;
-  --rd-surface-tertiary: #d0d7de;
-  --rd-surface-hover: #afb8c1;
-  --rd-text-content: #1f2328;
-  --rd-text-content-secondary: #424a53;
-  --rd-text-content-tertiary: #656d76;
-  --rd-text-content-quaternary: #8c959f;
-  --rd-border-primary: #d1d9e0;
-  --rd-border-secondary: #afb8c1;
-  --rd-brand-primary: #0969da;
-  --rd-brand-secondary: #0550ae;
-  --rd-tok-keyword: #cf222e;
-  --rd-tok-type: #953800;
-  --rd-tok-string: #0a3069;
-  --rd-tok-comment: #6e7781;
-  --rd-tok-number: #0550ae;
-  --rd-tok-operator: #cf222e;
-  --rd-tok-function: #8250df;
-  --rd-status-deprecated: #cf222e;
-}
-
-html[data-theme="cortex-slate"] {
-  --rd-bg-primary: #22272e;
-  --rd-bg-secondary: #2d333b;
-  --rd-surface-primary: #2d333b;
-  --rd-surface-secondary: #373e47;
-  --rd-surface-tertiary: #444c56;
-  --rd-surface-hover: #545d68;
-  --rd-text-content: #cdd9e5;
-  --rd-text-content-secondary: #adbac7;
-  --rd-text-content-tertiary: #768390;
-  --rd-text-content-quaternary: #545d68;
-  --rd-border-primary: rgba(205, 217, 229, 0.08);
-  --rd-border-secondary: rgba(205, 217, 229, 0.16);
-  --rd-brand-primary: #6e7bd6;
-  --rd-brand-secondary: #5159b3;
-  --rd-tok-keyword: #f47067;
-  --rd-tok-type: #f69d50;
-  --rd-tok-string: #96d0ff;
-  --rd-tok-comment: #768390;
-  --rd-tok-number: #6cb6ff;
-  --rd-tok-operator: #f47067;
-  --rd-tok-function: #dcbdfb;
-  --rd-status-deprecated: #f47067;
-}
-
-html[data-theme="cortex-slate-darker"] {
-  --rd-bg-primary: #181d24;
-  --rd-bg-secondary: #232930;
-  --rd-surface-primary: #232930;
-  --rd-surface-secondary: #2d343d;
-  --rd-surface-tertiary: #3a414b;
-  --rd-surface-hover: #4a5159;
-  --rd-text-content: #cdd9e5;
-  --rd-text-content-secondary: #adbac7;
-  --rd-text-content-tertiary: #768390;
-  --rd-text-content-quaternary: #545d68;
-  --rd-border-primary: rgba(205, 217, 229, 0.08);
-  --rd-border-secondary: rgba(205, 217, 229, 0.16);
-  --rd-brand-primary: #6e7bd6;
-  --rd-brand-secondary: #5159b3;
-  --rd-tok-keyword: #f47067;
-  --rd-tok-type: #f69d50;
-  --rd-tok-string: #96d0ff;
-  --rd-tok-comment: #768390;
-  --rd-tok-number: #6cb6ff;
-  --rd-tok-operator: #f47067;
-  --rd-tok-function: #dcbdfb;
-  --rd-status-deprecated: #f47067;
-}
-
+${themeOverrides}
 * {
   box-sizing: border-box;
 }
@@ -3362,20 +3450,29 @@ function normalizeHaddockModulePrefixes(rawPrefixes, packageKey) {
     return [];
   }
   if (!Array.isArray(rawPrefixes)) {
-    throw new Error(`Haskell package "${packageKey}" modulePrefixes must be a list.`);
+    throw new Error(
+      `Haskell package "${packageKey}" modulePrefixes must be a list.`,
+    );
   }
   const normalized = [];
   for (const rawPrefix of rawPrefixes) {
     if (typeof rawPrefix !== "string" || rawPrefix.trim() === "") {
-      throw new Error(`Haskell package "${packageKey}" modulePrefixes entries must be non-empty strings.`);
+      throw new Error(
+        `Haskell package "${packageKey}" modulePrefixes entries must be non-empty strings.`,
+      );
     }
     const prefix = rawPrefix.trim().replace(/\.+$/g, "");
     const segments = prefix.split(".");
     if (
       prefix === "" ||
-      segments.some((segment) => segment === "" || segment.includes("/") || segment.includes("\\"))
+      segments.some(
+        (segment) =>
+          segment === "" || segment.includes("/") || segment.includes("\\"),
+      )
     ) {
-      throw new Error(`Haskell package "${packageKey}" module prefix "${rawPrefix}" is invalid.`);
+      throw new Error(
+        `Haskell package "${packageKey}" module prefix "${rawPrefix}" is invalid.`,
+      );
     }
     if (!normalized.includes(prefix)) {
       normalized.push(prefix);
@@ -3385,7 +3482,9 @@ function normalizeHaddockModulePrefixes(rawPrefixes, packageKey) {
 }
 
 function haddockModuleMatchesPrefix(moduleName, prefixes) {
-  return prefixes.some((prefix) => moduleName === prefix || moduleName.startsWith(`${prefix}.`));
+  return prefixes.some(
+    (prefix) => moduleName === prefix || moduleName.startsWith(`${prefix}.`),
+  );
 }
 
 function moduleNameFromHaddockHtmlPath(relativePath) {
@@ -3421,7 +3520,7 @@ function findHtmlElementRange(html, tagName, start) {
     if (token[0].startsWith("</")) {
       depth -= 1;
       if (depth === 0) {
-        return {start, end: tagPattern.lastIndex};
+        return { start, end: tagPattern.lastIndex };
       }
     } else if (!/\/\s*>$/.test(token[0])) {
       depth += 1;
@@ -3453,7 +3552,7 @@ function findEnclosingListItem(html, offset) {
     if (token[0].startsWith("</")) {
       depth -= 1;
       if (depth === 0) {
-        return {start, end: tokenPattern.lastIndex};
+        return { start, end: tokenPattern.lastIndex };
       }
     } else {
       depth += 1;
@@ -3473,14 +3572,16 @@ function findHaddockModuleListRange(html) {
 
 function haddockModuleListPackageCaption(html, range) {
   const fragment = html.slice(range.start, range.end);
-  const captions = [...fragment.matchAll(
-    /<p\b[^>]*class=["'][^"']*\bcaption\b[^"']*["'][^>]*>([\s\S]*?)<\/p>/gi,
-  )];
+  const captions = [
+    ...fragment.matchAll(
+      /<p\b[^>]*class=["'][^"']*\bcaption\b[^"']*["'][^>]*>([\s\S]*?)<\/p>/gi,
+    ),
+  ];
   return captions[1]?.[1] ?? captions[0]?.[1] ?? "Modules";
 }
 
 function buildHaddockModuleTree(moduleEntries) {
-  const root = {children: new Map()};
+  const root = { children: new Map() };
   for (const entry of moduleEntries) {
     const segments = entry.moduleName.split(".");
     let node = root;
@@ -3587,7 +3688,11 @@ function removeHaddockModuleListItemsForExcludedLinks(html, excludedHrefs) {
       }
 
       const listItem = rewritten.slice(item.start, item.end);
-      if (!/<span\b[^>]*class=["'][^"']*\bmodule\b[^"']*["'][^>]*>/i.test(listItem)) {
+      if (
+        !/<span\b[^>]*class=["'][^"']*\bmodule\b[^"']*["'][^>]*>/i.test(
+          listItem,
+        )
+      ) {
         break;
       }
 
@@ -3599,7 +3704,10 @@ function removeHaddockModuleListItemsForExcludedLinks(html, excludedHrefs) {
 }
 
 function removeHaddockLinksToExcludedFiles(html, excludedHrefs) {
-  let rewritten = removeHaddockModuleListItemsForExcludedLinks(html, excludedHrefs);
+  let rewritten = removeHaddockModuleListItemsForExcludedLinks(
+    html,
+    excludedHrefs,
+  );
   for (const href of excludedHrefs) {
     const hrefPattern = escapeRegExp(href);
     const hrefAttribute = `href=["']${hrefPattern}(?:#[^"']*)?["']`;
@@ -3623,21 +3731,37 @@ function removeHaddockLinksToExcludedFiles(html, excludedHrefs) {
 
   return rewritten
     .replace(/<ul>\s*<\/ul>/gi, "")
-    .replace(/<details\b[^>]*>\s*<summary\b[^>]*>[\s\S]*?<\/summary>\s*<\/details>/gi, "")
-    .replace(/<li>\s*<span class=(["'])module\b[^"']*\1[^>]*>[^<]*<\/span>\s*<\/li>/gi, "")
-    .replace(/<tr>\s*<td class=(["'])src\1>[^<]*<\/td>\s*<td>&nbsp;<\/td>\s*<\/tr>\s*(?=<tr>\s*<td class=(["'])src\2>|<\/table>)/gi, "");
+    .replace(
+      /<details\b[^>]*>\s*<summary\b[^>]*>[\s\S]*?<\/summary>\s*<\/details>/gi,
+      "",
+    )
+    .replace(
+      /<li>\s*<span class=(["'])module\b[^"']*\1[^>]*>[^<]*<\/span>\s*<\/li>/gi,
+      "",
+    )
+    .replace(
+      /<tr>\s*<td class=(["'])src\1>[^<]*<\/td>\s*<td>&nbsp;<\/td>\s*<\/tr>\s*(?=<tr>\s*<td class=(["'])src\2>|<\/table>)/gi,
+      "",
+    );
 }
 
 async function rewriteHaddockIndexModuleLists(htmlRoot, keptModulePages) {
   const indexFiles = (await listFiles(htmlRoot))
-    .map((absolutePath) => normalizeSlashes(path.relative(htmlRoot, absolutePath)))
-    .filter((relativePath) => path.posix.basename(relativePath) === "index.html")
+    .map((absolutePath) =>
+      normalizeSlashes(path.relative(htmlRoot, absolutePath)),
+    )
+    .filter(
+      (relativePath) => path.posix.basename(relativePath) === "index.html",
+    )
     .sort();
 
   for (const relativePath of indexFiles) {
     const dir = path.posix.dirname(relativePath);
     const moduleEntries = keptModulePages.map((entry) => {
-      const href = path.posix.relative(dir === "." ? "" : dir, entry.relativePath);
+      const href = path.posix.relative(
+        dir === "." ? "" : dir,
+        entry.relativePath,
+      );
       return {
         href: href === "" ? path.posix.basename(entry.relativePath) : href,
         moduleName: entry.moduleName,
@@ -3645,7 +3769,11 @@ async function rewriteHaddockIndexModuleLists(htmlRoot, keptModulePages) {
     });
     const absolutePath = path.join(htmlRoot, relativePath);
     const html = await fs.readFile(absolutePath, "utf8");
-    await fs.writeFile(absolutePath, replaceHaddockIndexModuleList(html, moduleEntries), "utf8");
+    await fs.writeFile(
+      absolutePath,
+      replaceHaddockIndexModuleList(html, moduleEntries),
+      "utf8",
+    );
   }
 }
 
@@ -3655,9 +3783,13 @@ async function filterHaddockModules(htmlRoot, modulePrefixes, packageKey) {
   }
 
   const files = (await listFiles(htmlRoot))
-    .map((absolutePath) => normalizeSlashes(path.relative(htmlRoot, absolutePath)))
+    .map((absolutePath) =>
+      normalizeSlashes(path.relative(htmlRoot, absolutePath)),
+    )
     .sort();
-  const htmlFiles = files.filter((relativePath) => path.extname(relativePath) === ".html");
+  const htmlFiles = files.filter(
+    (relativePath) => path.extname(relativePath) === ".html",
+  );
   const modulePages = htmlFiles
     .map((relativePath) => ({
       relativePath,
@@ -3666,7 +3798,9 @@ async function filterHaddockModules(htmlRoot, modulePrefixes, packageKey) {
     }))
     .filter((entry) => entry.moduleName);
   const keptModulePages = modulePages.filter(
-    (entry) => !entry.isSource && haddockModuleMatchesPrefix(entry.moduleName, modulePrefixes),
+    (entry) =>
+      !entry.isSource &&
+      haddockModuleMatchesPrefix(entry.moduleName, modulePrefixes),
   );
 
   if (keptModulePages.length === 0) {
@@ -3678,18 +3812,25 @@ async function filterHaddockModules(htmlRoot, modulePrefixes, packageKey) {
   const excludedModulePages = modulePages.filter(
     (entry) => !haddockModuleMatchesPrefix(entry.moduleName, modulePrefixes),
   );
-  const excludedPaths = new Set(excludedModulePages.map((entry) => entry.relativePath));
+  const excludedPaths = new Set(
+    excludedModulePages.map((entry) => entry.relativePath),
+  );
   const removedDirs = new Set();
-  const componentDirs = [...new Set(
-    htmlFiles
-      .filter((relativePath) => path.posix.basename(relativePath) === "index.html")
-      .map((relativePath) => path.posix.dirname(relativePath))
-      .filter((dir) => dir !== "."),
-  )].sort((a, b) => b.length - a.length);
+  const componentDirs = [
+    ...new Set(
+      htmlFiles
+        .filter(
+          (relativePath) => path.posix.basename(relativePath) === "index.html",
+        )
+        .map((relativePath) => path.posix.dirname(relativePath))
+        .filter((dir) => dir !== "."),
+    ),
+  ].sort((a, b) => b.length - a.length);
 
   for (const dir of componentDirs) {
     const modulePagesInDir = modulePages.filter(
-      (entry) => !entry.isSource && path.posix.dirname(entry.relativePath) === dir,
+      (entry) =>
+        !entry.isSource && path.posix.dirname(entry.relativePath) === dir,
     );
     if (
       modulePagesInDir.length > 0 &&
@@ -3708,7 +3849,9 @@ async function filterHaddockModules(htmlRoot, modulePrefixes, packageKey) {
     await removeIfExists(path.join(htmlRoot, dir));
   }
 
-  for (const relativePath of excludedModulePages.map((entry) => entry.relativePath)) {
+  for (const relativePath of excludedModulePages.map(
+    (entry) => entry.relativePath,
+  )) {
     if ([...removedDirs].some((dir) => hasRelativePrefix(relativePath, dir))) {
       continue;
     }
@@ -3723,11 +3866,17 @@ async function filterHaddockModules(htmlRoot, modulePrefixes, packageKey) {
   }
 
   const remainingFiles = (await listFiles(htmlRoot))
-    .map((absolutePath) => normalizeSlashes(path.relative(htmlRoot, absolutePath)))
+    .map((absolutePath) =>
+      normalizeSlashes(path.relative(htmlRoot, absolutePath)),
+    )
     .sort();
-  const remainingHtmlFiles = remainingFiles.filter((relativePath) => path.extname(relativePath) === ".html");
+  const remainingHtmlFiles = remainingFiles.filter(
+    (relativePath) => path.extname(relativePath) === ".html",
+  );
 
-  for (const relativePath of remainingFiles.filter((file) => path.posix.basename(file) === "doc-index.json")) {
+  for (const relativePath of remainingFiles.filter(
+    (file) => path.posix.basename(file) === "doc-index.json",
+  )) {
     const absolutePath = path.join(htmlRoot, relativePath);
     let entries;
     try {
@@ -3739,7 +3888,11 @@ async function filterHaddockModules(htmlRoot, modulePrefixes, packageKey) {
       continue;
     }
     const filtered = entries.filter((entry) => {
-      if (!entry || typeof entry !== "object" || typeof entry.module !== "string") {
+      if (
+        !entry ||
+        typeof entry !== "object" ||
+        typeof entry.module !== "string"
+      ) {
         return true;
       }
       return haddockModuleMatchesPrefix(entry.module, modulePrefixes);
@@ -3752,15 +3905,24 @@ async function filterHaddockModules(htmlRoot, modulePrefixes, packageKey) {
     const excludedHrefs = [...excludedPaths]
       .filter((excludedPath) => path.extname(excludedPath) === ".html")
       .map((excludedPath) => {
-        const relativeHref = path.posix.relative(dir === "." ? "" : dir, excludedPath);
-        return relativeHref === "" ? path.posix.basename(excludedPath) : relativeHref;
+        const relativeHref = path.posix.relative(
+          dir === "." ? "" : dir,
+          excludedPath,
+        );
+        return relativeHref === ""
+          ? path.posix.basename(excludedPath)
+          : relativeHref;
       });
     if (excludedHrefs.length === 0) {
       continue;
     }
     const absolutePath = path.join(htmlRoot, relativePath);
     const html = await fs.readFile(absolutePath, "utf8");
-    await fs.writeFile(absolutePath, removeHaddockLinksToExcludedFiles(html, excludedHrefs), "utf8");
+    await fs.writeFile(
+      absolutePath,
+      removeHaddockLinksToExcludedFiles(html, excludedHrefs),
+      "utf8",
+    );
   }
 
   await rewriteHaddockIndexModuleLists(htmlRoot, keptModulePages);
@@ -3806,7 +3968,11 @@ function findEnclosingHaddockSrcFragment(html, offset) {
     .sort((left, right) => right.start - left.start);
 
   for (const candidate of candidates) {
-    const range = findHtmlElementRange(html, candidate.tagName, candidate.start);
+    const range = findHtmlElementRange(
+      html,
+      candidate.tagName,
+      candidate.start,
+    );
     if (range && range.start <= offset && offset < range.end) {
       return html.slice(range.start, range.end);
     }
@@ -3827,9 +3993,15 @@ function cleanupHaddockSearchDisplayHtml(html) {
     .trim();
 }
 
-function haddockSearchLinkFromRelativePath(indexDir, pageRelativePath, fragmentId = null) {
+function haddockSearchLinkFromRelativePath(
+  indexDir,
+  pageRelativePath,
+  fragmentId = null,
+) {
   const fromDir = indexDir === "." ? "" : indexDir;
-  const href = path.posix.relative(fromDir, pageRelativePath) || path.posix.basename(pageRelativePath);
+  const href =
+    path.posix.relative(fromDir, pageRelativePath) ||
+    path.posix.basename(pageRelativePath);
   return fragmentId ? `${href}#${fragmentId}` : href;
 }
 
@@ -3843,12 +4015,14 @@ function extractHaddockSearchEntriesFromModuleHtml({
   pageRelativePath,
   indexDir,
 }) {
-  const entries = [{
-    display_html: `<span class="keyword">module</span> ${escapeHtml(moduleName)}`,
-    name: moduleName,
-    module: moduleName,
-    link: haddockSearchLinkFromRelativePath(indexDir, pageRelativePath),
-  }];
+  const entries = [
+    {
+      display_html: `<span class="keyword">module</span> ${escapeHtml(moduleName)}`,
+      name: moduleName,
+      module: moduleName,
+      link: haddockSearchLinkFromRelativePath(indexDir, pageRelativePath),
+    },
+  ];
 
   const seen = new Set(entries.map(haddockSearchEntryKey));
   const defAnchorPattern =
@@ -3859,13 +4033,19 @@ function extractHaddockSearchEntriesFromModuleHtml({
     const name = stripHtmlTags(match[2]).trim();
     if (!fragmentId || !name) continue;
 
-    const fragment = findEnclosingHaddockSrcFragment(html, match.index) || match[0];
-    const displayHtml = cleanupHaddockSearchDisplayHtml(fragment) || escapeHtml(name);
+    const fragment =
+      findEnclosingHaddockSrcFragment(html, match.index) || match[0];
+    const displayHtml =
+      cleanupHaddockSearchDisplayHtml(fragment) || escapeHtml(name);
     const entry = {
       display_html: displayHtml,
       name,
       module: moduleName,
-      link: haddockSearchLinkFromRelativePath(indexDir, pageRelativePath, fragmentId),
+      link: haddockSearchLinkFromRelativePath(
+        indexDir,
+        pageRelativePath,
+        fragmentId,
+      ),
     };
     const key = haddockSearchEntryKey(entry);
     if (seen.has(key)) continue;
@@ -3876,30 +4056,43 @@ function extractHaddockSearchEntriesFromModuleHtml({
   return entries;
 }
 
-async function buildFallbackHaddockSearchIndex(htmlRoot, modulePages, indexDir) {
+async function buildFallbackHaddockSearchIndex(
+  htmlRoot,
+  modulePages,
+  indexDir,
+) {
   const entries = [];
   for (const modulePage of modulePages) {
-    const html = await fs.readFile(path.join(htmlRoot, modulePage.relativePath), "utf8");
-    entries.push(...extractHaddockSearchEntriesFromModuleHtml({
-      html,
-      moduleName: modulePage.moduleName,
-      pageRelativePath: modulePage.relativePath,
-      indexDir,
-    }));
+    const html = await fs.readFile(
+      path.join(htmlRoot, modulePage.relativePath),
+      "utf8",
+    );
+    entries.push(
+      ...extractHaddockSearchEntriesFromModuleHtml({
+        html,
+        moduleName: modulePage.moduleName,
+        pageRelativePath: modulePage.relativePath,
+        indexDir,
+      }),
+    );
   }
   return entries;
 }
 
 async function ensureHaddockSearchIndexes(htmlRoot) {
   const files = (await listFiles(htmlRoot))
-    .map((absolutePath) => normalizeSlashes(path.relative(htmlRoot, absolutePath)))
+    .map((absolutePath) =>
+      normalizeSlashes(path.relative(htmlRoot, absolutePath)),
+    )
     .sort();
   const modulePages = collectHaddockModulePages(files);
   if (modulePages.length === 0) {
     return;
   }
 
-  const indexFiles = files.filter((relativePath) => path.posix.basename(relativePath) === "doc-index.json");
+  const indexFiles = files.filter(
+    (relativePath) => path.posix.basename(relativePath) === "doc-index.json",
+  );
   if (indexFiles.length === 0) {
     indexFiles.push("doc-index.json");
   }
@@ -3914,7 +4107,11 @@ async function ensureHaddockSearchIndexes(htmlRoot) {
     }
 
     const indexDir = path.posix.dirname(relativePath);
-    const fallback = await buildFallbackHaddockSearchIndex(htmlRoot, modulePages, indexDir);
+    const fallback = await buildFallbackHaddockSearchIndex(
+      htmlRoot,
+      modulePages,
+      indexDir,
+    );
     const merged = [];
     const seen = new Set();
     for (const entry of Array.isArray(entries) ? entries : []) {
@@ -3937,26 +4134,36 @@ async function ensureHaddockSearchIndexes(htmlRoot) {
       seen.add(key);
       merged.push(entry);
     }
-    await fs.mkdir(path.dirname(absolutePath), {recursive: true});
+    await fs.mkdir(path.dirname(absolutePath), { recursive: true });
     await fs.writeFile(absolutePath, JSON.stringify(merged), "utf8");
   }
 }
 
-async function injectHaddockStyles(htmlRoot) {
+async function injectHaddockStyles(htmlRoot, themePalettes) {
   const stylesheetPath = path.join(htmlRoot, "repo-docs-haddock.css");
-  await fs.writeFile(stylesheetPath, `${renderHaddockOverrideCss()}\n`, "utf8");
+  await fs.writeFile(
+    stylesheetPath,
+    `${renderHaddockOverrideCss(themePalettes)}\n`,
+    "utf8",
+  );
 
   const htmlFiles = (await listFiles(htmlRoot))
-    .map((absolutePath) => normalizeSlashes(path.relative(htmlRoot, absolutePath)))
+    .map((absolutePath) =>
+      normalizeSlashes(path.relative(htmlRoot, absolutePath)),
+    )
     .filter((relativePath) => path.extname(relativePath) === ".html");
 
   for (const relativePath of htmlFiles) {
     const htmlPath = path.join(htmlRoot, relativePath);
-    const stylesheetHref = normalizeSlashes(
-      path.relative(path.dirname(htmlPath), stylesheetPath),
-    ) || "repo-docs-haddock.css";
+    const stylesheetHref =
+      normalizeSlashes(path.relative(path.dirname(htmlPath), stylesheetPath)) ||
+      "repo-docs-haddock.css";
     const html = await fs.readFile(htmlPath, "utf8");
-    await fs.writeFile(htmlPath, injectHaddockStyle(html, stylesheetHref), "utf8");
+    await fs.writeFile(
+      htmlPath,
+      injectHaddockStyle(html, stylesheetHref),
+      "utf8",
+    );
   }
 }
 
@@ -3982,7 +4189,9 @@ async function stageHaddockModulePages({
   packageName,
 }) {
   const files = (await listFiles(publicHtmlRoot))
-    .map((absolutePath) => normalizeSlashes(path.relative(publicHtmlRoot, absolutePath)))
+    .map((absolutePath) =>
+      normalizeSlashes(path.relative(publicHtmlRoot, absolutePath)),
+    )
     .filter((relativePath) => path.extname(relativePath) === ".html");
 
   const moduleEntries = [];
@@ -3991,7 +4200,7 @@ async function stageHaddockModulePages({
     const moduleName = moduleNameFromHaddockHtmlPath(relativePath);
     if (!moduleName) continue;
     const slugPath = moduleName.split(".").join("/");
-    moduleEntries.push({moduleName, slugPath, relativePath});
+    moduleEntries.push({ moduleName, slugPath, relativePath });
   }
 
   // Alphabetical by full dotted module name. With a flat sidebar that
@@ -4001,7 +4210,7 @@ async function stageHaddockModulePages({
   moduleEntries.sort((a, b) => a.moduleName.localeCompare(b.moduleName));
 
   const moduleRoutes = [];
-  for (const {moduleName, slugPath, relativePath} of moduleEntries) {
+  for (const { moduleName, slugPath, relativePath } of moduleEntries) {
     const targetDir = path.join(contentPackageRoot, slugPath);
     const targetFile = path.join(targetDir, "index.md");
 
@@ -4014,7 +4223,7 @@ async function stageHaddockModulePages({
     }
 
     if (!alreadyExists) {
-      await fs.mkdir(targetDir, {recursive: true});
+      await fs.mkdir(targetDir, { recursive: true });
       await fs.writeFile(
         targetFile,
         renderHaskellHaddockMarkdown({
@@ -4033,7 +4242,12 @@ async function stageHaddockModulePages({
   return moduleRoutes;
 }
 
-async function generateHaskellDocs(contentRoot, publicRoot, haskell) {
+async function generateHaskellDocs(
+  contentRoot,
+  publicRoot,
+  haskell,
+  themePalettes,
+) {
   if (!haskell) {
     return null;
   }
@@ -4043,7 +4257,9 @@ async function generateHaskellDocs(contentRoot, publicRoot, haskell) {
   try {
     packages = JSON.parse(await fs.readFile(manifestPath, "utf8"));
   } catch (error) {
-    throw new Error(`Could not read rendered Haskell Haddock manifest: ${error.message}`);
+    throw new Error(
+      `Could not read rendered Haskell Haddock manifest: ${error.message}`,
+    );
   }
   if (!Array.isArray(packages)) {
     throw new Error("Rendered Haskell Haddock manifest must be a JSON array.");
@@ -4063,44 +4279,62 @@ async function generateHaskellDocs(contentRoot, publicRoot, haskell) {
 
   const publicHaskellRoot = path.join(publicRoot, GENERATED_HASKELL_DIR);
   await removeIfExists(publicHaskellRoot);
-  await fs.mkdir(contentHaskellRoot, {recursive: true});
+  await fs.mkdir(contentHaskellRoot, { recursive: true });
 
   const entries = [GENERATED_HASKELL_DIR];
   const normalizedPackages = [];
 
   for (const rawPackage of packages) {
     if (!rawPackage || typeof rawPackage !== "object") {
-      throw new Error("Rendered Haskell Haddock manifest entries must be objects.");
+      throw new Error(
+        "Rendered Haskell Haddock manifest entries must be objects.",
+      );
     }
 
     const key = assertSafeRelativePath(rawPackage.key, "Haskell package key");
-    const safeKey = assertSafeRelativePath(rawPackage.safeKey, `Haskell package "${key}" safeKey`);
-    const packageName = typeof rawPackage.packageName === "string" && rawPackage.packageName.trim() !== ""
-      ? rawPackage.packageName.trim()
-      : key;
-    const title = typeof rawPackage.title === "string" && rawPackage.title.trim() !== ""
-      ? rawPackage.title.trim()
-      : packageName;
-    const description = typeof rawPackage.description === "string" && rawPackage.description.trim() !== ""
-      ? rawPackage.description.trim()
-      : null;
-    const modulePrefixes = normalizeHaddockModulePrefixes(rawPackage.modulePrefixes, key);
+    const safeKey = assertSafeRelativePath(
+      rawPackage.safeKey,
+      `Haskell package "${key}" safeKey`,
+    );
+    const packageName =
+      typeof rawPackage.packageName === "string" &&
+      rawPackage.packageName.trim() !== ""
+        ? rawPackage.packageName.trim()
+        : key;
+    const title =
+      typeof rawPackage.title === "string" && rawPackage.title.trim() !== ""
+        ? rawPackage.title.trim()
+        : packageName;
+    const description =
+      typeof rawPackage.description === "string" &&
+      rawPackage.description.trim() !== ""
+        ? rawPackage.description.trim()
+        : null;
+    const modulePrefixes = normalizeHaddockModulePrefixes(
+      rawPackage.modulePrefixes,
+      key,
+    );
 
-    const renderedHtmlRoot = path.join(haskell.renderedDir, "packages", safeKey, "html");
+    const renderedHtmlRoot = path.join(
+      haskell.renderedDir,
+      "packages",
+      safeKey,
+      "html",
+    );
     const publicHtmlRoot = path.join(publicHaskellRoot, safeKey, "haddock");
-    await fs.mkdir(path.dirname(publicHtmlRoot), {recursive: true});
-    await fs.cp(renderedHtmlRoot, publicHtmlRoot, {recursive: true});
+    await fs.mkdir(path.dirname(publicHtmlRoot), { recursive: true });
+    await fs.cp(renderedHtmlRoot, publicHtmlRoot, { recursive: true });
     await makeWritableRecursive(publicHtmlRoot);
     await filterHaddockModules(publicHtmlRoot, modulePrefixes, key);
     await ensureHaddockSearchIndexes(publicHtmlRoot);
-    await injectHaddockStyles(publicHtmlRoot);
+    await injectHaddockStyles(publicHtmlRoot, themePalettes);
 
-    normalizedPackages.push({safeKey, title, description});
+    normalizedPackages.push({ safeKey, title, description });
 
     const packageRoute = `${GENERATED_HASKELL_DIR}/${safeKey}`;
     const packageHtmlPath = `${packageRoute}/haddock/index.html`;
     const contentPackageRoot = path.join(contentHaskellRoot, safeKey);
-    await fs.mkdir(contentPackageRoot, {recursive: true});
+    await fs.mkdir(contentPackageRoot, { recursive: true });
     await fs.writeFile(
       path.join(contentPackageRoot, "index.md"),
       renderHaskellHaddockMarkdown({
@@ -4180,7 +4414,7 @@ function renderLeanMathScript() {
 })();"></script>`;
 }
 
-function renderTheoryFragmentHtml({setup, fragment, assetBaseHref}) {
+function renderTheoryFragmentHtml({ setup, fragment, assetBaseHref }) {
   return [
     `<div class="repo-docs-lean-page not-prose" data-repo-docs-lean-page>`,
     setup,
@@ -4204,22 +4438,29 @@ function renderTheoryFragmentHtml({setup, fragment, assetBaseHref}) {
 
 async function copyVersoAssets(renderedDir, outputRoot, assetBaseHref) {
   await removeIfExists(outputRoot);
-  await fs.mkdir(outputRoot, {recursive: true});
+  await fs.mkdir(outputRoot, { recursive: true });
 
   const files = await listFiles(renderedDir);
   for (const absolutePath of files) {
-    const relativePath = normalizeSlashes(path.relative(renderedDir, absolutePath));
+    const relativePath = normalizeSlashes(
+      path.relative(renderedDir, absolutePath),
+    );
     if (path.extname(relativePath) === ".html") {
       continue;
     }
     const targetPath = path.join(outputRoot, relativePath);
-    await fs.mkdir(path.dirname(targetPath), {recursive: true});
+    await fs.mkdir(path.dirname(targetPath), { recursive: true });
     if (relativePath === "-verso-docs.json") {
       const docs = JSON.parse(await fs.readFile(absolutePath, "utf8"));
       const rewritten = Object.fromEntries(
         Object.entries(docs).map(([key, value]) => [
           key,
-          typeof value === "string" ? rewriteVersoLinks(normalizeVersoMarkdownHtml(value), assetBaseHref) : value,
+          typeof value === "string"
+            ? rewriteVersoLinks(
+                normalizeVersoMarkdownHtml(value),
+                assetBaseHref,
+              )
+            : value,
         ]),
       );
       await fs.writeFile(targetPath, JSON.stringify(rewritten), "utf8");
@@ -4230,7 +4471,13 @@ async function copyVersoAssets(renderedDir, outputRoot, assetBaseHref) {
   }
 }
 
-async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, config) {
+async function generateLean4Docs(
+  contentRoot,
+  publicRoot,
+  generatedRoot,
+  lean4,
+  config,
+) {
   if (!lean4) {
     return null;
   }
@@ -4239,10 +4486,14 @@ async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, 
   try {
     stat = await fs.stat(lean4.renderedDir);
   } catch {
-    throw new Error(`Missing rendered Lean theory output for "${lean4.theoryDir}".`);
+    throw new Error(
+      `Missing rendered Lean theory output for "${lean4.theoryDir}".`,
+    );
   }
   if (!stat.isDirectory()) {
-    throw new Error(`Rendered Lean theory output for "${lean4.theoryDir}" is not a directory.`);
+    throw new Error(
+      `Rendered Lean theory output for "${lean4.theoryDir}" is not a directory.`,
+    );
   }
 
   const contentTheoryRoot = path.join(contentRoot, GENERATED_THEORY_DIR);
@@ -4258,7 +4509,10 @@ async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, 
   }
 
   const publicTheoryRoot = path.join(publicRoot, GENERATED_THEORY_DIR);
-  const assetBaseHref = withRouteBase(config.site.routeBase, GENERATED_THEORY_DIR).replace(/\/$/, "");
+  const assetBaseHref = withRouteBase(
+    config.site.routeBase,
+    GENERATED_THEORY_DIR,
+  ).replace(/\/$/, "");
   await copyVersoAssets(lean4.renderedDir, publicTheoryRoot, assetBaseHref);
 
   try {
@@ -4267,11 +4521,15 @@ async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, 
       throw new Error();
     }
   } catch {
-    throw new Error(`Verso did not render a Theory landing page for "${lean4.theoryDir}".`);
+    throw new Error(
+      `Verso did not render a Theory landing page for "${lean4.theoryDir}".`,
+    );
   }
 
   const htmlFiles = (await listFiles(lean4.renderedDir))
-    .map((absolutePath) => normalizeSlashes(path.relative(lean4.renderedDir, absolutePath)))
+    .map((absolutePath) =>
+      normalizeSlashes(path.relative(lean4.renderedDir, absolutePath)),
+    )
     .filter((relativePath) => path.extname(relativePath) === ".html")
     .sort(comparePaths);
 
@@ -4279,12 +4537,14 @@ async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, 
     .map(theoryLinkFromRenderedIndex)
     .filter((link) => link !== null)
     .sort((left, right) => comparePaths(left.href, right.href));
-  const moduleLinks = links.filter((link) => link.href !== GENERATED_THEORY_DIR);
+  const moduleLinks = links.filter(
+    (link) => link.href !== GENERATED_THEORY_DIR,
+  );
 
-  await fs.mkdir(contentTheoryRoot, {recursive: true});
+  await fs.mkdir(contentTheoryRoot, { recursive: true });
   const fragmentRoot = path.join(generatedRoot, "lean-theory");
   await removeIfExists(fragmentRoot);
-  await fs.mkdir(fragmentRoot, {recursive: true});
+  await fs.mkdir(fragmentRoot, { recursive: true });
 
   // Theory landing page: only generate one if the consumer hasn't
   // authored their own. Authors who want to write a real
@@ -4310,18 +4570,27 @@ async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, 
   }
 
   for (const relativePath of htmlFiles) {
-    if (relativePath === "index.html" || !relativePath.endsWith("/index.html")) {
+    if (
+      relativePath === "index.html" ||
+      !relativePath.endsWith("/index.html")
+    ) {
       continue;
     }
 
     const htmlPath = path.join(lean4.renderedDir, relativePath);
     const html = await fs.readFile(htmlPath, "utf8");
-    const title = extractHtmlTitle(html, relativePath.slice(0, -"/index.html".length).replace(/\//g, "."));
+    const title = extractHtmlTitle(
+      html,
+      relativePath.slice(0, -"/index.html".length).replace(/\//g, "."),
+    );
     const link = theoryLinkFromRenderedIndex(relativePath);
     const source = await readLeanModuleSource(lean4.sourceDir, relativePath);
     const contentFragment = extractLeanContentFragment(html);
     const tags = classifyLeanModuleTags(source);
-    const fragment = rewriteVersoLinks(normalizeVersoMarkdownHtml(contentFragment), assetBaseHref);
+    const fragment = rewriteVersoLinks(
+      normalizeVersoMarkdownHtml(contentFragment),
+      assetBaseHref,
+    );
     const setup = renderVersoSetup(html, assetBaseHref);
     const fragmentPath = `lean-theory/${GENERATED_THEORY_DIR}/${relativePath.replace(/\/index\.html$/i, ".html")}`;
     const fragmentTargetPath = path.join(generatedRoot, fragmentPath);
@@ -4330,14 +4599,14 @@ async function generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, 
       `${GENERATED_THEORY_DIR}/${relativePath.replace(/\/index\.html$/i, ".md")}`,
     );
 
-    await fs.mkdir(path.dirname(fragmentTargetPath), {recursive: true});
+    await fs.mkdir(path.dirname(fragmentTargetPath), { recursive: true });
     await fs.writeFile(
       fragmentTargetPath,
-      renderTheoryFragmentHtml({setup, fragment, assetBaseHref}),
+      renderTheoryFragmentHtml({ setup, fragment, assetBaseHref }),
       "utf8",
     );
 
-    await fs.mkdir(path.dirname(targetPath), {recursive: true});
+    await fs.mkdir(path.dirname(targetPath), { recursive: true });
     await fs.writeFile(
       targetPath,
       renderTheoryModuleMarkdown({
@@ -4472,8 +4741,12 @@ async function collectMarkdownUnder(contentDir, directory) {
 
   const files = await listFiles(root);
   return files
-    .map((absolutePath) => normalizeSlashes(path.relative(contentDir, absolutePath)))
-    .filter((relativePath) => MARKDOWN_EXTENSIONS.has(path.extname(relativePath)));
+    .map((absolutePath) =>
+      normalizeSlashes(path.relative(contentDir, absolutePath)),
+    )
+    .filter((relativePath) =>
+      MARKDOWN_EXTENSIONS.has(path.extname(relativePath)),
+    );
 }
 
 function comparePaths(left, right) {
@@ -4502,8 +4775,12 @@ function autoGenerateNavigation(markdownFiles, navigationConfig) {
   const topLevelDirectories = new Set();
 
   for (const relativePath of markdownFiles) {
-    const normalized = normalizeSlashes(relativePath).replace(/\.(md|mdx)$/i, "");
-    const pageKey = normalized === "index" ? "index" : normalized.replace(/\/index$/i, "");
+    const normalized = normalizeSlashes(relativePath).replace(
+      /\.(md|mdx)$/i,
+      "",
+    );
+    const pageKey =
+      normalized === "index" ? "index" : normalized.replace(/\/index$/i, "");
     const segments = pageKey.split("/");
     // Distinguish three cases:
     //   - the docs-root index.md       → pageKey "index"        → root entry
@@ -4514,8 +4791,7 @@ function autoGenerateNavigation(markdownFiles, navigationConfig) {
     // an /index path; without this distinction the staging script would
     // push "adrs" as a root entry and then fail to find adrs.md.
     const isRootIndex = pageKey === "index";
-    const isDirectoryIndex =
-      !isRootIndex && /\/index$/i.test(normalized);
+    const isDirectoryIndex = !isRootIndex && /\/index$/i.test(normalized);
 
     if (isRootIndex) {
       rootEntries.push("index");
@@ -4533,7 +4809,10 @@ function autoGenerateNavigation(markdownFiles, navigationConfig) {
   if (rootEntries.length > 0) {
     sections.push({
       entries: rootEntries.sort(comparePaths),
-      label: normalizeSectionLabel(navigationConfig.rootSectionLabel, "Overview"),
+      label: normalizeSectionLabel(
+        navigationConfig.rootSectionLabel,
+        "Overview",
+      ),
     });
   }
 
@@ -4549,7 +4828,8 @@ function autoGenerateNavigation(markdownFiles, navigationConfig) {
   for (const directory of orderedDirectories) {
     sections.push({
       dir: directory,
-      label: navigationConfig.sectionLabels?.[directory] ?? titleCase(directory),
+      label:
+        navigationConfig.sectionLabels?.[directory] ?? titleCase(directory),
     });
   }
 
@@ -4561,7 +4841,9 @@ function resolveTopLevelOrder(actualDirectories, requestedOrder) {
     return [...actualDirectories].sort();
   }
 
-  const requested = requestedOrder.map((name) => String(name).trim()).filter(Boolean);
+  const requested = requestedOrder
+    .map((name) => String(name).trim())
+    .filter(Boolean);
   const requestedSet = new Set(requested);
   if (requested.length !== requestedSet.size) {
     const seen = new Set();
@@ -4578,12 +4860,18 @@ function resolveTopLevelOrder(actualDirectories, requestedOrder) {
   const missing = [...actual].filter((name) => !requestedSet.has(name)).sort();
 
   if (unknown.length > 0 || missing.length > 0) {
-    const lines = ["navigation.topLevelOrder must list every top-level docs folder exactly once."];
+    const lines = [
+      "navigation.topLevelOrder must list every top-level docs folder exactly once.",
+    ];
     if (unknown.length > 0) {
-      lines.push(`  Unknown name(s) (no matching folder): ${unknown.join(", ")}`);
+      lines.push(
+        `  Unknown name(s) (no matching folder): ${unknown.join(", ")}`,
+      );
     }
     if (missing.length > 0) {
-      lines.push(`  Missing folder(s) (present in tree, absent from list): ${missing.join(", ")}`);
+      lines.push(
+        `  Missing folder(s) (present in tree, absent from list): ${missing.join(", ")}`,
+      );
     }
     lines.push(`  Found folders: ${[...actual].sort().join(", ") || "(none)"}`);
     throw new Error(lines.join("\n"));
@@ -4595,18 +4883,25 @@ function resolveTopLevelOrder(actualDirectories, requestedOrder) {
 function hasGeneratedNavigationSection(navigationSections, generatedDir) {
   return navigationSections.some(
     (section) =>
-      (typeof section?.dir === "string" && normalizeSlug(section.dir) === generatedDir) ||
+      (typeof section?.dir === "string" &&
+        normalizeSlug(section.dir) === generatedDir) ||
       (Array.isArray(section?.entries) &&
-        section.entries.some((entry) => normalizeSlug(entry) === generatedDir)) ||
+        section.entries.some(
+          (entry) => normalizeSlug(entry) === generatedDir,
+        )) ||
       (Array.isArray(section?.links) &&
-        section.links.some((link) => normalizeLinkHref(link?.href) === generatedDir)),
+        section.links.some(
+          (link) => normalizeLinkHref(link?.href) === generatedDir,
+        )),
   );
 }
 
 async function removePrivateMarkdown(contentRoot, allowedMarkdown) {
   const allFiles = await listFiles(contentRoot);
   for (const absolutePath of allFiles) {
-    const relativePath = normalizeSlashes(path.relative(contentRoot, absolutePath));
+    const relativePath = normalizeSlashes(
+      path.relative(contentRoot, absolutePath),
+    );
     if (!MARKDOWN_EXTENSIONS.has(path.extname(relativePath))) {
       continue;
     }
@@ -4665,7 +4960,9 @@ async function main() {
   const generatedRoot = path.join(outDir, "src", "generated");
   const publicRoot = path.join(outDir, "public");
   const config = JSON.parse(await fs.readFile(configJson, "utf8"));
-  const templateFiles = JSON.parse(await fs.readFile(templateFilesJson, "utf8"));
+  const templateFiles = JSON.parse(
+    await fs.readFile(templateFilesJson, "utf8"),
+  );
   const languages = languagesJson
     ? JSON.parse(await fs.readFile(languagesJson, "utf8"))
     : {};
@@ -4694,7 +4991,9 @@ async function main() {
 
   const allFiles = await listFiles(contentRoot);
   for (const absolutePath of allFiles) {
-    const relativePath = normalizeSlashes(path.relative(contentRoot, absolutePath));
+    const relativePath = normalizeSlashes(
+      path.relative(contentRoot, absolutePath),
+    );
     if (!isPathExcluded(relativePath, config.content.excludePaths)) {
       continue;
     }
@@ -4703,37 +5002,73 @@ async function main() {
 
   await pruneEmptyDirectories(contentRoot);
 
+  // Discover available themes early so the haskell + lean
+  // generators can pass them through to the haddock-iframe palette
+  // builder. Adding a theme = drop a CSS file under
+  // template/src/styles/themes/ — the rest of the pipeline picks it
+  // up automatically.
+  const themesDir = path.join(outDir, "src", "styles", "themes");
+  const themePalettes = await loadThemePalettes(themesDir);
+  const builtinThemes = new Set(themePalettes.keys());
+  if (builtinThemes.size === 0) {
+    throw new Error(
+      `No theme CSS files found under ${themesDir}. Expected at least one <name>.css.`,
+    );
+  }
+
   await generateTypstManuscripts(contentRoot, publicRoot, typstRenderedDir);
 
   const authoredMarkdown = (await listFiles(contentRoot))
-    .map((absolutePath) => normalizeSlashes(path.relative(contentRoot, absolutePath)))
-    .filter((relativePath) => MARKDOWN_EXTENSIONS.has(path.extname(relativePath)));
+    .map((absolutePath) =>
+      normalizeSlashes(path.relative(contentRoot, absolutePath)),
+    )
+    .filter((relativePath) =>
+      MARKDOWN_EXTENSIONS.has(path.extname(relativePath)),
+    );
 
   if (authoredMarkdown.length === 0) {
     throw new Error("No markdown files found under the configured docs tree.");
   }
 
-  const generatedTheorySection = await generateLean4Docs(contentRoot, publicRoot, generatedRoot, lean4, config);
-  const generatedHaskellSection = await generateHaskellDocs(contentRoot, publicRoot, haskell);
+  const generatedTheorySection = await generateLean4Docs(
+    contentRoot,
+    publicRoot,
+    generatedRoot,
+    lean4,
+    config,
+  );
+  const generatedHaskellSection = await generateHaskellDocs(
+    contentRoot,
+    publicRoot,
+    haskell,
+    themePalettes,
+  );
 
   const navigationSections =
-    Array.isArray(config.navigation.sections) && config.navigation.sections.length > 0
+    Array.isArray(config.navigation.sections) &&
+    config.navigation.sections.length > 0
       ? config.navigation.sections
       : autoGenerateNavigation(authoredMarkdown, config.navigation);
 
   if (generatedTheorySection) {
-    if (!hasGeneratedNavigationSection(navigationSections, GENERATED_THEORY_DIR)) {
+    if (
+      !hasGeneratedNavigationSection(navigationSections, GENERATED_THEORY_DIR)
+    ) {
       navigationSections.push(generatedTheorySection);
     }
   }
   if (generatedHaskellSection) {
-    if (!hasGeneratedNavigationSection(navigationSections, GENERATED_HASKELL_DIR)) {
+    if (
+      !hasGeneratedNavigationSection(navigationSections, GENERATED_HASKELL_DIR)
+    ) {
       navigationSections.push(generatedHaskellSection);
     }
   }
 
   if (navigationSections.length === 0) {
-    throw new Error("Could not derive any navigation sections from the docs tree.");
+    throw new Error(
+      "Could not derive any navigation sections from the docs tree.",
+    );
   }
 
   const allowedMarkdown = new Set();
@@ -4768,7 +5103,9 @@ async function main() {
     if (hasEntries) {
       for (const slug of section.entries) {
         const normalizedSlug = normalizeSlug(slug);
-        allowedMarkdown.add(await ensureMarkdownFile(contentRoot, normalizedSlug));
+        allowedMarkdown.add(
+          await ensureMarkdownFile(contentRoot, normalizedSlug),
+        );
       }
       continue;
     }
@@ -4776,17 +5113,24 @@ async function main() {
     if (hasLinks) {
       for (const link of section.links) {
         if (!link || typeof link !== "object") {
-          throw new Error(`Navigation section "${section.label ?? "(root)"}" links must be objects.`);
+          throw new Error(
+            `Navigation section "${section.label ?? "(root)"}" links must be objects.`,
+          );
         }
         normalizeLinkHref(link.href);
         if (typeof link.label !== "string" || link.label.trim() === "") {
-          throw new Error(`Navigation section "${section.label ?? "(root)"}" links must have non-empty labels.`);
+          throw new Error(
+            `Navigation section "${section.label ?? "(root)"}" links must have non-empty labels.`,
+          );
         }
       }
       continue;
     }
 
-    const files = await collectMarkdownUnder(contentRoot, normalizeSlug(section.dir));
+    const files = await collectMarkdownUnder(
+      contentRoot,
+      normalizeSlug(section.dir),
+    );
     for (const file of files) {
       allowedMarkdown.add(file);
     }
@@ -4796,7 +5140,14 @@ async function main() {
   await pruneEmptyDirectories(contentRoot);
 
   await fs.mkdir(generatedRoot, { recursive: true });
-  const theme = BUILTIN_THEMES.has(config.theme) ? config.theme : "cortex-dark";
+
+  // The themePalettes registry was loaded above (before generators
+  // ran). Use it to validate the consumer-selected theme and to
+  // drive the SiteTheme codegen below.
+  const fallbackTheme = builtinThemes.has("cortex-dark")
+    ? "cortex-dark"
+    : [...builtinThemes][0];
+  const theme = builtinThemes.has(config.theme) ? config.theme : fallbackTheme;
 
   // Read and validate themeModes (optional). When set, the build emits
   // a combined palette.css containing both palettes scoped by
@@ -4804,17 +5155,34 @@ async function main() {
   // no-JS / pre-paint case. When null, behave as before.
   let themeModes = null;
   if (config.themeModes && typeof config.themeModes === "object") {
-    const {light, dark} = config.themeModes;
-    if (!BUILTIN_THEMES.has(light)) {
+    const { light, dark } = config.themeModes;
+    if (!builtinThemes.has(light)) {
       throw new Error(`docsSite.themeModes.light: unknown theme "${light}"`);
     }
-    if (!BUILTIN_THEMES.has(dark)) {
+    if (!builtinThemes.has(dark)) {
       throw new Error(`docsSite.themeModes.dark: unknown theme "${dark}"`);
     }
-    themeModes = {light, dark};
+    themeModes = { light, dark };
   }
 
-  const themesDir = path.join(outDir, "src", "styles", "themes");
+  // Codegen template/src/generated/themes.ts so the SiteTheme union
+  // and THEMES array stay in sync with the discovered palette files.
+  // Consumers import these from "../lib/site-config" indirectly;
+  // adding a theme CSS file regenerates this list on the next stage.
+  const themesTsPath = path.join(generatedRoot, "themes.ts");
+  const themeNames = [...builtinThemes].sort();
+  const themesTsContent = `// AUTOGENERATED by scripts/stage-docs-site.mjs.
+// Do not edit by hand — the list is derived from the .css files
+// under template/src/styles/themes/ at staging time.
+
+export type SiteTheme = ${themeNames.map((name) => `"${name}"`).join(" | ") || "string"};
+
+export const SITE_THEMES: ReadonlyArray<SiteTheme> = [
+${themeNames.map((name) => `  "${name}",`).join("\n")}
+];
+`;
+  await fs.writeFile(themesTsPath, themesTsContent, "utf8");
+
   const paletteTarget = path.join(outDir, "src", "styles", "palette.css");
 
   if (themeModes) {
@@ -4861,7 +5229,10 @@ ${darkVars}
 
 @media (prefers-color-scheme: light) {
   :root {
-${lightVars.split("\n").map((line) => (line ? `  ${line}` : line)).join("\n")}
+${lightVars
+  .split("\n")
+  .map((line) => (line ? `  ${line}` : line))
+  .join("\n")}
   }
 }
 
@@ -4888,8 +5259,8 @@ ${lightVars}
     site: config.site,
     theme,
     themeModes,
-    lean4: lean4 ? {theoryDir: lean4.theoryDir} : null,
-    haskell: haskell ? {packages: haskell.packages} : null,
+    lean4: lean4 ? { theoryDir: lean4.theoryDir } : null,
+    haskell: haskell ? { packages: haskell.packages } : null,
   };
 
   await fs.writeFile(

@@ -28,11 +28,11 @@
  */
 
 import fs from "node:fs/promises";
-import {existsSync, readFileSync} from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import {createRequire} from "node:module";
-import {fileURLToPath} from "node:url";
-import {Parser, Language, Query} from "web-tree-sitter";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+import { Parser, Language, Query } from "web-tree-sitter";
 
 const require = createRequire(import.meta.url);
 
@@ -44,14 +44,21 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const templateRoot = path.resolve(here, "..");
 
 async function main() {
-  const manifestPath = path.join(templateRoot, "src", "generated", "grammars.json");
+  const manifestPath = path.join(
+    templateRoot,
+    "src",
+    "generated",
+    "grammars.json",
+  );
   if (!existsSync(manifestPath)) return;
 
   let manifest;
   try {
     manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   } catch (err) {
-    warn(`could not parse grammars manifest at ${manifestPath}: ${err.message ?? err}`);
+    warn(
+      `could not parse grammars manifest at ${manifestPath}: ${err.message ?? err}`,
+    );
     return;
   }
 
@@ -60,7 +67,9 @@ async function main() {
 
   const queryPath = path.join(haskellEntry.queries, "highlights.scm");
   if (!existsSync(queryPath)) {
-    warn(`Haskell grammar registered but no highlights.scm at ${queryPath}; Haddock blocks will not be tokenised`);
+    warn(
+      `Haskell grammar registered but no highlights.scm at ${queryPath}; Haddock blocks will not be tokenised`,
+    );
     return;
   }
 
@@ -81,7 +90,9 @@ async function main() {
   try {
     language = await Language.load(haskellEntry.parser);
   } catch (err) {
-    warn(`failed to load Haskell grammar at ${haskellEntry.parser}: ${err.message ?? err}`);
+    warn(
+      `failed to load Haskell grammar at ${haskellEntry.parser}: ${err.message ?? err}`,
+    );
     return;
   }
 
@@ -89,7 +100,9 @@ async function main() {
   try {
     query = new Query(language, readFileSync(queryPath, "utf8"));
   } catch (err) {
-    warn(`failed to compile highlights.scm at ${queryPath}: ${err.message ?? err}`);
+    warn(
+      `failed to compile highlights.scm at ${queryPath}: ${err.message ?? err}`,
+    );
     return;
   }
 
@@ -98,7 +111,7 @@ async function main() {
   let rewrittenBlocks = 0;
   for (const filePath of files) {
     const before = await fs.readFile(filePath, "utf8");
-    const {after, blocks} = highlightHaddockHtml(before, language, query);
+    const { after, blocks } = highlightHaddockHtml(before, language, query);
     if (blocks > 0 && after !== before) {
       await fs.writeFile(filePath, after, "utf8");
       rewrittenFiles += 1;
@@ -116,7 +129,10 @@ function findHaskellEntry(manifest) {
   if (!manifest || typeof manifest !== "object") return null;
   for (const [name, entry] of Object.entries(manifest)) {
     if (!entry || typeof entry !== "object") continue;
-    const aliases = [name, ...(Array.isArray(entry.aliases) ? entry.aliases : [])]
+    const aliases = [
+      name,
+      ...(Array.isArray(entry.aliases) ? entry.aliases : []),
+    ]
       .filter((value) => typeof value === "string")
       .map((value) => value.toLowerCase());
     if (aliases.some((alias) => HASKELL_ALIASES.has(alias))) {
@@ -130,7 +146,7 @@ async function collectHaddockHtmlFiles(root) {
   const out = [];
   let entries;
   try {
-    entries = await fs.readdir(root, {withFileTypes: true});
+    entries = await fs.readdir(root, { withFileTypes: true });
   } catch {
     return out;
   }
@@ -145,7 +161,7 @@ async function collectHaddockHtmlFiles(root) {
 }
 
 async function walkHtml(dir, out) {
-  const entries = await fs.readdir(dir, {withFileTypes: true});
+  const entries = await fs.readdir(dir, { withFileTypes: true });
   for (const entry of entries) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
@@ -180,7 +196,7 @@ function highlightHaddockHtml(html, language, query) {
     const preAttrs = mergeClass(attrs, "tree-sitter-pre");
     return `<pre${preAttrs} data-language="haskell"><code class="language-haskell tree-sitter-code">${codeHtml}</code></pre>`;
   });
-  return {after, blocks};
+  return { after, blocks };
 }
 
 function tokenize(source, rootNode, query) {
@@ -199,7 +215,7 @@ function tokenize(source, rootNode, query) {
     const label = labels[cursor];
     let next = cursor + 1;
     while (next < n && labels[next] === label) next++;
-    spans.push({label, text: source.slice(cursor, next)});
+    spans.push({ label, text: source.slice(cursor, next) });
     cursor = next;
   }
   return spans;
@@ -238,7 +254,7 @@ function decodeEntities(value) {
   return value
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, "\"")
+    .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, "\u00a0")

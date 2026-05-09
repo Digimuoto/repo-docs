@@ -1,5 +1,5 @@
-import {defineCollection, z} from "astro:content";
-import {glob} from "astro/loaders";
+import { defineCollection, z } from "astro:content";
+import { glob } from "astro/loaders";
 
 // Accept either a single string or an array for flexible author attribution
 // (one primary author, a team byline, or multiple contributors).
@@ -17,7 +17,7 @@ const docs = defineCollection({
   loader: glob({
     pattern: "**/*.{md,mdx}",
     base: "./src/content/docs",
-    generateId: ({entry}) => legacyDocsId(entry),
+    generateId: ({ entry }) => legacyDocsId(entry),
   }),
   schema: z.object({
     title: z.string(),
@@ -87,4 +87,4 @@ const docs = defineCollection({
   }),
 });
 
-export const collections = {docs};
+export const collections = { docs };

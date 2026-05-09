@@ -20,9 +20,9 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import {createRequire} from "node:module";
-import {visit, SKIP} from "unist-util-visit";
-import {Parser, Language, Query} from "web-tree-sitter";
+import { createRequire } from "node:module";
+import { visit, SKIP } from "unist-util-visit";
+import { Parser, Language, Query } from "web-tree-sitter";
 
 const require = createRequire(import.meta.url);
 
@@ -94,7 +94,7 @@ async function loadGrammars(manifestPath) {
           }
           const aliases = [name, ...(entry.aliases ?? [])];
           for (const alias of aliases) {
-            loader.languagesByAlias.set(alias, {language, query});
+            loader.languagesByAlias.set(alias, { language, query });
           }
         } catch (err) {
           reportLanguageError(
@@ -160,7 +160,7 @@ function tokenize(source, rootNode, query) {
     const label = labels[cursor];
     let next = cursor + 1;
     while (next < n && labels[next] === label) next++;
-    spans.push({label, text: source.slice(cursor, next)});
+    spans.push({ label, text: source.slice(cursor, next) });
     cursor = next;
   }
   return spans;
@@ -173,7 +173,8 @@ function preferredLanguageTag(node) {
   // "plaintext", so without the stamp the original fenced tag is lost.
   // Fall back to `data-language` and `language-*` classes for callers
   // that somehow reach us without the transformer (dev-time edge cases).
-  const stamped = node.properties?.["data-ts-lang"] ?? node.properties?.dataTsLang;
+  const stamped =
+    node.properties?.["data-ts-lang"] ?? node.properties?.dataTsLang;
   if (typeof stamped === "string") return stamped;
   const dataLang = node.properties?.dataLanguage;
   if (typeof dataLang === "string" && dataLang !== "plaintext") return dataLang;
@@ -190,7 +191,7 @@ function preferredLanguageTag(node) {
   return null;
 }
 
-export function treeSitterHighlight({manifestPath}) {
+export function treeSitterHighlight({ manifestPath }) {
   return async function transformer(tree) {
     await loadGrammars(manifestPath);
     if (!loader.initialised || loader.languagesByAlias.size === 0) return;
@@ -220,13 +221,13 @@ export function treeSitterHighlight({manifestPath}) {
 
       const codeChildren = spans.map((span) => {
         if (!span.label) {
-          return {type: "text", value: span.text};
+          return { type: "text", value: span.text };
         }
         return {
           type: "element",
           tagName: "span",
-          properties: {className: captureNameToClass(span.label)},
-          children: [{type: "text", value: span.text}],
+          properties: { className: captureNameToClass(span.label) },
+          children: [{ type: "text", value: span.text }],
         };
       });
 

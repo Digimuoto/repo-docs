@@ -1,0 +1,98 @@
+/*
+ * cortex-dark-darker
+ *
+ * A lifted sister of cortex-dark. Same warm amber accent, same
+ * github-dark token palette, same warm-white body text — only the
+ * surface ladder is shifted up one step. Where cortex-dark sits the
+ * body on a near-black canvas (#0e1116) and lifts the chrome to
+ * #161b22, this variant lifts everything: the body sits roughly
+ * where cortex-dark's chrome used to (#1c222a), and chrome floats
+ * further above. Built for late-night reading on OLED panels where
+ * the cortex-dark canvas reads as too contrasty, without sacrificing
+ * cortex-dark's warm amber identity.
+ *
+ * Notes on choices:
+ *   - Body background #1c222a — cortex-dark's surface-secondary
+ *     reused as the body. The reader's colour memory of "the warm
+ *     dark theme" carries over while the canvas softens by one rung.
+ *   - Chrome surfaces #262d36 → #30363d → #3a414b → #4a5159 — exactly
+ *     cortex-dark's surface-tertiary / surface-hover ladder extended
+ *     by two rungs. Each level is distinct enough to read at a
+ *     glance.
+ *   - Body text #e6edf3 (warm white): identical to cortex-dark; ~12:1
+ *     on the lifted body bg, which is the comfortable side of high
+ *     contrast for sustained reading.
+ *   - Single accent: #f0883e — cortex-dark's amber, unchanged.
+ *     Switching between cortex-dark and cortex-dark-darker should
+ *     shift the canvas's atmosphere without reshuffling the reader's
+ *     colour memory of brand or status.
+ *   - Borders use cortex-dark's rgba(240, 246, 252, …) ramp so chrome
+ *     lines pick up the surrounding warm luminance instead of laying
+ *     down dead grey strokes.
+ *   - Tokens, status pills: byte-for-byte cortex-dark.
+ */
+:root {
+  --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas,
+    monospace;
+
+  --brand-primary: #f0883e;
+  --brand-secondary: #d97706;
+
+  --bg-primary: #1c222a;
+  --bg-secondary: #262d36;
+
+  --surface-primary: #262d36;
+  --surface-secondary: #30363d;
+  --surface-tertiary: #3a414b;
+  --surface-hover: #4a5159;
+
+  --text-content: #e6edf3;
+  --text-content-secondary: #b8c1cc;
+  --text-content-tertiary: #8b949e;
+  --text-content-quaternary: #6e7681;
+
+  --border-primary: rgba(240, 246, 252, 0.1);
+  --border-secondary: rgba(240, 246, 252, 0.18);
+  --border-tertiary: rgba(240, 246, 252, 0.28);
+
+  --selection-text: #ffffff;
+
+  /*
+   * Tree-sitter capture palette. Identical to cortex-dark — Shiki
+   * blocks and tree-sitter-highlighted custom-language blocks keep
+   * the same family on the lifted canvas.
+   */
+  --tok-default: #e6edf3;
+  --tok-keyword: #ff7b72;
+  --tok-keyword-operator: #ff7b72;
+  --tok-function: #d2a8ff;
+  --tok-method: #d2a8ff;
+  --tok-constructor: #d2a8ff;
+  --tok-type: #ffa657;
+  --tok-constant: #79c0ff;
+  --tok-number: #79c0ff;
+  --tok-boolean: #79c0ff;
+  --tok-string: #a5d6ff;
+  --tok-escape: #a5d6ff;
+  --tok-comment: #8b949e;
+  --tok-variable: #e6edf3;
+  --tok-property: #79c0ff;
+  --tok-parameter: #e6edf3;
+  --tok-operator: #ff7b72;
+  --tok-punctuation: #8b949e;
+  --tok-tag: #7ee787;
+  --tok-attribute: #79c0ff;
+  --tok-namespace: #ffa657;
+  --tok-label: #ffa657;
+
+  /* Status pill palette, identical to cortex-dark. */
+  --status-draft: #f0883e;
+  --status-proposed: #f0883e;
+  --status-accepted: #7ee787;
+  --status-active: #58a6ff;
+  --status-superseded: #8b949e;
+  --status-deprecated: #ff7b72;
+  --status-archived: #6e7681;
+}

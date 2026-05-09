@@ -511,7 +511,8 @@ html[data-sidebar="collapsed"] .docs-sidebar-drag {
 .docs-search-inputwrap:focus-within {
   border-color: var(--brand-primary);
   background: var(--bg-primary);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-primary) 35%, transparent);
+  box-shadow: 0 0 0 1px
+    color-mix(in srgb, var(--brand-primary) 35%, transparent);
 }
 
 .docs-search-icon {
@@ -575,7 +576,9 @@ html[data-sidebar="collapsed"] .docs-sidebar-drag {
   border-radius: 0.25rem;
   color: var(--text-content-tertiary);
   cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
 }
 .docs-search-clear svg {
   width: 0.625rem;
@@ -648,7 +651,6 @@ html[data-sidebar="collapsed"] .docs-sidebar-drag {
   line-height: 1.35;
 }
 .docs-search-result-excerpt {
-  display: block;
   margin-top: 0.125rem;
   font-size: 0.6875rem;
   color: var(--text-content-tertiary);
@@ -787,7 +789,9 @@ html[data-mode="light"] .docs-mode-toggle svg {
   color: var(--text-content);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
 }
 .docs-sidebar-close svg {
   width: 1rem;
@@ -917,7 +921,9 @@ html[data-mode="light"] .docs-mode-toggle svg {
   background: transparent;
   color: var(--text-content-quaternary);
   cursor: pointer;
-  transition: color 120ms ease, background-color 120ms ease;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
 }
 .docs-nav-toggle:hover,
 .docs-nav-toggle:focus-visible {
@@ -958,7 +964,9 @@ html[data-mode="light"] .docs-mode-toggle svg {
   text-align: left;
   text-decoration: none;
   cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
 }
 .docs-nav-link > span:first-child,
 .docs-nav-group > span:first-child {
@@ -1018,11 +1026,19 @@ html[data-mode="light"] .docs-mode-toggle svg {
   line-height: 0;
   color: transparent;
 }
-.docs-nav-status-draft       { color: var(--status-draft); }
-.docs-nav-status-proposed    { color: var(--status-proposed); }
-.docs-nav-status-superseded  { color: var(--status-superseded); }
-.docs-nav-status-deprecated  { color: var(--status-deprecated); }
-.docs-nav-status-archived    {
+.docs-nav-status-draft {
+  color: var(--status-draft);
+}
+.docs-nav-status-proposed {
+  color: var(--status-proposed);
+}
+.docs-nav-status-superseded {
+  color: var(--status-superseded);
+}
+.docs-nav-status-deprecated {
+  color: var(--status-deprecated);
+}
+.docs-nav-status-archived {
   color: var(--status-archived);
   opacity: 0.7;
 }
@@ -1450,7 +1466,9 @@ body[data-toc-enabled="false"] .docs-main {
 
 ::selection {
   background-color: var(--brand-primary);
-  color: var(--selection-text, #ffffff);
+  /* `white` is the canonical fallback when a theme forgets to define
+   * --selection-text; the keyword is theme-variable-policy compliant. */
+  color: var(--selection-text, white);
 }
 
 ::-webkit-scrollbar {
@@ -1558,7 +1576,7 @@ video {
   /* Match the Lean theorem-card treatment exactly — surface-primary
    * fill plus the standard border. The chrome value is theme-driven,
    * so the panel naturally tracks the active palette (deeper on
-   * cortex-slate-darker, lifted on cortex-slate, paper on cortex-light)
+   * cortex-dark-darker, lifted on cortex-slate, paper on cortex-light)
    * rather than parking a fixed colour on every theme. */
   background-color: var(--surface-primary);
   border: 1px solid var(--border-primary);
@@ -1846,7 +1864,10 @@ video {
   width: 100%;
   height: 100%;
   border: 0;
-  background: #fff;
+  /* PDFs lack a transparent canvas; an opaque white iframe matches the
+   * embedded viewer's chrome so the docs background never bleeds
+   * through during the load fade-in. */
+  background: white;
   z-index: 1;
   opacity: 0;
   transition: opacity 240ms ease;
@@ -2088,7 +2109,10 @@ a.docs-haskell-package-card {
   background: var(--surface-primary);
   color: var(--text-content);
   text-decoration: none;
-  transition: border-color 200ms ease, transform 200ms ease, background 200ms ease;
+  transition:
+    border-color 200ms ease,
+    transform 200ms ease,
+    background 200ms ease;
 }
 
 a.docs-haskell-package-card:hover,
@@ -2413,7 +2437,10 @@ a.docs-haskell-package-card:focus-visible {
 /* Declaration-doc → following code block: drop the block's own
  * top margin so the gap is just the docstring's small bottom margin
  * (≈4px) — visibly attached, not overlapping. */
-.repo-docs-lean-page .code-box > :where(.md-text, .verso-text):not(.mod-doc) + .hl.lean.block {
+.repo-docs-lean-page
+  .code-box
+  > :where(.md-text, .verso-text):not(.mod-doc)
+  + .hl.lean.block {
   margin-top: 0;
 }
 .repo-docs-lean-page .code-box > .md-text:not(.mod-doc) > :first-child,
@@ -2435,23 +2462,36 @@ a.docs-haskell-package-card:focus-visible {
   font-size: 0.875em;
 }
 
-.repo-docs-lean-page .hl.lean .keyword { color: var(--tok-keyword); }
+.repo-docs-lean-page .hl.lean .keyword {
+  color: var(--tok-keyword);
+}
 .repo-docs-lean-page .hl.lean .const,
-.repo-docs-lean-page .hl.lean .module-name { color: var(--tok-constant); }
-.repo-docs-lean-page .hl.lean .var { color: var(--tok-variable); }
-.repo-docs-lean-page .hl.lean .literal { color: var(--tok-string); }
+.repo-docs-lean-page .hl.lean .module-name {
+  color: var(--tok-constant);
+}
+.repo-docs-lean-page .hl.lean .var {
+  color: var(--tok-variable);
+}
+.repo-docs-lean-page .hl.lean .literal {
+  color: var(--tok-string);
+}
 .repo-docs-lean-page .hl.lean .unknown,
-.repo-docs-lean-page .hl.lean .inter-text { color: var(--tok-default); }
+.repo-docs-lean-page .hl.lean .inter-text {
+  color: var(--tok-default);
+}
 
 /* Themed token highlights. `!important` trumps Verso's hardcoded
- * `#eee` in the inline <style> block. */
+ * `#eee` in the inline \3c style> block. */
 .repo-docs-lean-page .hl.lean .token.binding-hl,
 .repo-docs-lean-page .hl.lean .literal.string:hover,
 .repo-docs-lean-page .hl.lean .token.typed:hover,
 .repo-docs-lean-page .hl.lean .has-info.warning:hover,
 .repo-docs-lean-page .hl.lean .has-info.error:hover,
 .repo-docs-lean-page .hl.lean .has-info.information:hover,
-.repo-docs-lean-page .hl.lean .tactic:has(.tactic-toggle:not(:checked)) > label:hover {
+.repo-docs-lean-page
+  .hl.lean
+  .tactic:has(.tactic-toggle:not(:checked))
+  > label:hover {
   background-color: var(--lean-hover-tint) !important;
   border-radius: 0.25rem !important;
   transition: background-color 120ms ease !important;
@@ -2472,10 +2512,17 @@ a.docs-haskell-package-card:focus-visible {
  * when expanded. Both the resting and hover states are themed. */
 .repo-docs-lean-page .hl.lean .tactic > label::after {
   border-color: var(--border-secondary) !important;
-  background: color-mix(in srgb, var(--brand-primary) 18%, transparent) !important;
+  background: color-mix(
+    in srgb,
+    var(--brand-primary) 18%,
+    transparent
+  ) !important;
 }
 
-.repo-docs-lean-page .hl.lean .tactic > label:has(+ .tactic-toggle:checked)::after {
+.repo-docs-lean-page
+  .hl.lean
+  .tactic
+  > label:has(+ .tactic-toggle:checked)::after {
   background: var(--brand-primary) !important;
   border-color: var(--brand-primary) !important;
 }
@@ -2483,7 +2530,8 @@ a.docs-haskell-package-card:focus-visible {
 .repo-docs-lean-page .hl.lean .tactic.is-active > label {
   background-color: var(--lean-active-tint) !important;
   border-radius: 0.25rem !important;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-primary) 32%, transparent);
+  box-shadow: 0 0 0 1px
+    color-mix(in srgb, var(--brand-primary) 32%, transparent);
 }
 
 /* The inline tactic-state that Verso reveals when a toggle is checked. */
@@ -2683,7 +2731,11 @@ a.docs-haskell-package-card:focus-visible {
 
 .repo-docs-lean-page .copy-button.copied {
   color: var(--brand-primary);
-  border-color: color-mix(in srgb, var(--brand-primary) 50%, var(--border-primary));
+  border-color: color-mix(
+    in srgb,
+    var(--brand-primary) 50%,
+    var(--border-primary)
+  );
   opacity: 1;
   transform: translateY(0);
 }
@@ -2709,13 +2761,25 @@ a.docs-haskell-package-card:focus-visible {
  * still read as their kind without falling back to Verso's hardcoded
  * `#f7a7af`-style salmon. */
 .tippy-box[data-theme~="warning"] {
-  border-color: color-mix(in srgb, var(--status-draft) 60%, var(--border-secondary)) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--status-draft) 60%,
+    var(--border-secondary)
+  ) !important;
 }
 .tippy-box[data-theme~="error"] {
-  border-color: color-mix(in srgb, var(--status-deprecated) 60%, var(--border-secondary)) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--status-deprecated) 60%,
+    var(--border-secondary)
+  ) !important;
 }
 .tippy-box[data-theme~="info"] {
-  border-color: color-mix(in srgb, var(--brand-primary) 60%, var(--border-secondary)) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--brand-primary) 60%,
+    var(--border-secondary)
+  ) !important;
 }
 
 .tippy-box[data-theme~="lean"] .tippy-content,
@@ -2747,11 +2811,19 @@ a.docs-haskell-package-card:focus-visible {
   font-family: var(--font-mono) !important;
 }
 
-.tippy-box .hl.lean .keyword { color: var(--tok-keyword) !important; }
+.tippy-box .hl.lean .keyword {
+  color: var(--tok-keyword) !important;
+}
 .tippy-box .hl.lean .const,
-.tippy-box .hl.lean .module-name { color: var(--tok-constant) !important; }
-.tippy-box .hl.lean .var { color: var(--tok-variable) !important; }
-.tippy-box .hl.lean .literal { color: var(--tok-string) !important; }
+.tippy-box .hl.lean .module-name {
+  color: var(--tok-constant) !important;
+}
+.tippy-box .hl.lean .var {
+  color: var(--tok-variable) !important;
+}
+.tippy-box .hl.lean .literal {
+  color: var(--tok-string) !important;
+}
 
 .tippy-box .docstring p,
 .tippy-box .hover-info p {
@@ -2866,7 +2938,10 @@ a.docs-haskell-package-card:focus-visible {
   border: 1px solid var(--border-primary);
   border-radius: 0.3125rem;
   cursor: pointer;
-  transition: color 120ms ease, border-color 120ms ease, background-color 120ms ease;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease,
+    background-color 120ms ease;
   position: relative;
   font-style: normal;
 }
@@ -2919,7 +2994,11 @@ a.docs-haskell-package-card:focus-visible {
   opacity: 1;
 }
 .docs-title-command[data-copied="true"] {
-  border-color: color-mix(in srgb, var(--brand-primary, currentColor) 50%, var(--border-secondary));
+  border-color: color-mix(
+    in srgb,
+    var(--brand-primary, currentColor) 50%,
+    var(--border-secondary)
+  );
 }
 @media (max-width: 640px) {
   .docs-title-command {
@@ -2982,7 +3061,10 @@ a.docs-haskell-package-card:focus-visible {
   border: 1px solid var(--border-primary);
   border-radius: 0.25rem;
   line-height: 1.35;
-  transition: border-color 120ms ease, color 120ms ease, background-color 120ms ease;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background-color 120ms ease;
 }
 .docs-title-badge a {
   color: inherit;
@@ -3079,6 +3161,12 @@ a.docs-haskell-package-card:focus-visible {
   padding: 0;
   background: transparent;
   border: 0;
+  /* `min-width: 0` lets the flex container shrink below the natural
+   * width of its widest pill — without it, a single oversized pill
+   * (a long unrecognised related-path that fell through to the text
+   * branch) blows the prose column out horizontally instead of
+   * wrapping. */
+  min-width: 0;
 }
 .docs-meta-pill {
   display: inline-flex;
@@ -3094,7 +3182,17 @@ a.docs-haskell-package-card:focus-visible {
   color: var(--text-content-tertiary);
   border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
   background: color-mix(in srgb, currentColor 8%, transparent);
-  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+  /* Cap pill width so an unrecognised long path can't span the prose
+   * column. Anything past the cap gets ellipsised; the full string
+   * stays available via the title= attribute set in the component. */
+  max-width: min(100%, 24ch);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .docs-meta-pill > span {
   color: var(--text-content);
@@ -3257,7 +3355,9 @@ a.docs-meta-pill:focus-visible {
   margin-left: 0.25rem;
   font-size: 0.875em;
   opacity: 0.7;
-  transition: opacity 120ms ease, color 120ms ease;
+  transition:
+    opacity 120ms ease,
+    color 120ms ease;
 }
 .docs-prose .footnotes a[data-footnote-backref]:hover,
 .docs-prose .footnotes a[data-footnote-backref]:focus-visible {
@@ -3492,7 +3592,11 @@ a.docs-meta-pill:focus-visible {
 
 .prose .mermaid-expand-button {
   pointer-events: auto;
-  background-color: color-mix(in srgb, var(--surface-secondary) 80%, transparent);
+  background-color: color-mix(
+    in srgb,
+    var(--surface-secondary) 80%,
+    transparent
+  );
   backdrop-filter: blur(6px);
   border: 1px solid var(--border-primary);
   border-radius: 0.375rem;
@@ -3601,7 +3705,7 @@ a.docs-meta-pill:focus-visible {
  * (indigo, teal, amber, rose, sage) — desaturated dark tints that
  * sit one step above the canvas, distinct enough to parse but never
  * candy-bright. CSS specificity needs !important to beat Mermaid's
- * injected <style> block inside the SVG.
+ * injected \3c style> block inside the SVG.
  */
 html[data-theme="cortex-slate"] .mermaid svg .node rect,
 html[data-theme="cortex-slate"] .mermaid svg .node polygon,
@@ -3625,47 +3729,179 @@ html[data-theme="cortex-slate"] .mermaid svg .marker {
   stroke-width: 1px !important;
 }
 
+/* Mermaid bakes node fills into the inline SVG output, so the
+ * cycling tints below have to use literal hex — they can't reach
+ * `var(--*)` from inside the SVG. The values mirror the slate
+ * palette intentionally (see MermaidEnhancer.astro's
+ * `slateThemeVariables`). */
+/* stylelint-disable color-no-hex */
+
 /* Flowchart / state diagram: cycle node fills + matching borders
  * across a 5-tone palette so charts read as composed rather than
  * monochrome. nth-of-type targets the <g class="node"> children of
  * the <g class="nodes"> parent, so the cycle is per-graph. */
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 1) > rect,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 1) > polygon,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 1) > circle,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 1) > ellipse,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 1) > path {
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 1)
+  > rect,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 1)
+  > polygon,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 1)
+  > circle,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 1)
+  > ellipse,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 1)
+  > path {
   fill: #383f5e !important;
   stroke: #5a6493 !important;
 }
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 2) > rect,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 2) > polygon,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 2) > circle,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 2) > ellipse,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 2) > path {
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 2)
+  > rect,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 2)
+  > polygon,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 2)
+  > circle,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 2)
+  > ellipse,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 2)
+  > path {
   fill: #2f4a4a !important;
   stroke: #4d7a78 !important;
 }
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 3) > rect,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 3) > polygon,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 3) > circle,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 3) > ellipse,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 3) > path {
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 3)
+  > rect,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 3)
+  > polygon,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 3)
+  > circle,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 3)
+  > ellipse,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 3)
+  > path {
   fill: #4a3f2f !important;
   stroke: #7a6948 !important;
 }
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 4) > rect,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 4) > polygon,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 4) > circle,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 4) > ellipse,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 4) > path {
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 4)
+  > rect,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 4)
+  > polygon,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 4)
+  > circle,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 4)
+  > ellipse,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 4)
+  > path {
   fill: #4a323e !important;
   stroke: #7a525f !important;
 }
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 5) > rect,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 5) > polygon,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 5) > circle,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 5) > ellipse,
-html[data-theme="cortex-slate"] .mermaid svg g.nodes > g.node:nth-of-type(5n + 5) > path {
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 5)
+  > rect,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 5)
+  > polygon,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 5)
+  > circle,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 5)
+  > ellipse,
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  g.nodes
+  > g.node:nth-of-type(5n + 5)
+  > path {
   fill: #3a4a3a !important;
   stroke: #5e7a5e !important;
 }
@@ -3695,10 +3931,15 @@ html[data-theme="cortex-slate"] .mermaid svg .edgeLabel rect {
 html[data-theme="cortex-slate"] .mermaid svg .edgeLabel p {
   background-color: #2d333b !important;
 }
-html[data-theme="cortex-slate"] .mermaid svg .edgeLabel :where(span, p, text, tspan) {
+html[data-theme="cortex-slate"]
+  .mermaid
+  svg
+  .edgeLabel
+  :where(span, p, text, tspan) {
   color: #adbac7 !important;
   fill: #adbac7 !important;
 }
+/* stylelint-enable color-no-hex */
 
 /*
  * Shiki dual-theme activation.
@@ -3762,41 +4003,83 @@ html.dark .tree-sitter-pre {
   background-color: transparent !important;
 }
 
-.tree-sitter-code { color: var(--tok-default); }
+.tree-sitter-code {
+  color: var(--tok-default);
+}
 
-.tree-sitter-code .tok-keyword { color: var(--tok-keyword); }
-.tree-sitter-code .tok-keyword-operator { color: var(--tok-keyword-operator); }
+.tree-sitter-code .tok-keyword {
+  color: var(--tok-keyword);
+}
+.tree-sitter-code .tok-keyword-operator {
+  color: var(--tok-keyword-operator);
+}
 .tree-sitter-code .tok-function,
 .tree-sitter-code .tok-function-call,
-.tree-sitter-code .tok-function-method { color: var(--tok-function); }
-.tree-sitter-code .tok-method { color: var(--tok-method); }
-.tree-sitter-code .tok-constructor { color: var(--tok-constructor); }
+.tree-sitter-code .tok-function-method {
+  color: var(--tok-function);
+}
+.tree-sitter-code .tok-method {
+  color: var(--tok-method);
+}
+.tree-sitter-code .tok-constructor {
+  color: var(--tok-constructor);
+}
 .tree-sitter-code .tok-type,
-.tree-sitter-code .tok-type-builtin { color: var(--tok-type); }
+.tree-sitter-code .tok-type-builtin {
+  color: var(--tok-type);
+}
 .tree-sitter-code .tok-constant,
 .tree-sitter-code .tok-constant-builtin,
-.tree-sitter-code .tok-constant-macro { color: var(--tok-constant); }
-.tree-sitter-code .tok-number { color: var(--tok-number); }
-.tree-sitter-code .tok-boolean { color: var(--tok-boolean); }
+.tree-sitter-code .tok-constant-macro {
+  color: var(--tok-constant);
+}
+.tree-sitter-code .tok-number {
+  color: var(--tok-number);
+}
+.tree-sitter-code .tok-boolean {
+  color: var(--tok-boolean);
+}
 .tree-sitter-code .tok-string,
 .tree-sitter-code .tok-string-special,
-.tree-sitter-code .tok-string-special-key { color: var(--tok-string); }
-.tree-sitter-code .tok-escape { color: var(--tok-escape); }
+.tree-sitter-code .tok-string-special-key {
+  color: var(--tok-string);
+}
+.tree-sitter-code .tok-escape {
+  color: var(--tok-escape);
+}
 .tree-sitter-code .tok-comment,
 .tree-sitter-code .tok-comment-documentation {
   color: var(--tok-comment);
   font-style: italic;
 }
 .tree-sitter-code .tok-variable,
-.tree-sitter-code .tok-variable-member { color: var(--tok-variable); }
-.tree-sitter-code .tok-property { color: var(--tok-property); }
-.tree-sitter-code .tok-parameter { color: var(--tok-parameter); }
-.tree-sitter-code .tok-operator { color: var(--tok-operator); }
+.tree-sitter-code .tok-variable-member {
+  color: var(--tok-variable);
+}
+.tree-sitter-code .tok-property {
+  color: var(--tok-property);
+}
+.tree-sitter-code .tok-parameter {
+  color: var(--tok-parameter);
+}
+.tree-sitter-code .tok-operator {
+  color: var(--tok-operator);
+}
 .tree-sitter-code .tok-punctuation,
 .tree-sitter-code .tok-punctuation-bracket,
 .tree-sitter-code .tok-punctuation-delimiter,
-.tree-sitter-code .tok-punctuation-special { color: var(--tok-punctuation); }
-.tree-sitter-code .tok-tag { color: var(--tok-tag); }
-.tree-sitter-code .tok-attribute { color: var(--tok-attribute); }
-.tree-sitter-code .tok-namespace { color: var(--tok-namespace); }
-.tree-sitter-code .tok-label { color: var(--tok-label); }
+.tree-sitter-code .tok-punctuation-special {
+  color: var(--tok-punctuation);
+}
+.tree-sitter-code .tok-tag {
+  color: var(--tok-tag);
+}
+.tree-sitter-code .tok-attribute {
+  color: var(--tok-attribute);
+}
+.tree-sitter-code .tok-namespace {
+  color: var(--tok-namespace);
+}
+.tree-sitter-code .tok-label {
+  color: var(--tok-label);
+}

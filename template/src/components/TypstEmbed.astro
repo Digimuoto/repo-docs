@@ -1,0 +1,156 @@
+---
+/*
+ * Embeds a compiled Typst manuscript inside the docs shell.
+ *
+ * The page renders the iframe inside the standard layout (sidebar +
+ * breadcrumb stay visible), with an action bar above the frame that
+ * exposes Open / Download / Fullscreen escape hatches the browser's
+ * native PDF chrome doesn't always surface.
+ *
+ * Sandbox lets the embedded PDF viewer run scripts (Chromium's
+ * built-in viewer needs them) while staying same-origin so the
+ * fullscreen API works on the wrapping div.
+ *
+ * Extracted from DocsPage.astro so the inline `<script is:inline>`
+ * can be parsed by prettier-plugin-astro — the plugin chokes when
+ * the script lives inside a JSX-conditional `{cond && (<section>...
+ * <script>...)}` expression. Single-element conditional in the
+ * caller (`{pdfHref && <TypstEmbed …/>}`) is parser-safe.
+ */
+
+interface Props {
+  pdfHref: string;
+  title: string;
+}
+
+const { pdfHref, title } = Astro.props;
+---
+
+<section
+  class="docs-typst-embed not-prose"
+  aria-label={`${title} — embedded PDF manuscript`}
+>
+  <div
+    class="docs-typst-embed-actions"
+    role="toolbar"
+    aria-label="Manuscript actions"
+  >
+    <a
+      class="docs-typst-embed-chip"
+      href={pdfHref}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Open the PDF in a new tab"
+    >
+      <svg
+        viewBox="0 0 12 12"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.4"
+        aria-hidden="true"
+      >
+        <path
+          d="M4 8l4-4M5 4h3v3"
+          stroke-linecap="round"
+          stroke-linejoin="round"></path>
+      </svg>
+      <span>Open</span>
+    </a>
+    <a
+      class="docs-typst-embed-chip"
+      href={pdfHref}
+      download
+      title="Download the PDF"
+    >
+      <svg
+        viewBox="0 0 12 12"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.4"
+        aria-hidden="true"
+      >
+        <path
+          d="M6 2v6.5M3.5 6L6 8.5 8.5 6M3 10h6"
+          stroke-linecap="round"
+          stroke-linejoin="round"></path>
+      </svg>
+      <span>Download</span>
+    </a>
+    <button
+      type="button"
+      class="docs-typst-embed-chip"
+      data-typst-fullscreen
+      title="Toggle fullscreen reading"
+    >
+      <svg
+        viewBox="0 0 12 12"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.4"
+        aria-hidden="true"
+      >
+        <path
+          d="M2 4.5V2h2.5M7.5 2H10v2.5M10 7.5V10H7.5M4.5 10H2V7.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"></path>
+      </svg>
+      <span data-typst-fullscreen-label>Fullscreen</span>
+    </button>
+  </div>
+  <div class="docs-typst-embed-frame-wrap" data-typst-frame-wrap>
+    <div class="docs-typst-embed-loader" aria-hidden="true">
+      <span class="docs-typst-embed-loader-eyebrow">Manuscript</span>
+      <span class="docs-typst-embed-loader-title">Loading PDF…</span>
+    </div>
+    <iframe
+      class="docs-typst-embed-frame"
+      src={pdfHref}
+      title={`${title} — PDF manuscript`}
+      sandbox="allow-same-origin allow-scripts allow-popups"
+      loading="lazy"></iframe>
+    <div class="docs-typst-embed-fallback" hidden>
+      <p class="docs-typst-embed-fallback-text">
+        This page embeds a PDF manuscript. Your browser can't display it inline.
+        <a href={pdfHref}>Download the PDF</a> or <a
+          href={pdfHref}
+          target="_blank"
+          rel="noopener noreferrer">open it in a new tab</a
+        >.
+      </p>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  (() => {
+    const wrap = document.querySelector("[data-typst-frame-wrap]");
+    if (!wrap) return;
+    const iframe = wrap.querySelector(".docs-typst-embed-frame");
+    const fallback = wrap.querySelector(".docs-typst-embed-fallback");
+    if (iframe) {
+      iframe.addEventListener("load", () => {
+        wrap.dataset.loaded = "true";
+      });
+      iframe.addEventListener("error", () => {
+        if (fallback) fallback.hidden = false;
+        wrap.dataset.failed = "true";
+      });
+    }
+
+    const fsButton = document.querySelector("[data-typst-fullscreen]");
+    const fsLabel = document.querySelector("[data-typst-fullscreen-label]");
+    function syncLabel() {
+      if (!fsLabel) return;
+      fsLabel.textContent =
+        document.fullscreenElement === wrap ? "Exit" : "Fullscreen";
+    }
+    fsButton?.addEventListener("click", () => {
+      if (document.fullscreenElement === wrap) {
+        document.exitFullscreen?.();
+      } else {
+        wrap.requestFullscreen?.();
+      }
+    });
+    document.addEventListener("fullscreenchange", syncLabel);
+  })();
+</script>

@@ -1,5 +1,5 @@
 ---
-import {siteConfig} from "../lib/site-config";
+import { siteConfig } from "../lib/site-config";
 
 const target = `${siteConfig.site.routeBase}/`.replace(/\/{2,}/g, "/");
 ---
@@ -16,8 +16,8 @@ const target = `${siteConfig.site.routeBase}/`.replace(/\/{2,}/g, "/");
     <p>
       Redirecting to <a href={target}>documentation</a>...
     </p>
-    <script is:inline>
-      window.location.replace({JSON.stringify(target)});
+    <script is:inline define:vars={{ target }}>
+      window.location.replace(target);
     </script>
   </body>
 </html>

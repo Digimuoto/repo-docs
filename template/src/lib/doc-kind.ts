@@ -1,4 +1,4 @@
-import type {CollectionEntry} from "astro:content";
+import type { CollectionEntry } from "astro:content";
 
 type DocsEntry = CollectionEntry<"docs">;
 
@@ -33,7 +33,7 @@ const PATH_KIND_OVERRIDES: Record<string, string> = {
 };
 
 export function deriveDocKind(entry: DocsEntry): string {
-  const explicit = (entry.data as {kind?: unknown}).kind;
+  const explicit = (entry.data as { kind?: unknown }).kind;
   if (typeof explicit === "string" && explicit.trim() !== "") {
     return explicit
       .trim()
@@ -42,7 +42,11 @@ export function deriveDocKind(entry: DocsEntry): string {
   }
   const id = entry.id.replace(/\\/g, "/");
   const firstSegment = id.split("/")[0] ?? "";
-  if (!firstSegment || firstSegment.endsWith(".md") || firstSegment.endsWith(".mdx")) {
+  if (
+    !firstSegment ||
+    firstSegment.endsWith(".md") ||
+    firstSegment.endsWith(".mdx")
+  ) {
     return "default";
   }
   return PATH_KIND_OVERRIDES[firstSegment] ?? firstSegment;

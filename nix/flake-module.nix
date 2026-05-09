@@ -13,15 +13,26 @@
     };
     grammarLib = import ./grammar.nix {inherit pkgs lib;};
 
+    # Discover available themes from template/src/styles/themes/*.css.
+    # Adding a theme = drop a CSS file alongside the existing
+    # palettes; the staging pipeline picks it up automatically and
+    # the enum below stays in sync without code changes elsewhere.
+    themesDir = ../template/src/styles/themes;
+    themeNames = lib.pipe (builtins.readDir themesDir) [
+      (lib.filterAttrs (name: type: type == "regular" && lib.hasSuffix ".css" name))
+      (builtins.attrNames)
+      (map (name: lib.removeSuffix ".css" name))
+    ];
+
     /*
-     * Per-site options.
-     *
-     * Shared between `docsSite.sites.<name>` (multi-site map) and the
-     * top-level `docsSite.*` single-site shim. When a consumer sets
-     * anything under `docsSite.sites`, the top-level fields are ignored
-     * entirely; otherwise we synthesise a single "docs" site from the
-     * top-level fields so the original single-site shape keeps working.
-     */
+    * Per-site options.
+    *
+    * Shared between `docsSite.sites.<name>` (multi-site map) and the
+    * top-level `docsSite.*` single-site shim. When a consumer sets
+    * anything under `docsSite.sites`, the top-level fields are ignored
+    * entirely; otherwise we synthesise a single "docs" site from the
+    * top-level fields so the original single-site shape keeps working.
+    */
     siteOptions = {
       contentDir = lib.mkOption {
         type = lib.types.nullOr lib.types.path;
@@ -41,7 +52,7 @@
       };
 
       theme = lib.mkOption {
-        type = lib.types.enum ["cortex-dark" "cortex-light" "cortex-slate" "cortex-slate-darker"];
+        type = lib.types.enum themeNames;
         default = "cortex-dark";
         example = "cortex-light";
         description = ''
@@ -58,11 +69,12 @@
             canvas, periwinkle indigo accent, github-dark-dimmed
             tokens. Built for sustained reading on bright displays
             where pure-black canvases fatigue the eye.
-          - `cortex-slate-darker`: cortex-slate calibrated a couple
-            of stops down the lightness curve — same periwinkle
-            accent, same github-dark-dimmed tokens, deeper canvas.
-            Built for OLED panels and late-night reading where even
-            cortex-slate feels lit.
+          - `cortex-dark-darker`: a lifted sister of cortex-dark —
+            same warm amber accent, same github-dark tokens, but the
+            surface ladder shifts up one rung so the body sits where
+            cortex-dark's chrome used to. Built for late-night reading
+            on OLED panels where the cortex-dark canvas reads as too
+            contrasty without sacrificing cortex-dark's warm identity.
 
           Consumers can still override `template/src/styles/palette.css`
           through `templateFiles` to ship their own palette entirely.
@@ -73,17 +85,20 @@
         type = lib.types.nullOr (lib.types.submodule {
           options = {
             light = lib.mkOption {
-              type = lib.types.enum ["cortex-dark" "cortex-light" "cortex-slate" "cortex-slate-darker"];
+              type = lib.types.enum themeNames;
               description = "Theme used when the reader picks (or the OS reports) light mode.";
             };
             dark = lib.mkOption {
-              type = lib.types.enum ["cortex-dark" "cortex-light" "cortex-slate" "cortex-slate-darker"];
+              type = lib.types.enum themeNames;
               description = "Theme used when the reader picks (or the OS reports) dark mode.";
             };
           };
         });
         default = null;
-        example = {light = "cortex-light"; dark = "cortex-slate-darker";};
+        example = {
+          light = "cortex-light";
+          dark = "cortex-dark-darker";
+        };
         description = ''
           Enable an unobtrusive light/dark switcher in the sidebar
           footer. When set, both palettes are inlined into the build
@@ -491,16 +506,17 @@
       _validatedContentDir =
         if siteCfg.contentDir != null
         then siteCfg.contentDir
-        else
-          throw "docsSite.sites.${siteKey}.contentDir must be set to a directory containing the docs tree.";
-      builtLanguages = lib.mapAttrs (name: langCfg: {
-        wasm = grammarLib.mkGrammarWasm {
-          inherit name;
-          grammarSrc = langCfg.grammarSrc;
-          highlightQueries = langCfg.highlightQueries;
-        };
-        aliases = langCfg.aliases;
-      }) siteCfg.languages;
+        else throw "docsSite.sites.${siteKey}.contentDir must be set to a directory containing the docs tree.";
+      builtLanguages =
+        lib.mapAttrs (name: langCfg: {
+          wasm = grammarLib.mkGrammarWasm {
+            inherit name;
+            grammarSrc = langCfg.grammarSrc;
+            highlightQueries = langCfg.highlightQueries;
+          };
+          aliases = langCfg.aliases;
+        })
+        siteCfg.languages;
       lean4SourceDir =
         if siteCfg.lean4 == null
         then null
@@ -569,30 +585,38 @@
 
     config = lib.mkIf cfg.enable {
       packages =
-        lib.mapAttrs' (siteKey: site:
-          lib.nameValuePair "${siteKey}-site" site.package
-        ) builtSites;
+        lib.mapAttrs' (
+          siteKey: site:
+            lib.nameValuePair "${siteKey}-site" site.package
+        )
+        builtSites;
 
       apps =
-        (lib.mapAttrs' (siteKey: site:
-          lib.nameValuePair "${siteKey}-dev" {
-            type = "app";
-            program = "${site.devApp}/bin/${site.devApp.name}";
-            meta.description = "Run the ${siteKey} docs site in development mode";
-          }
-        ) builtSites)
-        // (lib.mapAttrs' (siteKey: site:
-          lib.nameValuePair "${siteKey}-preview" {
-            type = "app";
-            program = "${site.previewApp}/bin/${site.previewApp.name}";
-            meta.description = "Preview the ${siteKey} docs site after a production build";
-          }
-        ) builtSites);
+        (lib.mapAttrs' (
+            siteKey: site:
+              lib.nameValuePair "${siteKey}-dev" {
+                type = "app";
+                program = "${site.devApp}/bin/${site.devApp.name}";
+                meta.description = "Run the ${siteKey} docs site in development mode";
+              }
+          )
+          builtSites)
+        // (lib.mapAttrs' (
+            siteKey: site:
+              lib.nameValuePair "${siteKey}-preview" {
+                type = "app";
+                program = "${site.previewApp}/bin/${site.previewApp.name}";
+                meta.description = "Preview the ${siteKey} docs site after a production build";
+              }
+          )
+          builtSites);
 
       checks =
-        lib.mapAttrs' (siteKey: site:
-          lib.nameValuePair "${siteKey}-site" site.package
-        ) builtSites;
+        lib.mapAttrs' (
+          siteKey: site:
+            lib.nameValuePair "${siteKey}-site" site.package
+        )
+        builtSites;
     };
   };
 }

@@ -1,13 +1,15 @@
 ---
-import type {MarkdownHeading} from "astro";
+import type { MarkdownHeading } from "astro";
 import MermaidEnhancer from "../components/MermaidEnhancer.astro";
 import MobileToc from "../components/MobileToc.astro";
 import MobileTopBar from "../components/MobileTopBar.astro";
+import SearchBox from "../components/SearchBox.astro";
 import SidebarSection from "../components/SidebarSection.astro";
 import TableOfContents from "../components/TableOfContents.astro";
+import ThemeInitScript from "../components/ThemeInitScript.astro";
 import ThemeToggle from "../components/ThemeToggle.astro";
-import type {SidebarSection as SidebarSectionType} from "../lib/navigation";
-import {siteConfig, withBasePath} from "../lib/site-config";
+import type { SidebarSection as SidebarSectionType } from "../lib/navigation";
+import { siteConfig, withBasePath } from "../lib/site-config";
 import "../styles/global.css";
 
 interface Props {
@@ -33,8 +35,11 @@ const {
 } = Astro.props;
 
 const currentPath = Astro.url.pathname;
-const pageTitle = `${title} | ${siteConfig.site.title} ${siteConfig.site.tagline}`.trim();
-const footerText = siteConfig.site.footerText ?? `© ${new Date().getFullYear()} ${siteConfig.site.title}`;
+const pageTitle =
+  `${title} | ${siteConfig.site.title} ${siteConfig.site.tagline}`.trim();
+const footerText =
+  siteConfig.site.footerText ??
+  `© ${new Date().getFullYear()} ${siteConfig.site.title}`;
 const theme = siteConfig.theme;
 const themeModes = siteConfig.themeModes;
 const repoUrl = siteConfig.repo?.repoUrl ?? null;
@@ -57,12 +62,8 @@ const fontFamilies =
 
 const tocEnabled =
   tocVariant === "haddock" ||
-  headings.filter((heading) => heading.depth >= 2 && heading.depth <= 4).length > 0;
-
-// Pagefind is generated alongside the static build (dist/pagefind/).
-// We need the bundle path to honour the site's routeBase so the UI
-// JS finds the index in deployed and dev-preview environments alike.
-const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
+  headings.filter((heading) => heading.depth >= 2 && heading.depth <= 4)
+    .length > 0;
 ---
 
 <!doctype html>
@@ -81,45 +82,16 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
     {description && <meta name="description" content={description} />}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href={`https://fonts.googleapis.com/css2?${fontFamilies}`} rel="stylesheet" />
+    <link
+      href={`https://fonts.googleapis.com/css2?${fontFamilies}`}
+      rel="stylesheet"
+    />
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css"
       crossorigin="anonymous"
     />
-    {themeModes && (
-      <script is:inline>
-        // Pre-paint mode init. Reads localStorage, falls back to OS
-        // prefers-color-scheme, and writes data-mode + data-theme +
-        // class to <html> before first paint so there's no flash. The
-        // light/dark theme names are stored as data attributes by the
-        // server render so this script needs no compile-time injection.
-        try {
-          const root = document.documentElement;
-          const lightTheme = root.dataset.modeLight;
-          const darkTheme = root.dataset.modeDark;
-          if (lightTheme && darkTheme) {
-            const stored = localStorage.getItem("docs-mode");
-            const prefersLight =
-              window.matchMedia &&
-              window.matchMedia("(prefers-color-scheme: light)").matches;
-            const mode =
-              stored === "light" || stored === "dark"
-                ? stored
-                : prefersLight
-                  ? "light"
-                  : "dark";
-            const activeTheme = mode === "light" ? lightTheme : darkTheme;
-            root.dataset.mode = mode;
-            root.dataset.theme = activeTheme;
-            root.classList.remove("dark", "light");
-            root.classList.add(activeTheme === "cortex-light" ? "light" : "dark");
-          }
-        } catch {
-          /* localStorage / matchMedia unavailable; SSR baseline stands */
-        }
-      </script>
-    )}
+    <ThemeInitScript />
     <script is:inline>
       // Restore collapsed state + user-dragged sidebar width before
       // paint to avoid layout flicker.
@@ -156,16 +128,27 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
             aria-label="Collapse navigation"
             aria-controls="docs-sidebar"
           >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 3.5L6 8l4.5 4.5" />
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M10.5 3.5L6 8l4.5 4.5"></path>
             </svg>
           </button>
-          {/*
+          {
+            /*
             Mobile-only close. Shares the `data-mobile-menu-toggle`
             attribute with the top-bar hamburger, so the layout's
             existing toggle handler closes the drawer when the
             button is tapped from inside the open drawer.
-          */}
+          */
+          }
           <button
             type="button"
             class="docs-sidebar-close"
@@ -173,89 +156,66 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
             aria-label="Close navigation"
             aria-controls="docs-sidebar"
           >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4l8 8M12 4l-8 8" />
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M4 4l8 8M12 4l-8 8"></path>
             </svg>
           </button>
         </header>
 
         <nav class="docs-sidebar-nav">
-          {navigation.map((section) => (
-            <SidebarSection currentPath={currentPath} section={section} />
-          ))}
+          {
+            navigation.map((section) => (
+              <SidebarSection currentPath={currentPath} section={section} />
+            ))
+          }
         </nav>
 
-        {repoUrl && (
-          <a
-            class="docs-sidebar-repo"
-            href={repoUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`Repository: ${repoLabel}`}
-          >
-            <svg
-              class="docs-sidebar-repo-glyph"
-              viewBox="0 0 16 16"
-              fill="currentColor"
-              aria-hidden="true"
+        {
+          repoUrl && (
+            <a
+              class="docs-sidebar-repo"
+              href={repoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Repository: ${repoLabel}`}
             >
-              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
-            </svg>
-            <span class="docs-sidebar-repo-label">{repoLabel}</span>
-            <svg
-              class="docs-sidebar-repo-external"
-              viewBox="0 0 12 12"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.4"
-              aria-hidden="true"
-            >
-              <path d="M4 8l4-4M5 4h3v3" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </a>
-        )}
-
-        <div class="docs-search" data-pagefind-bundle={pagefindBundlePath}>
-          <label class="docs-search-inputwrap">
-            <svg
-              class="docs-search-icon"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              aria-hidden="true"
-            >
-              <circle cx="7" cy="7" r="4.5" />
-              <path d="M10.5 10.5L13.5 13.5" stroke-linecap="round" />
-            </svg>
-            <input
-              id="docs-search-input"
-              type="search"
-              class="docs-search-input"
-              placeholder="Search docs"
-              autocomplete="off"
-              spellcheck="false"
-            />
-            <button
-              type="button"
-              class="docs-search-clear"
-              id="docs-search-clear"
-              aria-label="Clear search"
-              hidden
-            >
-              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <path d="M3 3l6 6M9 3l-6 6" stroke-linecap="round" />
+              <svg
+                class="docs-sidebar-repo-glyph"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
               </svg>
-            </button>
-          </label>
-          <div
-            id="docs-search-results"
-            class="docs-search-results"
-            role="listbox"
-            aria-label="Search results"
-            hidden
-          ></div>
-        </div>
+              <span class="docs-sidebar-repo-label">{repoLabel}</span>
+              <svg
+                class="docs-sidebar-repo-external"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                aria-hidden="true"
+              >
+                <path
+                  d="M4 8l4-4M5 4h3v3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </a>
+          )
+        }
+
+        <SearchBox />
 
         <footer class="docs-sidebar-footer">
           <p>{footerText}</p>
@@ -271,8 +231,17 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
           aria-label="Expand navigation"
           aria-controls="docs-sidebar"
         >
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5.5 3.5L10 8l-4.5 4.5" />
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            aria-hidden="true"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M5.5 3.5L10 8l-4.5 4.5"></path>
           </svg>
         </button>
       </div>
@@ -286,51 +255,77 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
         aria-valuenow="280"
         aria-valuemin="200"
         aria-valuemax="520"
-      ></div>
+      >
+      </div>
     </aside>
 
-    {tocEnabled && (
-      <aside id="docs-toc" class="docs-toc" aria-label="Table of contents">
-        <div class="docs-toc-expanded">
-          <div class="docs-toc-header">
-            <span class="docs-toc-title">Contents</span>
+    {
+      tocEnabled && (
+        <aside id="docs-toc" class="docs-toc" aria-label="Table of contents">
+          <div class="docs-toc-expanded">
+            <div class="docs-toc-header">
+              <span class="docs-toc-title">Contents</span>
+              <button
+                type="button"
+                class="docs-rail-button docs-rail-button-inline"
+                data-collapse="toc"
+                aria-label="Collapse table of contents"
+                aria-controls="docs-toc"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M10.5 3.5L6 8l4.5 4.5"
+                  />
+                </svg>
+              </button>
+            </div>
+            {tocVariant === "haddock" ? (
+              <nav
+                class="docs-toc-nav docs-toc-nav-haddock"
+                aria-label="On this page"
+              >
+                <p class="docs-toc-eyebrow">On this page</p>
+                <ol class="docs-toc-list" data-haddock-toc />
+              </nav>
+            ) : (
+              <TableOfContents headings={headings} />
+            )}
+          </div>
+
+          <div class="docs-toc-rail" aria-hidden="true">
             <button
               type="button"
-              class="docs-rail-button docs-rail-button-inline"
-              data-collapse="toc"
-              aria-label="Collapse table of contents"
+              class="docs-rail-button"
+              data-expand="toc"
+              aria-label="Expand table of contents"
               aria-controls="docs-toc"
             >
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 3.5L6 8l4.5 4.5" />
+              <svg
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M5.5 3.5L10 8l-4.5 4.5"
+                />
               </svg>
             </button>
           </div>
-          {tocVariant === "haddock" ? (
-            <nav class="docs-toc-nav docs-toc-nav-haddock" aria-label="On this page">
-              <p class="docs-toc-eyebrow">On this page</p>
-              <ol class="docs-toc-list" data-haddock-toc></ol>
-            </nav>
-          ) : (
-            <TableOfContents headings={headings} />
-          )}
-        </div>
-
-        <div class="docs-toc-rail" aria-hidden="true">
-          <button
-            type="button"
-            class="docs-rail-button"
-            data-expand="toc"
-            aria-label="Expand table of contents"
-            aria-controls="docs-toc"
-          >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5.5 3.5L10 8l-4.5 4.5" />
-            </svg>
-          </button>
-        </div>
-      </aside>
-    )}
+        </aside>
+      )
+    }
 
     <main class="docs-main">
       <div class="docs-main-inner">
@@ -345,468 +340,40 @@ const pagefindBundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
 
     <div id="mobile-overlay" class="docs-mobile-overlay"></div>
 
-    <script is:inline define:vars={{pagefindBundlePath}}>
-      // Custom search component backed by Pagefind's JS API. We avoid
-      // pagefind-ui.js entirely so the magnifier glyph, input styling,
-      // focus states, and results panel are fully under our control.
-      (async () => {
-        const input = document.getElementById("docs-search-input");
-        const clear = document.getElementById("docs-search-clear");
-        const resultsEl = document.getElementById("docs-search-results");
-        if (!input || !resultsEl) return;
-
-        let pagefind;
-        try {
-          pagefind = await import(`${pagefindBundlePath}pagefind.js`);
-          await pagefind.options({bundlePath: pagefindBundlePath});
-        } catch (err) {
-          console.warn("[search] Pagefind bundle not available:", err?.message ?? err);
-          // Disable input — bundle missing (e.g., `astro dev` without build).
-          input.setAttribute("disabled", "");
-          input.setAttribute("title", "Search index not built yet");
-          return;
-        }
-
-        function escapeHtml(value) {
-          return String(value)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-        }
-
-        function renderNone(query) {
-          resultsEl.hidden = false;
-          resultsEl.innerHTML = `<p class="docs-search-empty">No matches for <strong>${escapeHtml(query)}</strong>.</p>`;
-        }
-
-        function renderResults(items) {
-          resultsEl.hidden = false;
-          resultsEl.innerHTML = items
-            .map(
-              (item) => `
-                <a class="docs-search-result" href="${escapeHtml(item.url)}" role="option">
-                  <span class="docs-search-result-title">${escapeHtml(item.meta?.title ?? item.url)}</span>
-                  <span class="docs-search-result-excerpt">${item.excerpt ?? ""}</span>
-                </a>
-              `,
-            )
-            .join("");
-        }
-
-        async function runSearch(query) {
-          const trimmed = query.trim();
-          if (trimmed.length === 0) {
-            resultsEl.hidden = true;
-            resultsEl.innerHTML = "";
-            return;
-          }
-          try {
-            const search = await pagefind.search(trimmed);
-            if (!search.results || search.results.length === 0) {
-              renderNone(trimmed);
-              return;
-            }
-            const top = await Promise.all(
-              search.results.slice(0, 8).map((r) => r.data()),
-            );
-            renderResults(top);
-          } catch (err) {
-            console.warn("[search] query failed:", err);
-            renderNone(trimmed);
-          }
-        }
-
-        let scheduled = null;
-        input.addEventListener("input", () => {
-          clear.hidden = input.value.length === 0;
-          if (scheduled) clearTimeout(scheduled);
-          scheduled = setTimeout(() => runSearch(input.value), 120);
-        });
-        clear.addEventListener("click", () => {
-          input.value = "";
-          clear.hidden = true;
-          resultsEl.hidden = true;
-          resultsEl.innerHTML = "";
-          input.focus();
-        });
-        input.addEventListener("keydown", (event) => {
-          if (event.key === "Escape") {
-            if (input.value === "") {
-              input.blur();
-              return;
-            }
-            input.value = "";
-            clear.hidden = true;
-            resultsEl.hidden = true;
-            resultsEl.innerHTML = "";
-          }
-        });
-      })();
-    </script>
-
     <script>
-      // Mode toggle wiring. The pre-paint inline script in <head> has
-      // already set data-mode / data-theme / class. Here we just react
-      // to clicks: flip the value, update html attributes, persist,
-      // and fire a custom event so the Mermaid enhancer can re-render
-      // with the new active theme.
-      // Mode toggle is now wired across multiple buttons (the
-      // sidebar footer toggle on desktop, the top-bar toggle on
-      // mobile) — collect them all and bind a single shared
-      // handler so they stay in lock-step.
-      const modeToggles = document.querySelectorAll<HTMLButtonElement>(
-        "[data-mode-toggle]",
-      );
-      if (modeToggles.length > 0) {
-        const first = modeToggles[0];
-        const lightTheme = first.dataset.modeLight;
-        const darkTheme = first.dataset.modeDark;
-        const root = document.documentElement;
+      import { initModeToggle } from "../lib/mode-toggle";
+      import { initPanelState } from "../lib/panel-state";
+      import { initSidebarDrag } from "../lib/sidebar-drag";
+      import { initMobileDrawer } from "../lib/mobile-drawer";
+      import { attachScrollSpy, type ScrollSpyEntry } from "../lib/scroll-spy";
 
-        function applyMode(mode: "light" | "dark") {
-          if (!lightTheme || !darkTheme) return;
-          const activeTheme = mode === "light" ? lightTheme : darkTheme;
-          root.dataset.mode = mode;
-          root.dataset.theme = activeTheme;
-          root.classList.remove("dark", "light");
-          root.classList.add(activeTheme === "cortex-light" ? "light" : "dark");
-          try {
-            localStorage.setItem("docs-mode", mode);
-          } catch {
-            /* ignore */
-          }
-          document.dispatchEvent(
-            new CustomEvent("repodocs:mode-change", {
-              detail: {mode, theme: activeTheme},
-            }),
-          );
-        }
+      // Run once per page load. Each init() is a no-op when its
+      // target elements aren't in the DOM (e.g. the sidebar drag
+      // handle is absent on the haddock-iframe variant).
+      initModeToggle();
+      initPanelState();
+      initSidebarDrag();
+      initMobileDrawer();
 
-        modeToggles.forEach((btn) => {
-          btn.addEventListener("click", () => {
-            const next = root.dataset.mode === "light" ? "dark" : "light";
-            applyMode(next);
-          });
-        });
-      }
-    </script>
-
-    <script>
-      const root = document.documentElement;
-      const STORAGE = {
-        sidebar: "docs-sidebar-state",
-        toc: "docs-toc-state",
-      } as const;
-
-      function setPanel(panel: "sidebar" | "toc", collapsed: boolean) {
-        root.dataset[panel] = collapsed ? "collapsed" : "expanded";
-        try {
-          localStorage.setItem(STORAGE[panel], collapsed ? "collapsed" : "expanded");
-        } catch {
-          /* ignore */
-        }
-      }
-
-      document.querySelectorAll<HTMLButtonElement>("[data-collapse]").forEach((button) => {
-        const target = button.dataset.collapse as "sidebar" | "toc";
-        button.addEventListener("click", () => setPanel(target, true));
-      });
-
-      document.querySelectorAll<HTMLButtonElement>("[data-expand]").forEach((button) => {
-        const target = button.dataset.expand as "sidebar" | "toc";
-        button.addEventListener("click", () => setPanel(target, false));
-      });
-
-      // Nav tree collapse: read stored state, close matching lists unless
-      // their descendants include the active page. Active-path overrides
-      // stored collapsed state so the current doc is always in view.
-      const NAV_STORAGE = "docs-nav-collapsed";
-      const collapsed = new Set<string>();
-      try {
-        const raw = localStorage.getItem(NAV_STORAGE);
-        if (raw) {
-          const parsed = JSON.parse(raw) as unknown;
-          if (Array.isArray(parsed)) {
-            for (const key of parsed) {
-              if (typeof key === "string") collapsed.add(key);
-            }
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-
-      function writeNavState() {
-        try {
-          localStorage.setItem(NAV_STORAGE, JSON.stringify([...collapsed]));
-        } catch {
-          /* ignore */
-        }
-      }
-
-      function setNavOpen(key: string, open: boolean) {
-        document
-          .querySelectorAll<HTMLElement>(`[data-nav-children-of="${CSS.escape(key)}"]`)
-          .forEach((list) => {
-            list.dataset.navOpen = open ? "true" : "false";
-          });
-        document
-          .querySelectorAll<HTMLElement>(`[data-nav-toggle="${CSS.escape(key)}"]`)
-          .forEach((toggle) => {
-            toggle.setAttribute("aria-expanded", open ? "true" : "false");
-          });
-      }
-
-      // Apply stored collapsed state at load — but skip any list whose
-      // active-path flag is true so the current page stays visible.
-      document
-        .querySelectorAll<HTMLElement>("[data-nav-children-of]")
-        .forEach((list) => {
-          const key = list.dataset.navChildrenOf;
-          if (!key) return;
-          if (!collapsed.has(key)) return;
-          if (list.dataset.navActivePath === "true") return;
-          setNavOpen(key, false);
-        });
-
-      document
-        .querySelectorAll<HTMLButtonElement>("[data-nav-toggle]")
-        .forEach((button) => {
-          button.addEventListener("click", (event) => {
-            const key = button.dataset.navToggle;
-            if (!key) return;
-            event.preventDefault();
-            const list = document.querySelector<HTMLElement>(
-              `[data-nav-children-of="${CSS.escape(key)}"]`,
-            );
-            if (!list) return;
-            const nextOpen = list.dataset.navOpen !== "true";
-            setNavOpen(key, nextOpen);
-            if (nextOpen) collapsed.delete(key);
-            else collapsed.add(key);
-            writeNavState();
-          });
-        });
-
-      // Drag-to-resize handle on the sidebar's right edge.
-      //
-      // Long page titles in deep nav trees (cortex has them) get
-      // truncated at 280px. A pointer drag on the invisible 6px
-      // handle grows / shrinks the expanded width between 200 and
-      // 520px and persists to localStorage via the pre-paint inline
-      // script above.
-      const dragHandle = document.querySelector<HTMLElement>(
-        "[data-docs-sidebar-drag]",
-      );
-      if (dragHandle) {
-        const MIN = 200;
-        const MAX = 520;
-        let active = false;
-        let startX = 0;
-        let startWidth = 0;
-
-        function syncWidth(px: number) {
-          root.style.setProperty("--docs-sidebar-natural", px + "px");
-          dragHandle!.setAttribute("aria-valuenow", String(Math.round(px)));
-        }
-
-        dragHandle.addEventListener("pointerdown", (event) => {
-          if (window.innerWidth < 1024) return;
-          if (root.dataset.sidebar === "collapsed") return;
-          active = true;
-          startX = event.clientX;
-          const current = parseFloat(
-            getComputedStyle(root).getPropertyValue("--docs-sidebar-natural"),
-          );
-          startWidth = isNaN(current) ? 280 : current;
-          dragHandle.setPointerCapture(event.pointerId);
-          document.body.dataset.sidebarDragging = "true";
-        });
-        dragHandle.addEventListener("pointermove", (event) => {
-          if (!active) return;
-          const delta = event.clientX - startX;
-          const next = Math.max(MIN, Math.min(MAX, startWidth + delta));
-          syncWidth(next);
-        });
-        const finish = (event: PointerEvent) => {
-          if (!active) return;
-          active = false;
-          dragHandle.releasePointerCapture(event.pointerId);
-          delete document.body.dataset.sidebarDragging;
-          const current = parseFloat(
-            getComputedStyle(root).getPropertyValue("--docs-sidebar-natural"),
-          );
-          if (!isNaN(current)) {
-            try {
-              localStorage.setItem("docs-sidebar-width", String(Math.round(current)));
-            } catch {
-              /* ignore */
-            }
-          }
-        };
-        dragHandle.addEventListener("pointerup", finish);
-        dragHandle.addEventListener("pointercancel", finish);
-        // Double-click the handle to reset to default.
-        dragHandle.addEventListener("dblclick", () => {
-          if (window.innerWidth < 1024) return;
-          root.style.removeProperty("--docs-sidebar-natural");
-          try {
-            localStorage.removeItem("docs-sidebar-width");
-          } catch {
-            /* ignore */
-          }
-          dragHandle.setAttribute("aria-valuenow", "280");
-        });
-      }
-
-      // Mobile sidebar drawer + on-page TOC disclosure.
-      //
-      // Two pieces of mobile chrome wired here:
-      //   1. The site-nav drawer, opened from the top-bar hamburger
-      //      (`[data-mobile-menu-toggle]`) and closed by the overlay
-      //      backdrop, by an in-drawer link tap, or by Escape.
-      //   2. The on-page TOC disclosure (`<details>` with id
-      //      `docs-mobile-toc`). The top bar carries a TOC button
-      //      that opens/closes the disclosure remotely, and the
-      //      button's `aria-expanded` mirrors the disclosure state.
-      const sidebarEl = document.getElementById("docs-sidebar");
-      const mobileOverlay = document.getElementById("mobile-overlay");
-      const mobileToggles = document.querySelectorAll<HTMLElement>(
-        "[data-mobile-menu-toggle]",
-      );
-      const mobileTocToggles = document.querySelectorAll<HTMLElement>(
-        "[data-mobile-toc-toggle]",
-      );
-      const mobileTocEl = document.getElementById("docs-mobile-toc") as
-        | HTMLDetailsElement
-        | null;
-
-      function setMobileOpen(open: boolean) {
-        if (open) {
-          sidebarEl?.setAttribute("data-mobile-open", "true");
-          mobileOverlay?.setAttribute("data-mobile-open", "true");
-          // Lock body scroll while the drawer is open so phones don't
-          // rubber-band the page behind it.
-          document.body.classList.add("docs-scroll-locked");
-        } else {
-          sidebarEl?.removeAttribute("data-mobile-open");
-          mobileOverlay?.removeAttribute("data-mobile-open");
-          document.body.classList.remove("docs-scroll-locked");
-        }
-        mobileToggles.forEach((btn) =>
-          btn.setAttribute("aria-expanded", open ? "true" : "false"),
+      // TOC scroll-spy. Shared with the Haddock-iframe variant via
+      // lib/scroll-spy.ts; the iframe passes its own contentWindow
+      // as the scroll source.
+      {
+        const tocItems = Array.from(
+          document.querySelectorAll<HTMLElement>("[data-toc-anchor]"),
         );
-      }
-
-      mobileToggles.forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const isOpen = sidebarEl?.getAttribute("data-mobile-open") === "true";
-          setMobileOpen(!isOpen);
-        });
-      });
-      mobileOverlay?.addEventListener("click", () => setMobileOpen(false));
-      document.querySelectorAll("#docs-sidebar a").forEach((link) => {
-        link.addEventListener("click", () => {
-          if (window.innerWidth < 1024) setMobileOpen(false);
-        });
-      });
-      document.addEventListener("keydown", (event) => {
-        if (event.key !== "Escape") return;
-        if (sidebarEl?.getAttribute("data-mobile-open") === "true") {
-          setMobileOpen(false);
-        }
-      });
-
-      function syncTocToggle(open: boolean) {
-        mobileTocToggles.forEach((btn) =>
-          btn.setAttribute("aria-expanded", open ? "true" : "false"),
-        );
-      }
-      if (mobileTocEl) {
-        syncTocToggle(mobileTocEl.open);
-        mobileTocEl.addEventListener("toggle", () =>
-          syncTocToggle(mobileTocEl.open),
-        );
-        mobileTocToggles.forEach((btn) => {
-          btn.addEventListener("click", () => {
-            mobileTocEl.open = !mobileTocEl.open;
-            // Keep the disclosure visible: scroll it into view when
-            // opened from the top bar so the reader's eye lands on
-            // the anchors instead of mid-article.
-            if (mobileTocEl.open) {
-              mobileTocEl.scrollIntoView({behavior: "smooth", block: "start"});
-            }
-          });
-        });
-        // Tapping any anchor inside the disclosure closes it so the
-        // panel doesn't keep covering the heading the reader just
-        // scrolled to.
-        mobileTocEl.querySelectorAll("a").forEach((anchor) => {
-          anchor.addEventListener("click", () => {
-            if (window.innerWidth < 1280) mobileTocEl.open = false;
-          });
-        });
-      }
-
-      // TOC scroll spy.
-      //
-      // "Active" = the last heading whose top has scrolled past the trigger
-      // line (120px from the viewport top — just below the comfortable
-      // reading zone). This matches the expectation that clicking a TOC
-      // link highlights that heading, not the next one. Scroll-margin-top
-      // of 2rem puts an anchored heading at ~32px, comfortably above the
-      // 120px trigger, so it wins the "last past the line" check.
-      const tocItems = Array.from(
-        document.querySelectorAll<HTMLElement>("[data-toc-anchor]"),
-      );
-      if (tocItems.length > 0) {
         const article = document.querySelector("article.prose");
-        const headingEls: HTMLElement[] = tocItems
+        const entries = tocItems
           .map((item) => {
             const id = item.dataset.tocAnchor;
-            return id ? (article?.querySelector<HTMLElement>(`#${CSS.escape(id)}`) ?? null) : null;
+            const heading = id
+              ? (article?.querySelector<HTMLElement>(`#${CSS.escape(id)}`) ??
+                null)
+              : null;
+            return id && heading ? { id, item, heading } : null;
           })
-          .filter((node): node is HTMLElement => node !== null);
-
-        const setActive = (id: string | null) => {
-          tocItems.forEach((item) => {
-            item.classList.toggle("is-active", item.dataset.tocAnchor === id);
-          });
-        };
-
-        const TRIGGER = 120;
-        function computeActive() {
-          let active: string | null = null;
-          for (const heading of headingEls) {
-            const top = heading.getBoundingClientRect().top;
-            if (top <= TRIGGER) {
-              active = heading.id;
-            } else {
-              break;
-            }
-          }
-          // Before the first heading has crossed the trigger, default to the
-          // first TOC entry so the reader always has a reference point.
-          if (active === null && headingEls.length > 0 && window.scrollY < 40) {
-            active = headingEls[0].id;
-          }
-          setActive(active);
-        }
-
-        let scheduled = false;
-        function schedule() {
-          if (scheduled) return;
-          scheduled = true;
-          requestAnimationFrame(() => {
-            scheduled = false;
-            computeActive();
-          });
-        }
-
-        window.addEventListener("scroll", schedule, {passive: true});
-        window.addEventListener("resize", schedule);
-        computeActive();
+          .filter((entry): entry is ScrollSpyEntry => entry !== null);
+        attachScrollSpy(entries);
       }
     </script>
 

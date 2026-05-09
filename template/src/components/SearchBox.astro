@@ -1,0 +1,170 @@
+---
+/*
+ * Sidebar search input + results panel, backed by Pagefind's JS API.
+ *
+ * The Pagefind bundle is generated at build time alongside the site
+ * output (`dist/pagefind/`). The bundle URL has to honour the site's
+ * routeBase so the UI module loader finds the index in deployed and
+ * dev-preview environments alike — `withBasePath()` handles both.
+ *
+ * We intentionally avoid `pagefind-ui.js`: rolling our own input
+ * styling + results renderer keeps the magnifier glyph, focus
+ * states, and result-card layout under repo-docs's control.
+ */
+
+import { withBasePath } from "../lib/site-config";
+
+// Trailing slash matters — Pagefind concatenates this against
+// `pagefind.js` and the per-bundle JSON paths, so we need the base
+// path to end at the directory boundary.
+const bundlePath = withBasePath("pagefind/").replace(/\/?$/, "/");
+---
+
+<div class="docs-search" data-pagefind-bundle={bundlePath}>
+  <label class="docs-search-inputwrap">
+    <svg
+      class="docs-search-icon"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      aria-hidden="true"
+    >
+      <circle cx="7" cy="7" r="4.5"></circle>
+      <path d="M10.5 10.5L13.5 13.5" stroke-linecap="round"></path>
+    </svg>
+    <input
+      id="docs-search-input"
+      type="search"
+      class="docs-search-input"
+      placeholder="Search docs"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <button
+      type="button"
+      class="docs-search-clear"
+      id="docs-search-clear"
+      aria-label="Clear search"
+      hidden
+    >
+      <svg
+        viewBox="0 0 12 12"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        aria-hidden="true"
+      >
+        <path d="M3 3l6 6M9 3l-6 6" stroke-linecap="round"></path>
+      </svg>
+    </button>
+  </label>
+  <div
+    id="docs-search-results"
+    class="docs-search-results"
+    role="listbox"
+    aria-label="Search results"
+    hidden
+  >
+  </div>
+</div>
+
+<script is:inline define:vars={{ bundlePath }}>
+  (async () => {
+    const input = document.getElementById("docs-search-input");
+    const clear = document.getElementById("docs-search-clear");
+    const resultsEl = document.getElementById("docs-search-results");
+    if (!input || !resultsEl) return;
+
+    let pagefind;
+    try {
+      pagefind = await import(`${bundlePath}pagefind.js`);
+      await pagefind.options({ bundlePath });
+    } catch (err) {
+      console.warn(
+        "[search] Pagefind bundle not available:",
+        err?.message ?? err,
+      );
+      // Disable input — bundle missing (e.g., `astro dev` without build).
+      input.setAttribute("disabled", "");
+      input.setAttribute("title", "Search index not built yet");
+      return;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function renderNone(query) {
+      resultsEl.hidden = false;
+      resultsEl.innerHTML = `<p class="docs-search-empty">No matches for <strong>${escapeHtml(query)}</strong>.</p>`;
+    }
+
+    function renderResults(items) {
+      resultsEl.hidden = false;
+      resultsEl.innerHTML = items
+        .map(
+          (item) => `
+            <a class="docs-search-result" href="${escapeHtml(item.url)}" role="option">
+              <span class="docs-search-result-title">${escapeHtml(item.meta?.title ?? item.url)}</span>
+              <span class="docs-search-result-excerpt">${item.excerpt ?? ""}</span>
+            </a>
+          `,
+        )
+        .join("");
+    }
+
+    async function runSearch(query) {
+      const trimmed = query.trim();
+      if (trimmed.length === 0) {
+        resultsEl.hidden = true;
+        resultsEl.innerHTML = "";
+        return;
+      }
+      try {
+        const search = await pagefind.search(trimmed);
+        if (!search.results || search.results.length === 0) {
+          renderNone(trimmed);
+          return;
+        }
+        const top = await Promise.all(
+          search.results.slice(0, 8).map((r) => r.data()),
+        );
+        renderResults(top);
+      } catch (err) {
+        console.warn("[search] query failed:", err);
+        renderNone(trimmed);
+      }
+    }
+
+    let scheduled = null;
+    input.addEventListener("input", () => {
+      clear.hidden = input.value.length === 0;
+      if (scheduled) clearTimeout(scheduled);
+      scheduled = setTimeout(() => runSearch(input.value), 120);
+    });
+    clear.addEventListener("click", () => {
+      input.value = "";
+      clear.hidden = true;
+      resultsEl.hidden = true;
+      resultsEl.innerHTML = "";
+      input.focus();
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        if (input.value === "") {
+          input.blur();
+          return;
+        }
+        input.value = "";
+        clear.hidden = true;
+        resultsEl.hidden = true;
+        resultsEl.innerHTML = "";
+      }
+    });
+  })();
+</script>

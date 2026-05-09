@@ -1,0 +1,42 @@
+---
+/*
+ * Pre-paint mode init. Reads localStorage, falls back to OS
+ * prefers-color-scheme, writes data-mode + data-theme + class on
+ * <html> before first paint so there's no flash.
+ *
+ * The light/dark theme names are stored as data-mode-light /
+ * data-mode-dark on <html> by the server render. When themeModes
+ * isn't enabled those attributes are absent and the script no-ops
+ * after the early return. That makes the wrapper unconditional —
+ * which prettier-plugin-astro can parse, unlike a conditional
+ * `{themeModes && <script is:inline>}` block.
+ */
+---
+
+<script is:inline>
+  (() => {
+    try {
+      const root = document.documentElement;
+      const lightTheme = root.dataset.modeLight;
+      const darkTheme = root.dataset.modeDark;
+      if (!lightTheme || !darkTheme) return;
+      const stored = localStorage.getItem("docs-mode");
+      const prefersLight =
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: light)").matches;
+      const mode =
+        stored === "light" || stored === "dark"
+          ? stored
+          : prefersLight
+            ? "light"
+            : "dark";
+      const activeTheme = mode === "light" ? lightTheme : darkTheme;
+      root.dataset.mode = mode;
+      root.dataset.theme = activeTheme;
+      root.classList.remove("dark", "light");
+      root.classList.add(activeTheme === "cortex-light" ? "light" : "dark");
+    } catch {
+      /* localStorage / matchMedia unavailable; SSR baseline stands */
+    }
+  })();
+</script>

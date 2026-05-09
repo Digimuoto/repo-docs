@@ -1,4 +1,7 @@
-{pkgs, lib}: let
+{
+  pkgs,
+  lib,
+}: let
   wasiSysroot = pkgs.runCommand "tree-sitter-wasi-sysroot" {} ''
     mkdir -p "$out"
     ln -s ${pkgs.pkgsCross.wasi32.wasilibc.dev}/include "$out/include"
@@ -16,28 +19,28 @@
   };
 
   /*
-   * Build a tree-sitter grammar source tree into a WebAssembly parser
-   * plus its queries tree.
-   *
-   * Input:
-   *   name        — language name (used for the WASM filename and logs)
-   *   grammarSrc  — path to the grammar repo (must contain at least
-   *                 either `src/parser.c` pre-generated or a `grammar.js`
-   *                 we can run `tree-sitter generate` against)
-   *   highlightQueries — optional path to override the queries dir; when
-   *                      null the `queries/` directory from grammarSrc is
-   *                      used verbatim
-   *
-   * Output derivation:
-   *   $out/parser.wasm
-   *   $out/queries/highlights.scm     (and any other files)
-   *
-   * Emscripten note:
-   *   tree-sitter 0.22+ invokes emscripten directly when it's on PATH and
-   *   falls back to docker otherwise. We point EM_CACHE at a writable
-   *   copy of emscripten's own cache so the sandbox can JIT its system
-   *   libraries the first time.
-   */
+  * Build a tree-sitter grammar source tree into a WebAssembly parser
+  * plus its queries tree.
+  *
+  * Input:
+  *   name        — language name (used for the WASM filename and logs)
+  *   grammarSrc  — path to the grammar repo (must contain at least
+  *                 either `src/parser.c` pre-generated or a `grammar.js`
+  *                 we can run `tree-sitter generate` against)
+  *   highlightQueries — optional path to override the queries dir; when
+  *                      null the `queries/` directory from grammarSrc is
+  *                      used verbatim
+  *
+  * Output derivation:
+  *   $out/parser.wasm
+  *   $out/queries/highlights.scm     (and any other files)
+  *
+  * Emscripten note:
+  *   tree-sitter 0.22+ invokes emscripten directly when it's on PATH and
+  *   falls back to docker otherwise. We point EM_CACHE at a writable
+  *   copy of emscripten's own cache so the sandbox can JIT its system
+  *   libraries the first time.
+  */
   mkGrammarWasm = {
     name,
     grammarSrc,

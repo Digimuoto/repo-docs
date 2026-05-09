@@ -16,7 +16,7 @@ This page exercises every rendering feature to verify that the template produces
 
 ## Inline Formatting
 
-Regular text with **bold**, *italic*, ***bold italic***, `inline code`, and [a link](#inline-formatting).
+Regular text with **bold**, _italic_, **_bold italic_**, `inline code`, and [a link](#inline-formatting).
 
 ## Headings
 
@@ -47,7 +47,7 @@ Ordered:
 
 ## Blockquote
 
-> This is a blockquote. It can contain **bold**, *italic*, and `code`.
+> This is a blockquote. It can contain **bold**, _italic_, and `code`.
 >
 > It can span multiple paragraphs.
 
@@ -114,15 +114,15 @@ Tree-sitter–powered highlighting (the `ts-json` language is registered via `do
 
 ## Tables
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Mermaid diagrams | Supported | Fullscreen toggle included |
-| LaTeX math | Supported | Via KaTeX |
-| Syntax highlighting | Supported | All common languages |
+| Feature             | Status    | Notes                                             |
+| ------------------- | --------- | ------------------------------------------------- |
+| Mermaid diagrams    | Supported | Fullscreen toggle included                        |
+| LaTeX math          | Supported | Via KaTeX                                         |
+| Syntax highlighting | Supported | All common languages                              |
 | Lean 4 theory pages | Supported | See the generated [Theory section](../../Theory/) |
-| Typst manuscripts | Supported | See [Typst Manuscripts](typst-manuscripts.md) |
-| MDX | Supported | Via `@astrojs/mdx` |
-| Dark mode | Default | Customizable via CSS variables |
+| Typst manuscripts   | Supported | See [Typst Manuscripts](typst-manuscripts.md)     |
+| MDX                 | Supported | Via `@astrojs/mdx`                                |
+| Dark mode           | Default   | Customizable via CSS variables                    |
 
 ## Mermaid Diagrams
 
@@ -219,19 +219,20 @@ A list containing code and emphasis:
 Reference-style footnotes work via standard GFM syntax[^1] and are rendered as a bibliography block at the bottom of the page[^kerr2024].
 
 [^1]: A simple numbered footnote with the back-reference arrow rendered automatically.
-[^kerr2024]: Kerr, J. (2024). *Documentation as a system input*. Self-published. Footnotes accept arbitrary identifiers, not just numbers.
+
+[^kerr2024]: Kerr, J. (2024). _Documentation as a system input_. Self-published. Footnotes accept arbitrary identifiers, not just numbers.
 
 ## References
 
 For end-of-paper bibliographies that don't tie to inline `[^N]` markers, write a `## References` (or `## Bibliography`) heading followed by a numbered Markdown list. The styling auto-applies — italic titles via `*…*`, monospace brand-tinted URLs, tabular-nums counter in muted ink. The same shape as the Footnotes block above, so a doc that uses both reads consistently.
 
-1. Astro Technology Company. *Astro: The web framework for content-driven websites*. <https://astro.build>
-2. Pagefind. *Pagefind: static low-bandwidth search at scale*. <https://pagefind.app>
-3. de Moura, L., Ullrich, S. (2021). *The Lean 4 Theorem Prover and Programming Language*. CADE 28: 625–635.
-4. Christiansen, D. R. *Verso: authoring tools for Lean*. <https://github.com/leanprover/verso>
-5. Madsen, M., Haug, L. (2023). *Typst: a new markup-based typesetting system that is powerful, easy to learn, and fast*. <https://typst.app>
-6. Knuth, D. E. (1984). *Literate Programming*. The Computer Journal 27(2):97–111.
-7. GitHub. *Primer: GitHub's design system*. <https://primer.style>
-8. Mermaid Contributors. *Mermaid: generation of diagrams from textual descriptions*. <https://mermaid.js.org>
-9. Sotin, B. (2018). *KaTeX: the fastest math typesetting library for the web*. <https://katex.org>
-10. Hercules CI. *flake-parts: a flake-friendly module system*. <https://flake.parts>
+1. Astro Technology Company. _Astro: The web framework for content-driven websites_. <https://astro.build>
+2. Pagefind. _Pagefind: static low-bandwidth search at scale_. <https://pagefind.app>
+3. de Moura, L., Ullrich, S. (2021). _The Lean 4 Theorem Prover and Programming Language_. CADE 28: 625–635.
+4. Christiansen, D. R. _Verso: authoring tools for Lean_. <https://github.com/leanprover/verso>
+5. Madsen, M., Haug, L. (2023). _Typst: a new markup-based typesetting system that is powerful, easy to learn, and fast_. <https://typst.app>
+6. Knuth, D. E. (1984). _Literate Programming_. The Computer Journal 27(2):97–111.
+7. GitHub. _Primer: GitHub's design system_. <https://primer.style>
+8. Mermaid Contributors. _Mermaid: generation of diagrams from textual descriptions_. <https://mermaid.js.org>
+9. Sotin, B. (2018). _KaTeX: the fastest math typesetting library for the web_. <https://katex.org>
+10. Hercules CI. _flake-parts: a flake-friendly module system_. <https://flake.parts>

@@ -9,22 +9,22 @@ sidebar:
 
 Mermaid diagrams are wired into the markdown pipeline by default. Any fenced code block tagged `mermaid` is rendered client-side into an SVG card with a Fullscreen button in the toolbar. There's nothing to configure on the consumer side beyond writing the diagram.
 
-This page is about the part Mermaid doesn't decide for you: composition. The defaults look fine for two-node sketches, but real diagrams (5–20 nodes, mixed shapes, branching) need a small amount of intentional structure to read well across `cortex-light`, `cortex-dark`, `cortex-slate`, and `cortex-slate-darker`.
+This page is about the part Mermaid doesn't decide for you: composition. The defaults look fine for two-node sketches, but real diagrams (5–20 nodes, mixed shapes, branching) need a small amount of intentional structure to read well across `cortex-light`, `cortex-dark`, `cortex-dark-darker`, and `cortex-slate`.
 
 ## How each theme styles diagrams
 
 The template picks a Mermaid theme to match the active palette:
 
-| Site theme | Mermaid theme | Node colour behaviour |
-|------------|---------------|------------------------|
-| `cortex-light` | `default` | All nodes the same neutral fill |
-| `cortex-dark` | `dark` (github-dark family) | All nodes the same neutral fill |
-| `cortex-slate` | `base` + tuned `themeVariables` | **Cycles through 5 muted tints**: indigo → teal → amber → rose → sage |
-| `cortex-slate-darker` | `base` + tuned `themeVariables` | Same indigo → teal → amber → rose → sage cycle as slate, recalibrated darker for the deeper canvas |
+| Site theme           | Mermaid theme                   | Node colour behaviour                                                 |
+| -------------------- | ------------------------------- | --------------------------------------------------------------------- |
+| `cortex-light`       | `default`                       | All nodes the same neutral fill                                       |
+| `cortex-dark`        | `dark` (github-dark family)     | All nodes the same neutral fill                                       |
+| `cortex-dark-darker` | `dark` (github-dark family)     | All nodes the same neutral fill                                       |
+| `cortex-slate`       | `base` + tuned `themeVariables` | **Cycles through 5 muted tints**: indigo → teal → amber → rose → sage |
 
 Two practical consequences:
 
-- On `cortex-slate` and `cortex-slate-darker`, **the order you declare nodes determines their colour**. The first node is indigo, the second teal, the third amber, the fourth rose, the fifth sage, and the sixth wraps back to indigo. Rearranging the source rearranges the palette.
+- On `cortex-slate`, **the order you declare nodes determines their colour**. The first node is indigo, the second teal, the third amber, the fourth rose, the fifth sage, and the sixth wraps back to indigo. Rearranging the source rearranges the palette.
 - On the other themes, ordering doesn't affect colour, but it still affects layout — Mermaid's auto-layout follows declaration order to break ties.
 
 ## Composition rules of thumb
@@ -42,11 +42,11 @@ over `A[Stage the content directory into the template tree]`. If a node really n
 
 ### Pick the direction that matches the data
 
-| You're showing | Use |
-|----------------|-----|
-| A pipeline / linear flow | `flowchart LR` |
-| A hierarchy / decomposition | `flowchart TB` |
-| A small cycle | `flowchart LR` with a back-edge |
+| You're showing               | Use                                         |
+| ---------------------------- | ------------------------------------------- |
+| A pipeline / linear flow     | `flowchart LR`                              |
+| A hierarchy / decomposition  | `flowchart TB`                              |
+| A small cycle                | `flowchart LR` with a back-edge             |
 | A wide fan-out (>4 children) | `flowchart TB` so children stack vertically |
 
 `BT` (bottom-to-top) is rarely the right answer — readers expect time and causation to flow either left-to-right or top-down.
@@ -99,7 +99,7 @@ flowchart LR
   class Error bad
 ```
 
-Use this sparingly — the strength of the slate cycling palette is that it doesn't *mean* anything, so colour stays available as a signal when you need it.
+Use this sparingly — the strength of the slate cycling palette is that it doesn't _mean_ anything, so colour stays available as a signal when you need it.
 
 ## Worked examples
 

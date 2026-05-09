@@ -1,20 +1,15 @@
 ---
-import type {CollectionEntry} from "astro:content";
-import {kebabToTitle, withBasePath} from "../lib/site-config";
-
-function tagSlug(tag: string) {
-  return tag
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
+import type { CollectionEntry } from "astro:content";
+import CopySourceButton from "./CopySourceButton.astro";
+import DocBadges from "./DocBadges.astro";
+import { kebabToTitle } from "../lib/site-config";
 
 interface Props {
   doc: CollectionEntry<"docs">;
 }
 
-const {doc} = Astro.props;
-const {data} = doc;
+const { doc } = Astro.props;
+const { data } = doc;
 
 // Normalise the doc id into a breadcrumb of title-cased segments. The id
 // preserves source path (e.g. "guides/getting-started") so it works as a
@@ -53,7 +48,9 @@ function normaliseAuthors(
   return Array.from(new Set(pool.map((name) => name.trim()).filter(Boolean)));
 }
 
-function formatDate(value: Date | undefined): {iso: string; label: string} | null {
+function formatDate(
+  value: Date | undefined,
+): { iso: string; label: string } | null {
   if (!value) return null;
   const iso = value.toISOString().slice(0, 10);
   const label = value.toLocaleDateString("en-US", {
@@ -61,25 +58,14 @@ function formatDate(value: Date | undefined): {iso: string; label: string} | nul
     month: "long",
     day: "numeric",
   });
-  return {iso, label};
+  return { iso, label };
 }
 
 const authors = normaliseAuthors(data.author, data.authors);
 const published = formatDate(data.date);
 const updated = formatDate(data.updated);
 
-const tagBadges = (data.tags ?? []).map((tag) => ({
-  kind: "tag" as const,
-  label: tag,
-  href: withBasePath(`tags/${tagSlug(tag)}`),
-}));
-const statusBadges = data.draft
-  ? [{kind: "draft" as const, label: "Draft"}]
-  : [];
-const badges = [...statusBadges, ...tagBadges];
-
-const hasByline =
-  authors.length > 0 || Boolean(published) || Boolean(updated);
+const hasByline = authors.length > 0 || Boolean(published) || Boolean(updated);
 const hasBreadcrumb = crumbs.length > 0;
 
 // Pick the host for the floated command chip — the LAST ingress block.
@@ -90,133 +76,98 @@ const commandSlot: "byline" | "description" | "head" | "breadcrumb" | "none" =
   !showCommand
     ? "none"
     : hasByline
-    ? "byline"
-    : data.description
-    ? "description"
-    : hasBreadcrumb
-    ? "head"
-    : "head";
+      ? "byline"
+      : data.description
+        ? "description"
+        : hasBreadcrumb
+          ? "head"
+          : "head";
 ---
 
 <header class="docs-title" data-has-breadcrumb={hasBreadcrumb}>
-  {hasBreadcrumb && (
-    <nav class="docs-title-breadcrumb" aria-label="Document location">
-      {crumbs.map((crumb, index) => (
-        <>
-          {index > 0 && <span class="docs-title-breadcrumb-sep" aria-hidden="true">/</span>}
-          <span class="docs-title-breadcrumb-crumb">{crumb}</span>
-        </>
-      ))}
-    </nav>
-  )}
+  {
+    hasBreadcrumb && (
+      <nav class="docs-title-breadcrumb" aria-label="Document location">
+        {crumbs.map((crumb, index) => (
+          <>
+            {index > 0 && (
+              <span class="docs-title-breadcrumb-sep" aria-hidden="true">
+                /
+              </span>
+            )}
+            <span class="docs-title-breadcrumb-crumb">{crumb}</span>
+          </>
+        ))}
+      </nav>
+    )
+  }
 
   <div class="docs-title-head">
-    {commandSlot === "head" && (
-      <button
-        type="button"
-        class="docs-title-command"
-        data-docs-title-command
-        data-source={docSource}
-        title="Copy markdown source"
-        aria-label={`Copy markdown source for ${commandTarget}`}
-      >
-        <span class="docs-title-command-icon" aria-hidden="true">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4">
-            <rect x="4" y="4" width="7" height="7" rx="1.2" stroke-linejoin="round" />
-            <path d="M3 9.25V3a.75.75 0 0 1 .75-.75H10" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </span>
-        <span class="docs-title-command-status" aria-live="polite"></span>
-      </button>
-    )}
+    {
+      commandSlot === "head" && (
+        <CopySourceButton source={docSource} target={commandTarget} />
+      )
+    }
     <h1 class="docs-title-heading">{data.title}</h1>
-    {badges.length > 0 && (
-      <ul class="docs-title-badges" aria-label="Document tags">
-        {badges.map((badge) => (
-          <li class={`docs-title-badge docs-title-badge-${badge.kind}`}>
-            {"href" in badge && badge.href ? (
-              <a href={badge.href}>{badge.label}</a>
-            ) : (
-              badge.label
-            )}
-          </li>
-        ))}
-      </ul>
-    )}
+    <DocBadges doc={doc} />
   </div>
 
-  {data.description && (
-    <p class="docs-title-description">
-      {commandSlot === "description" && (
-        <button
-          type="button"
-          class="docs-title-command"
-          data-docs-title-command
-          data-source={docSource}
-          title="Copy markdown source"
-          aria-label={`Copy markdown source for ${commandTarget}`}
-        >
-          <span class="docs-title-command-icon" aria-hidden="true">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4">
-              <rect x="4" y="4" width="7" height="7" rx="1.2" stroke-linejoin="round" />
-              <path d="M3 9.25V3a.75.75 0 0 1 .75-.75H10" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </span>
-          <span class="docs-title-command-status" aria-live="polite"></span>
-        </button>
-      )}
-      {data.description}
-    </p>
-  )}
+  {
+    data.description && (
+      <p class="docs-title-description">
+        {commandSlot === "description" && (
+          <CopySourceButton source={docSource} target={commandTarget} />
+        )}
+        {data.description}
+      </p>
+    )
+  }
 
-  {hasByline && (
-    <p class="docs-title-byline">
-      {commandSlot === "byline" && (
-        <button
-          type="button"
-          class="docs-title-command"
-          data-docs-title-command
-          data-source={docSource}
-          title="Copy markdown source"
-          aria-label={`Copy markdown source for ${commandTarget}`}
-        >
-          <span class="docs-title-command-icon" aria-hidden="true">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4">
-              <rect x="4" y="4" width="7" height="7" rx="1.2" stroke-linejoin="round" />
-              <path d="M3 9.25V3a.75.75 0 0 1 .75-.75H10" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+  {
+    hasByline && (
+      <p class="docs-title-byline">
+        {commandSlot === "byline" && (
+          <CopySourceButton source={docSource} target={commandTarget} />
+        )}
+        {authors.length > 0 && (
+          <span class="docs-title-byline-authors">
+            {authors.map((author, index) => (
+              <>
+                {index > 0 && (
+                  <span class="docs-title-byline-sep" aria-hidden="true">
+                    ·
+                  </span>
+                )}
+                <span class="docs-title-byline-author">{author}</span>
+              </>
+            ))}
           </span>
-          <span class="docs-title-command-status" aria-live="polite"></span>
-        </button>
-      )}
-      {authors.length > 0 && (
-        <span class="docs-title-byline-authors">
-          {authors.map((author, index) => (
-            <>
-              {index > 0 && <span class="docs-title-byline-sep" aria-hidden="true">·</span>}
-              <span class="docs-title-byline-author">{author}</span>
-            </>
-          ))}
-        </span>
-      )}
-      {published && (
-        <>
-          {authors.length > 0 && <span class="docs-title-byline-sep" aria-hidden="true">·</span>}
-          <time class="docs-title-byline-date" datetime={published.iso}>
-            {published.label}
-          </time>
-        </>
-      )}
-      {updated && (
-        <>
-          <span class="docs-title-byline-sep" aria-hidden="true">·</span>
-          <span class="docs-title-byline-updated">
-            Updated <time datetime={updated.iso}>{updated.label}</time>
-          </span>
-        </>
-      )}
-    </p>
-  )}
+        )}
+        {published && (
+          <>
+            {authors.length > 0 && (
+              <span class="docs-title-byline-sep" aria-hidden="true">
+                ·
+              </span>
+            )}
+            <time class="docs-title-byline-date" datetime={published.iso}>
+              {published.label}
+            </time>
+          </>
+        )}
+        {updated && (
+          <>
+            <span class="docs-title-byline-sep" aria-hidden="true">
+              ·
+            </span>
+            <span class="docs-title-byline-updated">
+              Updated <time datetime={updated.iso}>{updated.label}</time>
+            </span>
+          </>
+        )}
+      </p>
+    )
+  }
 
   <hr class="docs-title-divider" />
 </header>
@@ -225,7 +176,9 @@ const commandSlot: "byline" | "description" | "head" | "breadcrumb" | "none" =
   document
     .querySelectorAll<HTMLButtonElement>("[data-docs-title-command]")
     .forEach((button) => {
-      const status = button.querySelector<HTMLElement>(".docs-title-command-status");
+      const status = button.querySelector<HTMLElement>(
+        ".docs-title-command-status",
+      );
       let resetTimer: number | null = null;
       button.addEventListener("click", async () => {
         const source = button.dataset.source ?? "";

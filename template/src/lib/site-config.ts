@@ -1,4 +1,7 @@
 import rawConfig from "../generated/site-config.json";
+import { SITE_THEMES, type SiteTheme } from "../generated/themes";
+
+export type { SiteTheme };
 
 export interface NavigationSectionConfig {
   dir?: string;
@@ -9,12 +12,6 @@ export interface NavigationSectionConfig {
     label: string;
   }>;
 }
-
-export type SiteTheme =
-  | "cortex-dark"
-  | "cortex-light"
-  | "cortex-slate"
-  | "cortex-slate-darker";
 
 export interface SiteThemeModes {
   dark: SiteTheme;
@@ -56,24 +53,21 @@ export interface SiteConfig {
   themeModes: SiteThemeModes | null;
 }
 
-const THEMES: ReadonlyArray<SiteTheme> = [
-  "cortex-dark",
-  "cortex-light",
-  "cortex-slate",
-  "cortex-slate-darker",
-];
 function isTheme(value: unknown): value is SiteTheme {
-  return typeof value === "string" && (THEMES as ReadonlyArray<string>).includes(value);
+  return (
+    typeof value === "string" &&
+    (SITE_THEMES as ReadonlyArray<string>).includes(value)
+  );
 }
 
 function parseThemeModes(raw: unknown): SiteThemeModes | null {
   if (!raw || typeof raw !== "object") return null;
-  const candidate = raw as {light?: unknown; dark?: unknown};
+  const candidate = raw as { light?: unknown; dark?: unknown };
   if (!isTheme(candidate.light) || !isTheme(candidate.dark)) return null;
-  return {light: candidate.light, dark: candidate.dark};
+  return { light: candidate.light, dark: candidate.dark };
 }
 
-function stripTrailingSlash(value: string) {
+export function stripTrailingSlash(value: string) {
   if (value === "/") {
     return "/";
   }
@@ -96,33 +90,48 @@ export const siteConfig = {
     routeBase: normalizeRouteBase(rawConfig.site.routeBase),
   },
   theme: ((): SiteTheme => {
-    const raw = (rawConfig as {theme?: string}).theme;
-    if (raw === "cortex-light") return "cortex-light";
-    if (raw === "cortex-slate") return "cortex-slate";
-    if (raw === "cortex-slate-darker") return "cortex-slate-darker";
-    return "cortex-dark";
+    const raw = (rawConfig as { theme?: string }).theme;
+    if (isTheme(raw)) return raw;
+    // Fall back to whichever theme appears first in the generated
+    // SITE_THEMES list. cortex-dark is the first entry by sort order
+    // when present; otherwise the first available theme wins.
+    const fallback = SITE_THEMES.includes("cortex-dark" as SiteTheme)
+      ? ("cortex-dark" as SiteTheme)
+      : SITE_THEMES[0];
+    return fallback;
   })(),
-  themeModes: parseThemeModes((rawConfig as {themeModes?: unknown}).themeModes),
-  lean4: parseLean4((rawConfig as {lean4?: unknown}).lean4),
-  haskell: parseHaskell((rawConfig as {haskell?: unknown}).haskell),
+  themeModes: parseThemeModes(
+    (rawConfig as { themeModes?: unknown }).themeModes,
+  ),
+  lean4: parseLean4((rawConfig as { lean4?: unknown }).lean4),
+  haskell: parseHaskell((rawConfig as { haskell?: unknown }).haskell),
 } as SiteConfig;
 
 function parseLean4(raw: unknown): SiteLean4Config | null {
   if (!raw || typeof raw !== "object") return null;
-  const candidate = raw as {theoryDir?: unknown};
-  if (typeof candidate.theoryDir !== "string" || candidate.theoryDir.trim() === "") {
+  const candidate = raw as { theoryDir?: unknown };
+  if (
+    typeof candidate.theoryDir !== "string" ||
+    candidate.theoryDir.trim() === ""
+  ) {
     return null;
   }
-  return {theoryDir: candidate.theoryDir.trim()};
+  return { theoryDir: candidate.theoryDir.trim() };
 }
 
 function parseHaskell(raw: unknown): SiteHaskellConfig | null {
   if (!raw || typeof raw !== "object") return null;
-  const candidate = raw as {packages?: unknown};
-  if (!candidate.packages || typeof candidate.packages !== "object" || Array.isArray(candidate.packages)) {
+  const candidate = raw as { packages?: unknown };
+  if (
+    !candidate.packages ||
+    typeof candidate.packages !== "object" ||
+    Array.isArray(candidate.packages)
+  ) {
     return null;
   }
-  return {packages: candidate.packages as Record<string, SiteHaskellPackageConfig>};
+  return {
+    packages: candidate.packages as Record<string, SiteHaskellPackageConfig>,
+  };
 }
 
 export function kebabToTitle(value: string) {
@@ -144,5 +153,7 @@ export function withBasePath(pathname = "") {
   }
 
   if (normalizedPath === "") return `${base}/`;
-  return isFilePath ? `${base}/${normalizedPath}` : `${base}/${normalizedPath}/`;
+  return isFilePath
+    ? `${base}/${normalizedPath}`
+    : `${base}/${normalizedPath}/`;
 }

@@ -5,6 +5,16 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
 
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    pre-commit-hooks = {
+      url = "github:cachix/pre-commit-hooks.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Smoke-test grammar for the tree-sitter highlighting feature.
     # Flake following is disabled so the grammar pulls its own nixpkgs.
     tree-sitter-json = {
@@ -13,15 +23,15 @@
     };
   };
 
-  outputs = inputs @ {
-    flake-parts,
-    ...
-  }: let
+  outputs = inputs @ {flake-parts, ...}: let
     docsModule = import ./nix/flake-module.nix;
   in
     flake-parts.lib.mkFlake {inherit inputs;} {
       systems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
-      imports = [docsModule];
+      imports = [
+        docsModule
+        ./nix/ci
+      ];
 
       flake.flakeModules.default = docsModule;
 
@@ -45,7 +55,6 @@
           repoRoot = ./.;
         };
       in {
-
         docsSite = {
           enable = true;
 
@@ -55,7 +64,7 @@
             theme = "cortex-light";
             themeModes = {
               light = "cortex-light";
-              dark = "cortex-slate-darker";
+              dark = "cortex-dark-darker";
             };
             site = {
               title = "repo-docs";
@@ -120,7 +129,7 @@
               # docs has themeModes — both palette names should be
               # surfaced as data attributes for the pre-paint script.
               grep -q 'data-mode-light="cortex-light"' "$docs/index.html"
-              grep -q 'data-mode-dark="cortex-slate-darker"' "$docs/index.html"
+              grep -q 'data-mode-dark="cortex-dark-darker"' "$docs/index.html"
               # internal stays single-theme cortex-dark.
               grep -q 'data-theme="cortex-dark"' "$internal/index.html"
 
@@ -247,7 +256,17 @@
                 # Explicit entries must preserve config order: "/" before "guides/getting-started".
                 # Alphabetical sort would put "Getting Started" before "repo-docs", so this
                 # catches regressions if .sort(comparePages) is re-added to explicit entries.
-                sidebar=$(grep -o '<aside[^>]*>.*</aside>' "$site/index.html")
+                #
+                # Flatten newlines so the regex still works after Astro
+                # changes inline-script formatting (e.g. when
+                # SearchBox's <script is:inline> body keeps source
+                # newlines through to the SSR output).
+                flat=$(tr '\n' ' ' < "$site/index.html")
+                sidebar=$(printf '%s' "$flat" | grep -o '<aside id="docs-sidebar"[^>]*>.*</aside>' | head -1)
+                # Trim everything past the first </aside> so the
+                # capture only contains the sidebar nav, not the
+                # following TOC aside.
+                sidebar=''${sidebar%%</aside>*}
                 repo_pos=$(printf '%s' "$sidebar" | grep -bo 'repo-docs' | head -1 | cut -d: -f1)
                 gs_pos=$(printf '%s' "$sidebar" | grep -bo 'Getting Started' | head -1 | cut -d: -f1)
                 test -n "$repo_pos"

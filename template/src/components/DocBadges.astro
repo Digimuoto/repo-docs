@@ -1,0 +1,56 @@
+---
+import type { CollectionEntry } from "astro:content";
+import { withBasePath } from "../lib/site-config";
+import { tagSlug } from "../lib/url";
+
+/*
+ * Badge row rendered next to a doc's title.
+ *
+ * Composes two badge kinds: a single optional `Draft` status pill
+ * (when `doc.data.draft` is set), then one `tag-` pill per entry in
+ * `doc.data.tags`. Each tag pill links to `/tags/<slug>/`. The
+ * resulting `<ul>` is hidden when the doc has neither, so callers
+ * can always render `<DocBadges doc={doc} />` and the empty case
+ * stays empty.
+ */
+
+interface Props {
+  doc: CollectionEntry<"docs">;
+}
+
+const { doc } = Astro.props;
+const { data } = doc;
+
+// Drop tags whose slug normalises to an empty string (non-Latin
+// scripts like 日本語, punctuation-only labels, etc). The tag-index
+// getStaticPaths() applies the same skip, so a badge for one of
+// these tags would link to a page that's never generated.
+const tagBadges = (data.tags ?? [])
+  .map((tag) => ({ tag, slug: tagSlug(tag) }))
+  .filter(({ slug }) => slug !== "")
+  .map(({ tag, slug }) => ({
+    kind: "tag" as const,
+    label: tag,
+    href: withBasePath(`tags/${slug}`),
+  }));
+const statusBadges = data.draft
+  ? [{ kind: "draft" as const, label: "Draft" } as const]
+  : [];
+const badges = [...statusBadges, ...tagBadges];
+---
+
+{
+  badges.length > 0 && (
+    <ul class="docs-title-badges" aria-label="Document tags">
+      {badges.map((badge) => (
+        <li class={`docs-title-badge docs-title-badge-${badge.kind}`}>
+          {"href" in badge && badge.href ? (
+            <a href={badge.href}>{badge.label}</a>
+          ) : (
+            badge.label
+          )}
+        </li>
+      ))}
+    </ul>
+  )
+}
