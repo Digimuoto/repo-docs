@@ -103,7 +103,10 @@ For more control, override site metadata, exclusions, section labels, explicit s
 }
 ```
 
-This produces `packages.docs-site`, `apps.docs-dev`, `apps.docs-preview`, and `checks.docs-site`. Naming the site anything other than `docs` simply changes those output prefixes.
+This produces `packages.docs-site`, `packages.docs-preview-page`,
+`apps.docs-dev`, `apps.docs-preview`, `apps.docs-preview-page`, and
+`checks.docs-site`. Naming the site anything other than `docs` simply changes
+those output prefixes.
 
 ## Consuming the module — multiple sites in one monorepo
 
@@ -146,6 +149,17 @@ Then:
 nix run .#docs-preview      # Portman site (cortex-dark)
 nix run .#cortex-preview    # Cortex research site (cortex-light)
 ```
+
+Inside a devshell, preview one Markdown page with the complete repo-docs shell:
+
+```bash
+docs-preview-page docs/guides/getting-started.md
+```
+
+The page is watched for edits and opened in a browser on port `4323` by default.
+Use `--no-open`, `--host`, or `--port` to adjust the behavior. Pages under
+`$PWD/docs` preserve their relative route; set `DOCS_PREVIEW_CONTENT_DIR` for a
+different logical docs root.
 
 **Per-site knobs** (each entry under `docsSite.sites.<name>` accepts):
 

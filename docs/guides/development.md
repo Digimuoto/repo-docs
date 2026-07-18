@@ -39,11 +39,19 @@ and lets Astro build the final site.
 nix build .#docs-site
 nix run .#docs-dev
 nix run .#docs-preview
+docs-preview-page docs/guides/getting-started.md
 ```
 
 The dev and preview apps stage into a temporary writable directory, install npm
 dependencies there, and run Astro from the staged template. Consumer repos never
 need to vendor the template or have their own `package.json`.
+
+`docs-preview-page` stages only the supplied Markdown page through the same
+template and configured integrations, then runs Astro in watch mode. Pages under
+`$PWD/docs` keep their relative route; files elsewhere use their filename at the
+site root. Set `DOCS_PREVIEW_CONTENT_DIR` when the logical docs root is somewhere
+else. The command opens the page in the system browser when possible and accepts
+`--host`, `--port`, and `--no-open`.
 
 ## Useful Checks
 

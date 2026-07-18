@@ -571,8 +571,10 @@
           exposed as:
 
             packages.<name>-site
+            packages.<name>-preview-page
             apps.<name>-dev
             apps.<name>-preview
+            apps.<name>-preview-page
             checks.<name>-site
 
           At least one site must be declared (or `docsSite.enable` must
@@ -588,6 +590,11 @@
         lib.mapAttrs' (
           siteKey: site:
             lib.nameValuePair "${siteKey}-site" site.package
+        )
+        builtSites
+        // lib.mapAttrs' (
+          siteKey: site:
+            lib.nameValuePair "${siteKey}-preview-page" site.pagePreviewApp
         )
         builtSites;
 
@@ -607,6 +614,15 @@
                 type = "app";
                 program = "${site.previewApp}/bin/${site.previewApp.name}";
                 meta.description = "Preview the ${siteKey} docs site after a production build";
+              }
+          )
+          builtSites)
+        // (lib.mapAttrs' (
+            siteKey: site:
+              lib.nameValuePair "${siteKey}-preview-page" {
+                type = "app";
+                program = "${site.pagePreviewApp}/bin/${site.pagePreviewApp.name}";
+                meta.description = "Preview one ${siteKey} Markdown page with the full docs template";
               }
           )
           builtSites);
