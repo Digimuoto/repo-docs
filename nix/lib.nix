@@ -6,6 +6,7 @@
   npmDepsHash = "sha256-hzofBxSfUOjq0A0ZdNWqTYUxrpuoyJPjHvIZ3EY6Ois=";
   templateDir = repoRoot + "/template";
   stageScript = repoRoot + "/scripts/stage-docs-site.mjs";
+  pagePreviewScript = repoRoot + "/scripts/docs-preview-page.mjs";
 
   verso = pkgs.leanPackages.buildLakePackage {
     pname = "verso";
@@ -158,6 +159,52 @@
                 fi
       '';
     };
+
+  mkPagePreviewApp = {
+    name,
+    config,
+    lean4SourceDir,
+    lean4RenderedDir,
+    typstRenderedDir,
+    haskellRenderedDir,
+    templateFiles,
+    languages,
+  }:
+    pkgs.writeShellApplication {
+      inherit name;
+      runtimeInputs = [pkgs.nodejs_22];
+      excludeShellChecks = ["SC1091" "SC2050"];
+      text = let
+        configJson = pkgs.writeText "${name}-config.json" (builtins.toJSON config);
+        templateFilesJson = pkgs.writeText "${name}-template-files.json" (builtins.toJSON (lib.mapAttrs (_: value: toString value) templateFiles));
+        languagesJson = pkgs.writeText "${name}-languages.json" (builtins.toJSON (languagesManifest languages));
+      in ''
+        set -euo pipefail
+
+        workdir="$(mktemp -d "''${TMPDIR:-/tmp}/${name}-XXXXXX")"
+
+        cleanup() {
+          rm -rf "$workdir"
+        }
+
+        trap cleanup EXIT
+
+        cp -R ${templateDir}/. "$workdir"
+        chmod -R u+w "$workdir"
+
+        exec node ${pagePreviewScript} \
+          --workdir "$workdir" \
+          --stage-script ${stageScript} \
+          --config-json ${configJson} \
+          --template-files-json ${templateFilesJson} \
+          --languages-json ${languagesJson} \
+          ${lib.optionalString (lean4RenderedDir != null) ''          --lean4-rendered-dir ${lean4RenderedDir} \
+                    --lean4-source-dir ${lean4SourceDir} \
+        ''}${lib.optionalString (typstRenderedDir != null) ''            --typst-rendered-dir ${typstRenderedDir} \
+          ''}${lib.optionalString (haskellRenderedDir != null) ''            --haskell-rendered-dir ${haskellRenderedDir} \
+          ''}"$@"
+      '';
+    };
 in
   {
     name,
@@ -256,6 +303,11 @@ in
       mode = "preview";
       port = 4322;
     };
+
+    pagePreviewApp = mkPagePreviewApp {
+      name = "${name}-preview-page";
+      inherit config lean4SourceDir lean4RenderedDir typstRenderedDir haskellRenderedDir templateFiles languages;
+    };
   in {
-    inherit stagedSrc package devApp previewApp;
+    inherit stagedSrc package devApp previewApp pagePreviewApp;
   }

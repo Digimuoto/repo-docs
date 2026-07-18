@@ -54,6 +54,13 @@
           inherit pkgs lib;
           repoRoot = ./.;
         };
+        docsPreviewPage = pkgs.writeShellApplication {
+          name = "docs-preview-page";
+          runtimeInputs = [config.packages.docs-preview-page];
+          text = ''
+            exec docs-site-preview-page "$@"
+          '';
+        };
       in {
         docsSite = {
           enable = true;
@@ -215,6 +222,29 @@
               grep -q "katex-display" "$site/guides/rendering-example/index.html"
               # Inline math is rendered (katex class on inline spans)
               grep -q "katex" "$site/guides/rendering-example/index.html"
+            '';
+          };
+
+          docs-preview-page-cli = mkAssertionCheck {
+            name = "docs-preview-page-cli";
+            script = ''
+              preview="${config.packages.docs-preview-page}/bin/docs-site-preview-page"
+
+              "$preview" --help 2>&1 | grep -q "Usage: docs-preview-page"
+
+              invalid="$TMPDIR/docs-preview-page-invalid.txt"
+              printf '%s\n' '# not Markdown' > "$invalid"
+              if "$preview" "$invalid" --no-open 2>"$TMPDIR/docs-preview-page-invalid.log"; then
+                echo "invalid extensions must fail"; exit 1
+              fi
+              grep -q "must have a .md or .mdx extension" "$TMPDIR/docs-preview-page-invalid.log"
+
+              missingTitle="$TMPDIR/docs-preview-page-missing-title.md"
+              printf '%s\n' '---' 'description: invalid' '---' '# Missing title' > "$missingTitle"
+              if "$preview" "$missingTitle" --no-open 2>"$TMPDIR/docs-preview-page-missing-title.log"; then
+                echo "missing titles must fail"; exit 1
+              fi
+              grep -q "frontmatter must define a non-empty title" "$TMPDIR/docs-preview-page-missing-title.log"
             '';
           };
 
@@ -542,12 +572,16 @@
         };
 
         devShells.default = pkgs.mkShell {
-          packages = with pkgs; [nodejs_22];
+          packages = with pkgs; [
+            nodejs_22
+            docsPreviewPage
+          ];
 
           shellHook = ''
             echo "repo-docs dev shell"
             echo "  nix build .#docs-site"
             echo "  nix run .#docs-dev"
+            echo "  docs-preview-page docs/guides/getting-started.md"
           '';
         };
       };
